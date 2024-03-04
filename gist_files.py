@@ -51,19 +51,15 @@ if __name__ == "__main__":
         sys.exit(1)
     pf = ProjectFiles(root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     # scan the files in the project, and create package structure
-    pf.from_gist_files()
-    # check whether the pf.files is empty
-    if pf.files:
-        print(f"Git file is loaded from {pf.gist_file_path}")
-    else:
-        # now talk with LLM to get the notes of files
-        codefiles = pf.get_files_of_project()
-        input("Press Enter to continue to send request to LLM ...")
+
+    # now talk with LLM to get the notes of files
+    codefiles = pf.get_files_of_project()
+    input("Press Enter to continue to send request to LLM ...")
         
-        for file in codefiles:
-            print(file.filename, file.package, file.path)
-            notes = code_gisting(file)
-            file.set_summary(notes)
-        # now that we have the notes for each file, we can persist them to a file for future use
-        gist_file_path = pf.persist_code_files()
-        print(f"Gist file is persisted to {gist_file_path}")
+    for file in codefiles:
+        print(file.filename, file.package, file.path)
+        notes = code_gisting(file)
+        file.set_summary(notes)
+    # now that we have the notes for each file, we can persist them to a file for future use
+    gist_file_path = pf.persist_code_files(codefiles)
+    print(f"Gist file is persisted to {gist_file_path}")
