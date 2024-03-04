@@ -4,7 +4,7 @@ import sys
 import argparse
 from projectfiles import ProjectFiles
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from llm_router import query
 
@@ -57,9 +57,10 @@ if __name__ == "__main__":
         print(f"Git file is loaded from {pf.gist_file_path}")
     else:
         # now talk with LLM to get the notes of files
+        codefiles = pf.get_files_of_project()
         input("Press Enter to continue to send request to LLM ...")
         
-        for file in pf.files:
+        for file in codefiles:
             print(file.filename, file.package, file.path)
             notes = code_gisting(file)
             file.set_summary(notes)

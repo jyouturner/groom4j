@@ -123,3 +123,7 @@ python3 ask.py --project_root=/Users/.../read-agent-code/data/travel-service-dev
 
 ```
 
+## Tracing
+
+
+<img src="docs/gist_files_tracing.jpg" width="600" alt="tracing image of gisting files">
