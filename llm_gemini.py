@@ -1,23 +1,19 @@
-import google.generativeai as genai
+from langchain_google_genai import ChatGoogleGenerativeAI
 import os
-import datetime
-import time
+import phoenix as px
+from phoenix.trace.langchain import LangChainInstrumentor
 
-genai.configure(api_key=os.environ.get("GOOGLE_AI_KEY"))
-model = genai.GenerativeModel('gemini-1.0-pro')
-model_type = 'gemini'
+LangChainInstrumentor().instrument()
 
 def query_gemini(
     prompt: str,
     retries: int = 10,
 ) -> str:
-  while True and retries > 0:
-    try:
-      response = model.generate_content(prompt)
-      text_response = response.text.replace("**", "")
-      return text_response
-    except Exception as e:
-      print(f'{datetime.datetime.now()}: query_gemini_model: Error: {e}')
-      print(f'{datetime.datetime.now()}: query_gemini_model: Retrying after 5 seconds...')
-      retries -= 1
-      time.sleep(5)
+    llm = ChatGoogleGenerativeAI(model="gemini-pro")
+    result = llm.invoke(prompt)
+    return result.content
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+    print(query_gemini("hello world!"))

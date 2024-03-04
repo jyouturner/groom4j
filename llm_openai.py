@@ -2,10 +2,11 @@
 import openai
 from datetime import datetime, time
 import os
-
+import phoenix as px
+from phoenix.trace.openai import OpenAIInstrumentor
 key = os.environ.get("OPENAI_API_KEY")  #@param {type: "string"}
 gpt_client = openai.OpenAI(api_key=key)
-
+OpenAIInstrumentor().instrument()
 
 def query_gpt(
     prompt: str,

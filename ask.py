@@ -4,17 +4,20 @@ import sys
 import argparse
 from projectfiles import ProjectFiles
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from llm_router import query, load_the_last_response, reset_prompt_response
 
 
 prompt_continue_template = """
 You are a world class Java developer, assigned to work on an existing project and accomplish a task. 
-Below is the Java project structure for your reference:
-{}
+
 Here is the task you need to accomplish:
 {}
+
+Below is the Java project structure for your reference:
+{}
+
 You need to write the steps to accomplish the task. For now only focus on development tasks only. Do not focus on testing, deployment, or other tasks.
 
 Since you are new to this project, if you have questions or need help, you are encouraged to ask for help, in below format:
@@ -87,12 +90,19 @@ def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, 
             print("LLM needs to know the project structure")
             additional_reading += f"Info about project structure: \n{projectTree}\n"
         elif line.startswith("[I need clarification about"):
-            # extract the question from '[I need clarification about' to ']'
-            q = line.split("[I need clarification about")[1].split("]")[0]
-            print(f"LLM needs more information: \n{q}")
+            # extract the part between '[I need clarification about' and ']'
+            what = line.split("[I need clarification about")[1].split("]")[0]
+            print(f"LLM needs more information: \n{what}")
             # ask user to enter manually through commmand line
-            print("Please enter the additional reading for the LLM")
-            additional_reading = f"Regarding {q}\nAnswer: {input()}"    
+            human_response = input("Please enter the additional reading for the LLM\n")
+            additional_reading = f"Regarding {what}, {human_response}\n"
+        elif line.startswith("[I need"):
+            print(f"LLM needs more information: \n{line}")
+            # ask user to enter manually through commmand line
+            human_response = input("Please enter the additional reading for the LLM\n")
+            additional_reading = f"Question:{line}\nAnswer: {human_response}\n"
+        else:
+            pass
     if last_response=="" or additional_reading:
         # either the first time or the last conversation needs more information
         if last_response=="":

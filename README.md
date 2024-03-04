@@ -31,6 +31,21 @@ cp .env.example .env
 vi .env
 ```
 
+## Tracing
+
+We use Ariz Phoenix for tracing.
+
+### install the Phoenix at local
+
+The easist way is to use the docker image that I created
+
+```sh
+docker pull jy2947/arize-ai-phoenix:20240303
+docker run -d --name phoenix -p 6006:6006 jy2947/arize-ai-phoenix:20240303
+```
+
+Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
+
 ## About the Paper
 
 The research paper discusses "ReadAgent," a system inspired by how humans read and understand long documents. Unlike current computer models that struggle with very long texts, ReadAgent mimics human reading by breaking texts into manageable parts (episodes), summarizing them into "gist memories" (key ideas), and referring back to the original text for details when necessary. This approach helps ReadAgent understand and remember the main points from long documents better than traditional methods, allowing it to perform better on tasks that involve reading comprehension of lengthy texts.

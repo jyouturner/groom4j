@@ -51,7 +51,7 @@ if __name__ == "__main__":
         sys.exit(1)
     pf = ProjectFiles(root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     # scan the files in the project, and create package structure
-    pf.from_gist_file()
+    pf.from_gist_files()
     # check whether the pf.files is empty
     if pf.files:
         print(f"Git file is loaded from {pf.gist_file_path}")

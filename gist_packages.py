@@ -7,7 +7,7 @@ import time
 import argparse
 from projectfiles import ProjectFiles
 # load env before importing LLM functions
-load_dotenv()
+load_dotenv(override=True)
 from llm_router import query
 
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     pf.from_gist_files()
     # since we already have the summary of the individual code files, next we ask LLM to summarize the packages
     print("\n" + "-" * 10 + "\nTravers Bottom-Up to get notes on packages:")
-    pf.package_structure_traverse(packages=None, action_file=pf.execute_on_file, action_package=pf.execute_on_package, package_gisting=real_package_gisting, is_bottom_up=True)
+    pf.package_structure_traverse(packages=None, action_file=pf.execute_on_file, action_package=pf.execute_on_package, is_bottom_up=True)
     # persist the package notes
     file = pf.persist_package_notes()
     print(f"Package notes are persisted to {file}")
