@@ -146,7 +146,7 @@ class ProjectFiles:
         if not file or not file.summary:
             raise Exception(f"expect file {fileName} have summary by now!")
 
-    def execute_on_package(self, package, subpackages, filenames, package_gisting):
+    def execute_on_package(self, package, subpackages, filenames):
         #print(f"\n\nExecuting function on package: {package}")
         # first create the notes of the sub-packages, for each subpackage, we find the notes, and concatenate them all together with the subpackage name
         subpackage_notes = ""
@@ -164,7 +164,7 @@ class ProjectFiles:
                 raise Exception(f"expect file {filename} have summary!")
             filenotes += f"File: {file.filename} : {file.summary}\n\n"
         # then call the query_model function to get the notes of the package
-        notes = package_gisting(package, subpackage_notes, filenotes)
+        notes = self.package_gisting(package, subpackage_notes, filenotes)
         # store the notes in the package_notes dict
         self.add_package_notes(package, notes)
 
