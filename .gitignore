@@ -1,0 +1,10 @@
+.env
+__pycache__
+venv
+*.pkl
+*.txt
+*.json
+*.csv
+.pytest_cache
+test
+.DS_Store
