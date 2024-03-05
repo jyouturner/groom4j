@@ -11,6 +11,10 @@ Leveraging the concept of "gisting," our system preprocesses Java projects to cr
 - **File and Package Gisting**: Generates summaries for Java files and aggregates these into higher-level package gists.
 - **Interactive Querying with LLM**: Asks language models (LLMs) development-related questions, providing them with the project's gist to obtain informed, context-aware guidance.
 
+### Try Notebook
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jyouturner/read-agent-java/HEAD?labpath=read-agent-java.ipynb)
+
 
 ### Getting Started
 
