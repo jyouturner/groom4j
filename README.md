@@ -16,43 +16,13 @@ Leveraging the concept of "gisting," our system preprocesses Java projects to cr
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jyouturner/read-agent-java/HEAD?labpath=read-agent-java.ipynb)
 
 
-### Getting Started
-
-To set up and start using the Gist-Based Development Assistant:
-
-```sh
-python3 -m venv venv
-source venv/bin/activate
-pip3 install -r requirements.txt
-```
-
-### Set LLM and API Key
-
-We are using OpenAI gpt-4-1106-preview, first to set the OPENAI_API_KEY in dot env file
-
-```sh
-cp .env.example .env
-vi .env
-```
-
-## Tracing
-
-We use Ariz Phoenix for tracing.
-
-### install the Phoenix at local
-
-The easist way is to use the docker image that I created
-
-```sh
-docker pull jy2947/arize-ai-phoenix:20240303
-docker run -d --name phoenix -p 6006:6006 jy2947/arize-ai-phoenix:20240303
-```
-
-Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
-
 ## About the Paper
 
 The research paper discusses "ReadAgent," a system inspired by how humans read and understand long documents. Unlike current computer models that struggle with very long texts, ReadAgent mimics human reading by breaking texts into manageable parts (episodes), summarizing them into "gist memories" (key ideas), and referring back to the original text for details when necessary. This approach helps ReadAgent understand and remember the main points from long documents better than traditional methods, allowing it to perform better on tasks that involve reading comprehension of lengthy texts.
+
+below image from [https://read-agent.github.io/](https://read-agent.github.io/) demontrates the intuitive approach.
+
+<img src="docs/read-agent.jpg" width="600" alt="read agent">
 
 
 ## Apply the Approach to Large Codebase
@@ -99,6 +69,41 @@ In the first prompt to LLM, we specify its role, the task to work on, and the br
 A sample Java project is included in this repo, under "data" folder. It is an open source project available at Github [https://github.com/ilkeratik/travel-service](https://github.com/ilkeratik/travel-service).
 
 <img src="docs/travel_service_project_structure.png" width="500" alt="Travel Service Java Project Structure">
+
+
+### Getting Started
+
+To set up and start using the Gist-Based Development Assistant:
+
+```sh
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -r requirements.txt
+```
+
+### Set LLM and API Key
+
+We are using OpenAI gpt-4-1106-preview, first to set the OPENAI_API_KEY in dot env file
+
+```sh
+cp .env.example .env
+vi .env
+```
+
+## Tracing
+
+We use Ariz Phoenix for tracing.
+
+### install the Phoenix at local
+
+The easist way is to use the docker image that I created
+
+```sh
+docker pull jy2947/arize-ai-phoenix:20240303
+docker run -d --name phoenix -p 6006:6006 jy2947/arize-ai-phoenix:20240303
+```
+
+Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
 
 ### First to Gist code files
 
