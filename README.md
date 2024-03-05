@@ -12,11 +12,11 @@ below image from [https://read-agent.github.io/](https://read-agent.github.io/) 
 <img src="docs/read-agent.jpg" width="800" alt="read agent">
 
 
-## Apply the Approach to Large Codebase
+## Apply the Approach to Large Java Codebase
 
 There have been tremendous advancements in Large Language Models (LLMs) in recent years, leading to the development of various techniques to leverage LLMs across a wide range of use cases. Specifically, in the realm of programming, tools such as GitHub Copilot have proven highly effective at providing code completion for smaller coding tasks. However, navigating and understanding large codebases remains a significant challenge. To address this, several initiatives have focused on an agent-based approach, including tools like AugoGPT, ChatDev and other Agent-based systems. 
 
-The primary objective of this project is to apply diverse techniques to assist with coding tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
+The primary objective of this project is to apply diverse techniques to assist with ~~coding~~ development tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
 
 ## Overview
 
@@ -156,6 +156,6 @@ This project serves as an effective starting point for leveraging Large Language
 
 3. Capitalizing on the "memory" of the LLM. Each interaction with the LLM brings it closer to the optimal solution. However, given the stateless nature of these models, they rely solely on the information provided in the current prompt. Therefore, effectively preserving and incorporating relevant details from past conversations into new requests is crucial. This strategy helps the LLM build on previous interactions, accelerating the progress towards the final answer. Ensuring that essential insights and progress are seamlessly integrated into each new request can significantly enhance the LLM's ability to assist in complex tasks, making it a more effective tool for navigating and understanding large codebases.
 
-4. Exploring more efficient strategies - Currently, our approach involves distinct phases, such as initially creating a gist of the entire project. This method, while comprehensive, is not the most cost-effective for large codebases. Specifically, in the context of Java projects, numerous files (such as data, DTOs, exceptions, constants, etc.) may be unnecessary for understanding the high-level design. A more efficient approach could be to implement a "gist-on-demand" approach.
+4. Exploring more efficient strategies - Currently, our approach involves distinct phases, such as initially creating a gist of the entire project. This method, while comprehensive, is not the most cost-effective for large codebases. Specifically, in the context of Java projects, numerous files (such as data, DTOs, exceptions, constants, etc.) may be unnecessary for understanding the high-level design. A more efficient approach could be to implement a "gist-on-demand" approach. This may lead to a "multi-agenta" architecture.
 
 5. Refining the Gisting Process: Given our focus on addressing high-level tasks rather than detailed coding, the current gisting method is "good enough." It significantly reduces the workload by eliminating the need for indexing Java classes and methods, as would be required in static analysis, thanks to the assistance of LLMs. Therefore, there's minimal necessity for sophisticated persistence mechanisms like databases. However, it remains essential to ensure that the generated gists are accessible to all team developers and that the "source record" is maintained. To achieve this, it' make sense to integrate the gisting process into the codebase as part of the Continuous Integration (CI) workflow. We can leave this to the user to decide.
