@@ -22,7 +22,7 @@ The research paper discusses "ReadAgent," a system inspired by how humans read a
 
 below image from [https://read-agent.github.io/](https://read-agent.github.io/) demontrates the intuitive approach.
 
-<img src="docs/read-agent.jpg" width="600" alt="read agent">
+<img src="docs/read-agent.jpg" width="800" alt="read agent">
 
 
 ## Apply the Approach to Large Codebase
