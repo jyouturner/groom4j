@@ -2,6 +2,22 @@
 
 Inspired by the research on [A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts](https://arxiv.org/abs/2402.09727), this project applies a similar gisting approach to facilitate development tasks within large Java codebases. By summarizing and indexing Java files and packages, our system enables developers to easily navigate and understand complex projects, streamlining the maintenance and enhancement process.
 
+
+## About the Paper
+
+The research paper discusses "ReadAgent," a system inspired by how humans read and understand long documents. Unlike current computer models that struggle with very long texts, ReadAgent mimics human reading by breaking texts into manageable parts (episodes), summarizing them into "gist memories" (key ideas), and referring back to the original text for details when necessary. This approach helps ReadAgent understand and remember the main points from long documents better than traditional methods, allowing it to perform better on tasks that involve reading comprehension of lengthy texts.
+
+below image from [https://read-agent.github.io/](https://read-agent.github.io/) demontrates the intuitive approach.
+
+<img src="docs/read-agent.jpg" width="800" alt="read agent">
+
+
+## Apply the Approach to Large Codebase
+
+There have been tremendous advancements in Large Language Models (LLMs) in recent years, leading to the development of various techniques to leverage LLMs across a wide range of use cases. Specifically, in the realm of programming, tools such as GitHub Copilot have proven highly effective at providing code completion for smaller coding tasks. However, navigating and understanding large codebases remains a significant challenge. To address this, several initiatives have focused on an agent-based approach, including tools like AugoGPT, ChatDev and other Agent-based systems. 
+
+The primary objective of this project is to apply diverse techniques to assist with coding tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
+
 ## Overview
 
 Leveraging the concept of "gisting," our system preprocesses Java projects to create concise summaries or "gists" of both individual files and entire packages. These gists serve as an easily navigable index, helping developers and language models alike grasp the project's structure and content at a glance.
@@ -16,18 +32,7 @@ Leveraging the concept of "gisting," our system preprocesses Java projects to cr
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jyouturner/read-agent-java/HEAD?labpath=read-agent-java.ipynb)
 
 
-## About the Paper
-
-The research paper discusses "ReadAgent," a system inspired by how humans read and understand long documents. Unlike current computer models that struggle with very long texts, ReadAgent mimics human reading by breaking texts into manageable parts (episodes), summarizing them into "gist memories" (key ideas), and referring back to the original text for details when necessary. This approach helps ReadAgent understand and remember the main points from long documents better than traditional methods, allowing it to perform better on tasks that involve reading comprehension of lengthy texts.
-
-below image from [https://read-agent.github.io/](https://read-agent.github.io/) demontrates the intuitive approach.
-
-<img src="docs/read-agent.jpg" width="800" alt="read agent">
-
-
-## Apply the Approach to Large Codebase
-
-This repo has our attempts to apply the same approach to programming tasks in large codebase, for example, an existing Java project.
+## How It Works
 
 Similar to how human being appoach to any maintenance of legacy code, we ask LLM to do a one time "gisting"
 
