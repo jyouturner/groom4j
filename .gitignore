@@ -8,3 +8,6 @@ venv
 .pytest_cache
 test
 .DS_Store
+.ipynb_checkpoints/
+data/travel-service-dev/code_files.txt
+data/travel-service-dev/package_notes.txt

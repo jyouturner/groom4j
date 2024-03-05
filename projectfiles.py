@@ -122,8 +122,6 @@ class ProjectFiles:
         return files
 
     def generate_package_structure(self, files):
-        # note - the packages here are really the folder structure, not the java package, for example
-        # the root package is "com", and the subpackage is "iky" as opposed "com.iky"
         packages = {}
         for file in files:
             # assume the java package is in the format of com.company.project
@@ -179,6 +177,8 @@ class ProjectFiles:
         :param is_bottom_up: whether to traverse the tree bottom-up
         """
         if packages is None:
+            # if package is not specified, then we regenerate the package structure from the files
+            self.packages = self.generate_package_structure(self.files)
             packages = self.packages
         for package, value in sorted(packages.items(), reverse=is_bottom_up):
             sub_packages = value["sub_packages"]
