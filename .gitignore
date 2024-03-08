@@ -11,3 +11,6 @@ test
 .ipynb_checkpoints/
 data/travel-service-dev/code_files.txt
 data/travel-service-dev/package_notes.txt
+docs/dspy/openai_usage.log
+docs/dspy/assertion.log
+docs/dspy/azure_openai_usage.log
