@@ -46,7 +46,42 @@ below are your notes from previous research of the project:
 
 Only stop when you are very sure of the steps. If you are not sure, ask for more info of the files or packages and your reasoning.
 """
-    
+
+def read_files(pf, file_names) -> str:
+    additional_reading = ""
+    for file_name in file_names:
+        # clean it
+        file_name = file_name.strip()
+        file = pf.find_codefile_by_name(file_name, package=None)
+        if file:
+            additional_reading += f"You asked about file: {file.filename}\n"
+            additional_reading += f"{file.summary}\n"
+            # now let's get the file content, since we have the path
+            with open(file.path, "r") as f:
+                file_content = f.read()
+                additional_reading += f"Below is the file Content:\n {file_content}\n"
+        else:
+            additional_reading += f"File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+    return additional_reading
+
+def read_packages(pf, package_names) -> str:
+    additional_reading = ""
+    for package_name in package_names:
+        # clean it
+        package_name = package_name.strip()
+        # first get the notes of the package
+        notes = pf.find_notes_of_package(package_name)
+        if notes:
+            additional_reading += f"Info about package: {package_name} :\n {notes}\n\n"
+        # now let's get the sub-packages and code files
+        subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
+        if subpackages:
+            additional_reading += f"this package has below sub packages: {subpackages}\n\n"
+        codefilenames = [f.filename for f in codefiles]
+        if codefilenames:
+            additional_reading += f"this package has files: {codefilenames}\n\n"
+    return additional_reading
+
 def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
@@ -55,37 +90,13 @@ def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, 
             # for example [I need access files: <file1 name>,<file2 name>,<file3 name>]
             file_names = line.split(":")[1].strip().rstrip("]").split(",")
             print(f"LLM needs access to files: {file_names}")
-            for file_name in file_names:
-                # clean it
-                file_name = file_name.strip()
-                file = pf.find_codefile_by_name(file_name, package=None)
-                if file:
-                    additional_reading += f"You asked about file: {file.filename}\n"
-                    additional_reading += f"{file.summary}\n"
-                    # now let's get the file content, since we have the path
-                    with open(file.path, "r") as f:
-                        file_content = f.read()
-                        additional_reading += f"Below is the file Content:\n {file_content}\n"
-                else:
-                    additional_reading += f"File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+            additional_reading += read_files(file_names)            
         elif line.startswith("[I need info about packages:"):
             # example [I need info about packages: <package1 name>,<package2 name>,<package3 name>]
             package_names = line.split(":")[1].strip().rstrip("]").split(",")
             print(f"Need more info of package: {package_names}")
-            for package_name in package_names:
-                # clean it
-                package_name = package_name.strip()
-                # first get the notes of the package
-                notes = pf.find_notes_of_package(package_name)
-                if notes:
-                    additional_reading += f"Info about package: {package_name} :\n {notes}\n\n"
-                # now let's get the sub-packages and code files
-                subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
-                if subpackages:
-                    additional_reading += f"this package has below sub packages: {subpackages}\n\n"
-                codefilenames = [f.filename for f in codefiles]
-                if codefilenames:
-                    additional_reading += f"this package has files: {codefilenames}\n\n"
+            additional_reading += read_packages(package_names)
+            
         elif line.startswith("[I need to know the project structure]"):
             print("LLM needs to know the project structure")
             additional_reading += f"Info about project structure: \n{projectTree}\n"
@@ -114,7 +125,7 @@ def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, 
             
         prompt = prompt_continue_template.format(ask, projectTree, last_response, "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
-        input("Press Enter to continue to send message to LLM ...")
+        # input("Press Enter to continue to send message to LLM ...")
         response = query(prompt)
         return response, additional_reading, False
     else:

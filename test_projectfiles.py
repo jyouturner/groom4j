@@ -264,3 +264,16 @@ def test_package_structure_traverse_bottom_up_package_notes():
                                   action_package=fnPackage, 
                                   is_bottom_up=True)
 
+def test_find_package_notes():
+    from projectfiles import dumb_package_gisting
+    # find the local path to the test_project folder
+    root_path = os.path.dirname(os.path.abspath(__file__))
+    print("root path", root_path)
+    project_path = os.path.join(root_path, "data/travel-service-dev")
+    print("project path", project_path)
+    pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
+    pf.from_project()
+
+    # find the package notes
+    notes = pf.find_notes_of_package("com.iky.travel.config")
+    assert notes.startswith("Notes: Package Name: com.iky.travel.config")

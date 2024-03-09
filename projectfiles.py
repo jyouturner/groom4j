@@ -78,6 +78,10 @@ class ProjectFiles:
     def from_project(self):
         self.files = self.get_files_of_project()
         self.packages = self.generate_package_structure(self.files)
+        # load the package notes if the file exists
+        if os.path.exists(os.path.join(self.root_path, self.default_package_notes_file)):
+            print(f"Loading package notes from {self.default_package_notes_file}")
+            self.package_notes = self.load_package_notes()
 
    
     def from_gist_files(self, gist_file_path=None):
@@ -322,6 +326,7 @@ class ProjectFiles:
         # each package starts with "Package:", with name, the from the next line are "Notes:" and notes lines, which can be one or multiple lines
         # for each package, read until the end of the file or another package.
         package_notes = defaultdict(str)
+        print(f"Loading package notes from {file_path}")
         with open(file_path, "r") as f:
             lines = f.readlines()
             i = 0
