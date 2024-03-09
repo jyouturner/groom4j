@@ -113,7 +113,7 @@ Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
 ### First to Gist code files
 
 ```sh
-python3 gist_files.py --project_root=/Users/.../read-agent-code/data/travel-service-dev
+python3 gist_files.py --project_root=./data/travel-service-dev
 ```
 
 It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the "data/travel-service-dev" folder.
@@ -121,7 +121,7 @@ It will take a while before all the Java files are gisted. You will see a txt fi
 ### Next to Gist packages
 
 ```sh
-python3 gist_packages.py --project_root=/Users/.../read-agent-code/data/travel-service-dev
+python3 gist_packages.py --project_root=./data/travel-service-dev
 ```
 
 After the process is done, you will see a file "package_notes.txt" created in the "data/travel-service-dev" folder.
@@ -129,11 +129,11 @@ After the process is done, you will see a file "package_notes.txt" created in th
 ### Now Ask LLM to Assist Coding Task
 
 ```sh
-python3 ask.py --project_root=/Users/.../read-agent-code/data/travel-service-dev --question="add a new field 'mayor' to city, for the name of the mayor of the city"
+python3 ask.py --project_root=./data/travel-service-dev --question="add a new field 'mayor' to city, for the name of the mayor of the city"
 
-python3 ask.py --project_root=/Users/.../read-agent-code/data/travel-service-dev --question="add a new feature to search city by name"
+python3 ask.py --project_root=./data/travel-service-dev --question="add a new feature to search city by name"
 
-python3 ask.py --project_root=/Users/.../read-agent-code/data/travel-service-dev --question="refactor the Rest API to GraphQL"
+python3 ask.py --project_root=./data/travel-service-dev --question="refactor the Rest API to GraphQL"
 
 ```
 

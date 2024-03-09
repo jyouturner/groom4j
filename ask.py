@@ -82,6 +82,12 @@ def read_packages(pf, package_names) -> str:
             additional_reading += f"this package has files: {codefilenames}\n\n"
     return additional_reading
 
+def read_from_human(line) -> str:
+    # ask user to enter manually through commmand line
+    human_response = input("Please enter the additional reading for the LLM\n")
+    additional_reading = f"{human_response}"
+    return additional_reading
+
 def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
@@ -105,19 +111,16 @@ def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, 
             what = line.split("[I need clarification about")[1].split("]")[0]
             print(f"LLM needs more information: \n{what}")
             # ask user to enter manually through commmand line
-            human_response = input("Please enter the additional reading for the LLM\n")
-            additional_reading = f"Regarding {what}, {human_response}\n"
+            additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
         elif line.startswith("[I need"):
             print(f"LLM needs more information: \n{line}")
-            # ask user to enter manually through commmand line
-            human_response = input("Please enter the additional reading for the LLM\n")
-            additional_reading = f"Question:{line}\nAnswer: {human_response}\n"
+            additional_reading += f"{read_from_human(line)}\n"
         else:
             pass
     if last_response=="" or additional_reading:
         # either the first time or the last conversation needs more information
         if last_response=="":
-            # pretty print the package_notes into a big string
+            # this is the initial conversation with LLM, we just pass the whole package notes.
             package_notes_str = ""
             for package, notes in pf.package_notes.items():
                 package_notes_str += f"Package: {package}\nNotes: {notes}\n\n"
@@ -139,7 +142,8 @@ if __name__ == "__main__":
     parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()
 
-    root_path = args.project_root
+    # if args.project_root is relative path, then get the absolute path
+    root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
         sys.exit(1)

@@ -45,7 +45,8 @@ if __name__ == "__main__":
        
     args = parser.parse_args()
 
-    root_path = args.project_root
+    # if args.project_root is relative path, then get the absolute path
+    root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
         sys.exit(1)
