@@ -1,0 +1,336 @@
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/TravelBeApplication.java
+
+Summary: - Purpose: The code is the entry point for a Spring Boot application related to travel.
+- Functionality: It boots up the Spring context and starts the application.
+- Important Classes/Methods:
+  - `TravelBeApplication`: The main class containing the entry point.
+  - `SpringApplication.run()`: Static method that launches the Spring Boot application.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/config/MongoConfig.java
+
+Summary: - Purpose: The code configures a MongoTemplate bean for Spring-based applications to interact with MongoDB.
+- Functionality: It provides a MongoTemplate instance connected to a specified MongoDB using the MongoClient.
+- Important Classes/Methods:
+  - MongoConfig: A configuration class that defines beans for the Spring context.
+  - mongoTemplate(): A method annotated with @Bean that creates and returns a MongoTemplate object initialized with MongoClient and database name.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/config/RedisConfig.java
+
+Summary: - Purpose: The code configures a RedisTemplate bean for Spring-based applications to interact with Redis data stores.
+- Functionality: The code sets up a RedisTemplate with specific serializers for keys and values to facilitate the storage and retrieval of data in Redis.
+- Important Classes/Methods:
+  - `@Configuration`: Indicates that the class has @Bean definition methods.
+  - `RedisTemplate<String, Object>`: Provides a high-level abstraction for Redis interactions.
+  - `redisTemplate(RedisConnectionFactory connectionFactory)`: Bean factory method to create and configure a RedisTemplate instance.
+  - `setConnectionFactory()`: Configures the connection factory for Redis connections.
+  - `setKeySerializer()`: Sets the serializer for keys (StringRedisSerializer).
+  - `setValueSerializer()`: Sets the serializer for values (GenericJackson2JsonRedisSerializer).
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/config/WebSecurityConfiguration.java
+
+Summary: - Purpose: Configure web security for a Java application using Spring Security.
+- Functionality: Disables CSRF protection, sets session management to stateless, permits all requests to paths "/api/**" and "/actuator/**", requires authentication for all other requests, and enables HTTP Basic authentication.
+- Important Classes/Methods:
+  - `@Configuration`: Indicates that the class is a source of bean definitions.
+  - `@EnableWebSecurity`: Enables Spring Security's web security support.
+  - `SecurityFilterChain`: Defines the security filter chain.
+  - `HttpSecurity`: Fluent interface for building the security configuration.
+  - `sessionManagement()`: Configures session creation policy.
+  - `authorizeHttpRequests()`: Configures URL-based authorization.
+  - `httpBasic()`: Enables HTTP Basic authentication.
+  - `csrf()`: Configures CSRF protection settings.
+  - `@Bean`: Indicates that a method produces a bean to be managed by the Spring container.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/controller/city/CityController.java
+
+Summary: - Purpose of the code: To provide RESTful API endpoints for managing city data (CRUD operations) in a travel application.
+- Functionality of the code:
+  - Retrieve city information by name (`getCity`).
+  - Delete a city by name (`deleteCity`).
+  - Add a new city (`addCity`).
+  - Update an existing city (`updateCity`).
+- Important classes and methods:
+  - `CityController`: REST controller class providing API endpoints.
+  - `CityService`: Service class used for business logic and data access.
+  - `CityDTO`: Data Transfer Object representing city data.
+  - `CityNotFoundException`, `CityAddException`, `CityUpdateException`: Custom exceptions for city-related errors.
+  - `@RestController`, `@RequestMapping`, `@GetMapping`, `@DeleteMapping`, `@PostMapping`, `@PutMapping`: Spring MVC annotations for defining RESTful endpoints.
+  - `ResponseEntity`: Represents HTTP responses with status codes and body.
+  - `ServletUriComponentsBuilder`: Helper class for building URIs for newly created resources.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/controller/travel/TravelController.java
+
+Summary: - Purpose of the code: To provide a RESTful API for travel-related operations, such as retrieving popular destinations and clearing them from a Redis cache, as well as fetching all destinations.
+- Functionality of the code: 
+  - Exposes three GET endpoints to interact with travel services.
+  - `/popularDestinations` endpoint returns a set of the top 3 queried cities.
+  - `/clearPopularDestinations` endpoint clears the popular destinations from Redis and handles success or failure.
+  - `/allDestinations` endpoint returns a set of all available cities.
+- Important classes and methods:
+  - `TravelController`: REST controller class handling HTTP requests related to travel.
+  - `TravelService`: Service class dependency providing business logic for travel operations.
+  - `@RestController`: Annotation indicating this class serves REST endpoints.
+  - `@RequestMapping`: Annotation defining the base URI for all endpoints in this controller.
+  - `@GetMapping`: Annotation for mapping HTTP GET requests onto specific handler methods.
+  - `ResponseEntity`: Wrapper for HTTP responses, allowing to set status codes and return data.
+  - `RedisException`: Custom exception thrown when Redis operations fail.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/constant/common/ApiPathConstants.java
+
+Summary: - Purpose: Define constants for API path prefixes and full paths for travel and city-related APIs.
+- Functionality: Provides a centralized location for API path constants to ensure consistency across the application.
+- Important Classes/Methods:
+  - `ApiPathConstants`: A utility class containing static final variables for API path segments and full paths.
+  - `API_V1_PREFIX`: Base path for version 1 of the API.
+  - `TRAVEL_API_PREFIX`: Segment for travel-related API paths.
+  - `CITY_API_PREFIX`: Segment for city-related API paths.
+  - `API_V1_TRAVEL`: Full path for travel-related API endpoints.
+  - `API_V1_CITY`: Full path for city-related API endpoints.
+  - Private constructor: Prevents instantiation of the utility class.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/constant/common/MongoConstant.java
+
+Summary: - Purpose: To define constants related to MongoDB operations for a travel application.
+- Functionality: Provides a centralized location for MongoDB constants to ensure consistency across the application.
+- Important Classes/Methods:
+  - `MongoConstant`: A utility class containing constants.
+  - `MONGO_DB_NAME`: A static final variable holding the name of the MongoDB database used by the application.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/constant/common/RedisConstant.java
+
+Summary: - Purpose: The code defines constants for Redis keys used within a travel application.
+- Functionality: Provides a centralized location for Redis key names to ensure consistency across the application when accessing Redis data.
+- Important Classes/Methods:
+  - RedisConstant: A utility class containing Redis key name constants.
+  - CITY_KEY: A static final String representing the Redis key for cities.
+  - POPULAR_DESTINATIONS_KEY: A static final String representing the Redis key for popular destinations.
+  - Private constructor: Prevents instantiation of the utility class.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/dto/CityDTO.java
+
+Summary: - Purpose of the code: To define a data transfer object (DTO) representing a city with validation constraints for use in a travel-related application.
+- Functionality of the code: Encapsulates city data with validation rules for serialization and deserialization processes, ensuring data integrity when transferring between different parts of the application or when persisting/retrieving from a data source.
+- Important classes and methods:
+  - `CityDTO`: The main class representing the city DTO.
+  - `@Getter` and `@Setter`: Lombok annotations to generate boilerplate getter and setter methods.
+  - `@Serial`: Annotation indicating the serialVersionUID field is associated with serialization.
+  - `@NotNull`, `@Positive`, `@NotBlank`, `@Size`: Jakarta Bean Validation annotations to enforce validation constraints on the fields.
+  - `serialVersionUID`: A static final field used to ensure compatibility during the serialization and deserialization process.
+  - Fields: `id`, `plateNo`, `name`, `population`, `country`, `topActivities` represent the city's attributes with associated validation constraints.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/repository/city/CityRepository.java
+
+Summary: - Purpose: The code defines a repository interface for City entities in a travel domain, using MongoDB as the data store.
+- Functionality: The code provides two methods for querying and deleting City entities based on their name.
+- Important Classes/Methods:
+  - `CityRepository`: Interface extending `MongoRepository` for City entities with String-type ID.
+  - `findByName(String name)`: Method to find a City by its name, returning an `Optional<City>`.
+  - `deleteByName(String name)`: Method to delete a City by its name, returning a boolean indicating success.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/mapper/CityMapper.java
+
+Summary: - Purpose: The code defines an interface for mapping between City domain model and CityDTO (Data Transfer Object).
+- Functionality: Provides methods to convert a CityDTO to a City entity and vice versa.
+- Important Classes/Methods:
+  - `@Mapper`: Annotation indicating the interface is a MapStruct mapper.
+  - `CityMapper INSTANCE`: Singleton instance of the mapper created by MapStruct.
+  - `dtoToCity(CityDTO cityDTO)`: Method to convert CityDTO to City entity.
+  - `cityToDto(City city)`: Method to convert City entity to CityDTO.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/model/City.java
+
+Summary: - Purpose: The code defines a domain model for a city within a travel-related application.
+- Functionality: Represents a city with attributes like ID, name, plate number, population, country, and top activities. It is intended to be stored in a MongoDB database.
+- Important Classes/Methods:
+  - `@Document`: Indicates that the class is a MongoDB document and specifies the collection name "cities".
+  - `@Data`: Lombok annotation to generate boilerplate code like getters, setters, `equals()`, `hashCode()`, and `toString()` methods.
+  - `@Id`: Marks the `id` field as the primary key for the MongoDB document.
+  - `@Field`: Customizes the field name mapping between the class field and the MongoDB document field (e.g., `plate_no` for `plateNo`, `top_activities` for `topActivities`).
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/service/city/CityService.java
+
+Summary: - Purpose: The code defines an interface for a service that manages city-related operations within a travel domain.
+- Functionality: The interface provides methods to add, update, check existence, retrieve, and delete city information.
+- Important Classes and Methods:
+  - `CityDTO`: Data transfer object class likely containing city data.
+  - `CityService`: Interface with the following methods:
+    - `addCity(CityDTO city)`: Adds a new city.
+    - `updateCity(CityDTO updatedCity)`: Updates an existing city.
+    - `cityExists(String cityName)`: Checks if a city exists.
+    - `getCity(String cityName)`: Retrieves a city's information.
+    - `deleteCity(String cityName)`: Deletes a city.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/service/city/impl/CityServiceImpl.java
+
+Summary: - Purpose: The code provides a service layer implementation for managing city data, including CRUD operations and caching with Redis.
+- Functionality:
+  - Add a new city to the database and cache.
+  - Update an existing city in the database and cache.
+  - Check if a city exists in the cache or database.
+  - Retrieve a city's details from the cache or database, with a fallback to the database if not in cache.
+  - Delete a city from the database and cache.
+  - Increment a city's query count in a Redis sorted set for tracking popular destinations.
+- Important Classes and Methods:
+  - `CityServiceImpl`: Implements `CityService` interface.
+  - `addCity(CityDTO cityDTO)`: Adds a new city to the database and cache.
+  - `updateCity(CityDTO updatedCity)`: Updates an existing city in the database and cache.
+  - `cityExists(String cityName)`: Checks if a city exists in the cache or database.
+  - `getCity(String cityName)`: Retrieves a city's details from the cache or database.
+  - `deleteCity(String cityName)`: Deletes a city from the database and cache.
+  - `incrementCityQueryCount(String cityName)`: Increments the query count for a city in Redis.
+  - `generateRedisKey(String cityName)`: Generates a Redis key for a given city name.
+- Dependencies:
+  - `RedisTemplate` and `HashOperations`: For caching operations.
+  - `CityRepository`: For database operations.
+  - `CityMapper`: For converting between `CityDTO` and `City` entities.
+  - Custom exceptions: `CityAlreadyExistsException`, `CityNotFoundException`, `CityDeleteException`.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/service/travel/TravelService.java
+
+Summary: - Purpose: The code defines an interface for a travel service.
+- Functionality: The interface provides methods to get the most queried cities, retrieve all cities, and clear popular destinations.
+- Important Classes/Methods:
+  - `TravelService`: Interface representing the contract for travel-related operations.
+  - `getMostQueriedCities(int topN)`: Method to retrieve a set of the top N most queried cities.
+  - `getAllCities()`: Method to get a set of all cities.
+  - `clearPopularDestinations()`: Method to clear the data/cache of popular destinations, returning a boolean indicating success.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/domain/service/travel/impl/TravelServiceImpl.java
+
+Summary: - Purpose of the code: The code provides a service layer for a travel application, specifically for managing city-related data in a Redis datastore.
+- Functionality of the code:
+  - Retrieves a set of the most queried/popular cities from Redis.
+  - Retrieves all cities from Redis.
+  - Clears the popular destinations data from Redis.
+- Important classes and methods used:
+  - `TravelServiceImpl`: Implements `TravelService` interface, providing concrete methods for travel-related operations.
+  - `RedisTemplate<String, Object>`: Used for Redis operations, injected into `TravelServiceImpl`.
+  - `getMostQueriedCities(int topN)`: Uses `RedisTemplate` to get the top N popular destinations from a sorted set.
+  - `getAllCities()`: Uses `RedisTemplate` to retrieve all cities by keys and hash entries.
+  - `clearPopularDestinations()`: Uses `RedisTemplate` to delete the popular destinations key from Redis.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/ApiErrorResponse.java
+
+Summary: - Purpose: The code defines a custom exception response structure for an API in a travel application.
+- Functionality: Encapsulates error details including timestamp, HTTP status code, error description, a custom message, and the request path that caused the error.
+- Important Classes and Methods:
+  - `ApiErrorResponse`: The main class representing the error response.
+  - `LocalDateTime timestamp`: Field to store the time when the error occurred.
+  - `int status`: Field to store the HTTP status code of the error.
+  - `String error`: Field to store a short description of the error.
+  - `String message`: Field to store a detailed error message.
+  - `String requestPath`: Field to store the API path where the error occurred.
+  - Lombok annotations (`@Getter`, `@Setter`, `@ToString`, `@AllArgsConstructor`) are used to automatically generate boilerplate code like getters, setters, a toString method, and a constructor with all arguments.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/BaseErrorResponse.java
+
+Summary: - Purpose: Define a data structure for representing error responses in a travel-related application.
+- Functionality: Encapsulates error details including timestamp, error message, HTTP status code, status message, and request path.
+- Important Classes/Methods:
+  - `BaseErrorResponse`: A record class that holds error response information.
+  - `LocalDateTime timestamp`: Stores the time at which the error occurred.
+  - `String errorMessage`: Contains the error message to be displayed.
+  - `int httpStatusCode`: Represents the numeric HTTP status code associated with the error.
+  - `HttpStatusCode httpStatusMessage`: Enum or class representing the textual HTTP status message.
+  - `String requestPath`: Indicates the path of the HTTP request that resulted in the error.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/ValidationErrorResponse.java
+
+Summary: - Purpose: The code defines a custom exception response class for handling validation errors in a travel-related application.
+- Functionality: The class encapsulates details about validation errors, including a timestamp, HTTP status code, an error message, and a map of field-specific errors.
+- Important Classes and Methods:
+  - `ValidationErrorResponse`: The main class representing the error response.
+  - `LocalDateTime timestamp`: Stores the time when the error occurred.
+  - `int httpStatusCode`: Stores the HTTP status code associated with the error.
+  - `String errorMessage`: Stores a general error message.
+  - `HashMap<String, String> fieldErrors`: Stores field-specific error messages.
+  - Lombok annotations (`@Getter`, `@Setter`, `@AllArgsConstructor`) are used to automatically generate getter and setter methods, as well as a constructor with all arguments.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/GlobalExceptionHandler.java
+
+Summary: - Purpose of the code: To provide a global exception handling mechanism for a Spring Boot application, specifically for validation errors and other unhandled exceptions.
+- Functionality of the code:
+  - Captures and handles `MethodArgumentNotValidException` thrown when validation on an argument annotated with `@Valid` fails.
+  - Captures and handles all other exceptions not specifically managed elsewhere in the application.
+  - Logs the details of unhandled exceptions.
+  - Returns structured error responses with details such as timestamp, status code, error message, and additional data.
+- Important classes and methods:
+  - `@RestControllerAdvice`: Used to define a global exception handler for controllers.
+  - `@ExceptionHandler`: Annotation used to specify the types of exceptions to handle.
+  - `MethodArgumentNotValidException.class`: Exception type for handling validation errors.
+  - `Exception.class`: Generic exception type for handling all other exceptions.
+  - `handleValidationExceptions`: Method to handle validation exceptions and return a custom `ValidationErrorResponse`.
+  - `handleAllOtherExceptions`: Method to handle all other exceptions and return a custom `BaseErrorResponse`.
+  - `ResponseEntity<>`: Used to create responses with HTTP status codes and body data.
+  - `LocalDateTime.now()`: Used to get the current timestamp for the error response.
+  - `HttpStatus`: Enum used to represent HTTP status codes.
+  - `WebRequest`: Interface provided by Spring to represent web request information.
+  - `log.error`: SLF4J logging method to log error messages.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/ApiExceptionHandler.java
+
+Summary: - Purpose of the code: To provide centralized exception handling for a Java Spring application related to a travel service, specifically for city management and Redis operations.
+- Functionality of the code: The code defines a global exception handler that catches specific exceptions thrown by the application and maps them to HTTP responses with appropriate status codes and error messages.
+- Important classes and methods:
+  - `@RestControllerAdvice`: Annotation indicating that the class provides global exception handling for controllers.
+  - `@ExceptionHandler`: Annotation used to define methods for handling specific types of exceptions.
+  - `ApiExceptionHandler`: The class that contains exception handling methods.
+  - `cityNotFoundHandler`: Method to handle `CityNotFoundException` and return a `NOT_FOUND` (404) response.
+  - `cityAlreadyExistHandler`: Method to handle `CityAlreadyExistsException` and return a `BAD_REQUEST` (400) response.
+  - `cityAddExceptionHandler`: Method to handle `CityAddException` and return a `BAD_REQUEST` (400) response.
+  - `cityUpdateExceptionHandler`: Method to handle `CityUpdateException` and return a `BAD_REQUEST` (400) response.
+  - `cityDeleteExceptionHandler`: Method to handle `CityDeleteException` and return a `BAD_REQUEST` (400) response.
+  - `RedisException`: Method to handle `RedisException` and return a `BAD_REQUEST` (400) response.
+  - `ApiErrorResponse`: A custom response class used to structure the error response sent to the client.
+  - `LocalDateTime.now()`: Used to timestamp the error response.
+  - `HttpStatus`: Enum providing standard HTTP status codes.
+  - `ResponseEntity<>`: Wrapper for responses in Spring, including both the body and the status code.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/city/CityDeleteException.java
+
+Summary: - Purpose: To define a custom exception for handling errors related to city deletion operations within a travel application.
+- Functionality: Extends `RuntimeException` to create a specific exception that can be thrown when a city cannot be deleted, encapsulating an error message and the original cause of the error.
+- Important Classes/Methods:
+  - `CityDeleteException`: Custom exception class.
+  - Constructor: Accepts a `String` message and a `Throwable` cause, passing them to the superclass `RuntimeException`.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/city/CityAddException.java
+
+Summary: - Purpose: Define a custom exception for handling errors related to adding cities in a travel application.
+- Functionality: Extends `RuntimeException` to create a specific exception that can be thrown when an issue occurs while adding a city.
+- Important Classes/Methods:
+  - `CityAddException`: Custom exception class.
+  - Constructor `CityAddException(String message)`: Initializes the exception with a specific error message.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/city/CityUpdateException.java
+
+Summary: - Purpose: Define a custom exception for handling city update-related errors in a travel application.
+- Functionality: Extends `RuntimeException` to create a specific exception for city update failures, allowing for more granular error handling.
+- Important Classes/Methods:
+  - `CityUpdateException`: Custom exception class.
+  - Constructor `CityUpdateException(String message)`: Initializes the exception with a specific error message.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/city/CityAlreadyExistsException.java
+
+Summary: - Purpose: Define a custom exception to handle scenarios where a city already exists in a given context.
+- Functionality: Extends `RuntimeException` to create a specific unchecked exception that can be thrown when attempting to add a city that is already present.
+- Important Classes/Methods:
+  - `CityAlreadyExistsException`: Custom exception class.
+  - Constructor `CityAlreadyExistsException(String message)`: Initializes the exception with a custom message.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/city/CityNotFoundException.java
+
+Summary: - Purpose: Define a custom exception to handle scenarios where a city is not found within the application.
+- Functionality: Extends `RuntimeException` to create a specific unchecked exception that can be thrown and caught in the application when a city-related operation fails due to the city not being present.
+- Important Classes/Methods:
+  - `CityNotFoundException`: Custom exception class.
+  - Constructor `CityNotFoundException(String message)`: Initializes the exception with a custom message.
+
+Path: /Users/jyou/Documents/GitHub/read-agent-java/docs/dspy/../../data/travel-service-dev/src/main/java/com/iky/travel/exception/common/RedisException.java
+
+Summary: - Purpose: Define a custom exception class for Redis-related errors in a travel application.
+- Functionality: Extends `RuntimeException` to create a specific exception for Redis operations, allowing for more granular error handling.
+- Important Classes/Methods:
+  - `RedisException`: Custom exception class.
+  - Constructor `RedisException(String message)`: Initializes the exception with a custom message.
+
