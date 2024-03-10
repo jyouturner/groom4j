@@ -1,4 +1,4 @@
-# Gist-Based Development Assistant for Java Projects
+# Grooming Development Task with LLM
 
 Inspired by the research on [A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts](https://arxiv.org/abs/2402.09727), this project applies a similar gisting approach to groom development tasks within large Java codebases. By summarizing and indexing Java files and packages, our system enables developers to easily navigate and understand complex projects, streamlining the maintenance and enhancement process.
 
@@ -14,18 +14,13 @@ below image from [https://read-agent.github.io/](https://read-agent.github.io/) 
 
 ## Apply the Approach to Large Java Codebase
 
-There have been tremendous advancements in Large Language Models (LLMs) in recent years, leading to the development of various techniques to leverage LLMs across a wide range of use cases. Specifically, in the realm of programming, tools such as GitHub Copilot have proven highly effective at providing code completion for smaller coding tasks. However, navigating and understanding large codebases remains a significant challenge. To address this, several initiatives have focused on an agent-based approach, including tools like AugoGPT, ChatDev and other Agent-based systems. 
+GitHub Copilot have proven highly effective at providing code completion for smaller coding tasks. However, navigating and understanding large codebases remains a significant challenge.
 
 The primary objective of this project is to apply diverse techniques to assist with ~~coding~~ grooming development tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
 
 ## Overview
 
 Leveraging the concept of "gisting," our system preprocesses Java projects to create concise summaries or "gists" of both individual files and entire packages. These gists serve as an easily navigable index, helping developers and language models alike grasp the project's structure and content at a glance.
-
-### Features
-
-- **File and Package Gisting**: Generates summaries for Java files and aggregates these into higher-level package gists.
-- **Interactive Querying with LLM**: Asks language models (LLMs) to provide steps to implement development tasks, providing them with the project's gist to obtain informed, context-aware guidance.
 
 ### Try Notebook
 
