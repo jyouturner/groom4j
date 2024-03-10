@@ -1,6 +1,6 @@
 # Gist-Based Development Assistant for Java Projects
 
-Inspired by the research on [A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts](https://arxiv.org/abs/2402.09727), this project applies a similar gisting approach to facilitate development tasks within large Java codebases. By summarizing and indexing Java files and packages, our system enables developers to easily navigate and understand complex projects, streamlining the maintenance and enhancement process.
+Inspired by the research on [A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts](https://arxiv.org/abs/2402.09727), this project applies a similar gisting approach to groom development tasks within large Java codebases. By summarizing and indexing Java files and packages, our system enables developers to easily navigate and understand complex projects, streamlining the maintenance and enhancement process.
 
 
 ## About the Paper
@@ -16,7 +16,7 @@ below image from [https://read-agent.github.io/](https://read-agent.github.io/) 
 
 There have been tremendous advancements in Large Language Models (LLMs) in recent years, leading to the development of various techniques to leverage LLMs across a wide range of use cases. Specifically, in the realm of programming, tools such as GitHub Copilot have proven highly effective at providing code completion for smaller coding tasks. However, navigating and understanding large codebases remains a significant challenge. To address this, several initiatives have focused on an agent-based approach, including tools like AugoGPT, ChatDev and other Agent-based systems. 
 
-The primary objective of this project is to apply diverse techniques to assist with ~~coding~~ development tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
+The primary objective of this project is to apply diverse techniques to assist with ~~coding~~ grooming development tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
 
 ## Overview
 
@@ -25,7 +25,7 @@ Leveraging the concept of "gisting," our system preprocesses Java projects to cr
 ### Features
 
 - **File and Package Gisting**: Generates summaries for Java files and aggregates these into higher-level package gists.
-- **Interactive Querying with LLM**: Asks language models (LLMs) development-related questions, providing them with the project's gist to obtain informed, context-aware guidance.
+- **Interactive Querying with LLM**: Asks language models (LLMs) to provide steps to implement development tasks, providing them with the project's gist to obtain informed, context-aware guidance.
 
 ### Try Notebook
 
@@ -60,9 +60,9 @@ We do a travers of the graph recusivingly from bottom up. For each package, we c
 The results are saved in a local file "package_notes.txt" file.
 
 
-3.Ask
+3. Grooming
 
-Once we have the "indexing" or "gisting" done. We can start to ask LLM quetions. In this case, we want to give LLM a task, and ask it to provide steps to accomplish the task.
+Once we have the "indexing" or "gisting" done. We can start to groom a development task, by ask LLM to provide steps to accomplish the task.
 
 In the first prompt to LLM, we specify its role, the task to work on, and the brief information of the project (for example, the top-down tree view). We also instruct LLM to ask more information about files and packages whenver necessary. In the following conversations, we will provide the summary or notes of the files (including source code) or packages, this conversation will continue until the LLM does not need more information (or reach to the maximum round of conversations)
 
@@ -92,7 +92,13 @@ We are using OpenAI gpt-4-1106-preview, first to set the OPENAI_API_KEY in dot e
 
 ```sh
 cp .env.example .env
-vi .env
+```
+
+The .env should looks like below
+
+```
+USE_LLM=openai
+OPENAI_API_KEY='sk-...'
 ```
 
 ## Tracing
@@ -101,11 +107,19 @@ We use Ariz Phoenix for tracing.
 
 ### install the Phoenix at local
 
-The easist way is to use the docker image that I created
+You can use below docker image or start it from notebook
 
 ```sh
 docker pull jy2947/arize-ai-phoenix:20240303
 docker run -d --name phoenix -p 6006:6006 jy2947/arize-ai-phoenix:20240303
+```
+
+from notebook
+
+```
+!pip install --quiet arize-phoenix
+import phoenix as px
+px.launch_app()
 ```
 
 Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
@@ -129,15 +143,15 @@ After the process is done, you will see a file "package_notes.txt" created in th
 ### Now Ask LLM to Assist Coding Task
 
 ```sh
-python3 ask.py --project_root=./data/travel-service-dev --question="add a new field 'mayor' to city, for the name of the mayor of the city"
+python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
 
-python3 ask.py --project_root=./data/travel-service-dev --question="add a new feature to search city by name"
+python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new feature to search city by name"
 
-python3 ask.py --project_root=./data/travel-service-dev --question="refactor the Rest API to GraphQL"
+python3 grooming_task.py --project_root=./data/travel-service-dev --task="refactor the Rest API to GraphQL"
 
 ```
 
-## Tracing
+## Examples
 
 
 <img src="docs/gist_files_tracing.jpg" width="600" alt="tracing image of gisting files">

@@ -75,13 +75,13 @@ class ProjectFiles:
         self.files = self.get_files_from_folder(folder_path)
         self.packages = self.generate_package_structure(self.files)
 
-    def from_project(self):
+    def from_project(self, gist_file_path = None):
+        """
+        Load the files from the project and create the package structure. Alos load the package notes and file summary if the gist file exists.
+        """
         self.files = self.get_files_of_project()
         self.packages = self.generate_package_structure(self.files)
-        # load the package notes if the file exists
-        if os.path.exists(os.path.join(self.root_path, self.default_package_notes_file)):
-            print(f"Loading package notes from {self.default_package_notes_file}")
-            self.package_notes = self.load_package_notes()
+        self.from_gist_files(gist_file_path)
 
    
     def from_gist_files(self, gist_file_path=None):
@@ -376,11 +376,11 @@ class ProjectFiles:
                     filename = lines[i].split(":")[1].strip()
                     path = lines[i+1].split(":")[1].strip()
                     package = lines[i+2].split(":")[1].strip()
-                    # summary could be one or multiple lines, read until end of the file or empty line
+                    # summary could be one or multiple lines, read until end of the file or next file
                     # summary line starts with "Summary:"
                     summary = ""
                     i += 3
-                    while i < len(lines) and not lines[i].strip() == "":
+                    while i < len(lines) and not lines[i].startswith("Filename:"):
                         # first line remove the "Summary:"
                         if lines[i].startswith("Summary:"):
                             summary += lines[i].split(":")[1].strip()
@@ -388,7 +388,7 @@ class ProjectFiles:
                             summary += lines[i]
                         i += 1
                     files.append(CodeFile(filename, path, package))
-                    files[-1].set_summary(summary)
+                    files[-1].set_summary(summary.strip())
                 else:
                     i += 1
         return files

@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from llm_router import query, load_the_last_response, reset_prompt_response
-
+from typing import Union
+from functions import ask_for_file, ask_for_package
 
 prompt_continue_template = """
 You are a world class Java developer, assigned to work on an existing project and accomplish a task. 
@@ -50,36 +51,28 @@ Only stop when you are very sure of the steps. If you are not sure, ask for more
 def read_files(pf, file_names) -> str:
     additional_reading = ""
     for file_name in file_names:
-        # clean it
         file_name = file_name.strip()
-        file = pf.find_codefile_by_name(file_name, package=None)
-        if file:
-            additional_reading += f"You asked about file: {file.filename}\n"
-            additional_reading += f"{file.summary}\n"
-            # now let's get the file content, since we have the path
-            with open(file.path, "r") as f:
-                file_content = f.read()
-                additional_reading += f"Below is the file Content:\n {file_content}\n"
+        filename,filesummary, filepath, filecontent = ask_for_file(pf, file_name, package=None)
+       
+        if filename:
+            additional_reading += f"Regarding file: {filename}\n"
+            additional_reading += f"{filesummary}\n"
+            additional_reading += f"Below is the file Content:\n {filecontent}\n"
         else:
             additional_reading += f"File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
     return additional_reading
+
 
 def read_packages(pf, package_names) -> str:
     additional_reading = ""
     for package_name in package_names:
         # clean it
         package_name = package_name.strip()
-        # first get the notes of the package
-        notes = pf.find_notes_of_package(package_name)
-        if notes:
-            additional_reading += f"Info about package: {package_name} :\n {notes}\n\n"
-        # now let's get the sub-packages and code files
-        subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
-        if subpackages:
-            additional_reading += f"this package has below sub packages: {subpackages}\n\n"
-        codefilenames = [f.filename for f in codefiles]
-        if codefilenames:
-            additional_reading += f"this package has files: {codefilenames}\n\n"
+        packagename, packagenotes, subpackages, filenames = ask_for_package(pf, package_name)
+        if packagename:
+            additional_reading += f"Info about package: {packagename} :\n {packagenotes}\n"
+            additional_reading += f"this package has below sub packages: {subpackages}\n"
+            additional_reading += f"this package has files: {filenames}\n"
     return additional_reading
 
 def read_from_human(line) -> str:
@@ -88,7 +81,7 @@ def read_from_human(line) -> str:
     additional_reading = f"{human_response}"
     return additional_reading
 
-def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
@@ -126,7 +119,7 @@ def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, 
                 package_notes_str += f"Package: {package}\nNotes: {notes}\n\n"
             last_response = package_notes_str
             
-        prompt = prompt_continue_template.format(ask, projectTree, last_response, "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        prompt = prompt_continue_template.format(task, projectTree, last_response, "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
         # input("Press Enter to continue to send message to LLM ...")
         response = query(prompt)
@@ -136,9 +129,9 @@ def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, 
         return last_response, None, True
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Ask LLM to help with the project")
+    parser = argparse.ArgumentParser(description="Grooming development task")
     parser.add_argument("--project_root", type=str, default="", required= True, help="absolute path to the project root")
-    parser.add_argument("--question", type=str, default="", required=True, help="task for the junior engineer to accomplish, for example 'Add a health check endpoint to the web service'")
+    parser.add_argument("--task", type=str, default="", required=True, help="development task, for example 'Add a health check endpoint to the web service'")
     parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()
 
@@ -151,9 +144,9 @@ if __name__ == "__main__":
     # load the files and package gists from persistence.
     pf.from_gist_files()
 
-    ask = args.question
+    task = args.task
     max_rounds = args.max_rounds
-    print(f"Ask LLM: {ask} max_rounds: {max_rounds}")
+    print(f"Task: {task} max_rounds: {max_rounds}")
     # looping until the user is confident of the steps and instructions, or 8 rounds of conversation
     i = 0
     past_additional_reading = ""
@@ -163,7 +156,7 @@ if __name__ == "__main__":
     
     while True and i < max_rounds:
         last_response = load_the_last_response()
-        response, additional_reading, doneNow = ask_continue(last_response, pf, past_additional_reading=past_additional_reading)
+        response, additional_reading, doneNow = ask_continue(task, last_response, pf, past_additional_reading=past_additional_reading)
         
         # check if the user is confident of the steps and instructions
         if doneNow:

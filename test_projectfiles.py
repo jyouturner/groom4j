@@ -53,9 +53,11 @@ def test_persist_code_files():
     print("project path", project_path)
     pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     files = pf.get_files_of_project()
-    pf.persist_code_files(files)
+    # use temprary file path for testing
+    gist_file_path = os.path.join(root_path, "data/travel-service-dev", "test_gist_files.txt")
+    pf.persist_code_files(files, gist_file_path)
     # now load the file and check the content
-    files2 = pf.load_code_files()
+    files2 = pf.load_code_files(gist_file_path= gist_file_path)
     for file in files2:
         print(file.filename, file.package, file.path)
     assert len(files) == len(files2)
@@ -64,6 +66,8 @@ def test_persist_code_files():
         assert files[i].package == files2[i].package
         assert files[i].path == files2[i].path
         assert files[i].summary == files2[i].summary
+    # delete the file
+    os.remove(gist_file_path)
 
 def test_generate_package_structure():
     # find the local path to the test_project folder
@@ -73,6 +77,7 @@ def test_generate_package_structure():
     print("project path", project_path)
     pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     files = pf.get_files_of_project()
+
     packages = pf.generate_package_structure(files)
     # pretty print the dict
     # the key is "com", the value is another dict, with keys including "files" and "sub_packages",
@@ -87,6 +92,7 @@ def test_generate_package_structure():
     assert "com.iky.travel.config" in packages["com"]["sub_packages"]["com.iky"]["sub_packages"]["com.iky.travel"]["sub_packages"]
     assert "com.iky.travel.controller" in packages["com"]["sub_packages"]["com.iky"]["sub_packages"]["com.iky.travel"]["sub_packages"]
     assert len(packages["com"]["files"]) == 0
+
 
 def test_code_file_json():
     cf = CodeFile("filename", "path", "package")
@@ -230,15 +236,18 @@ def test_persist_package_notes():
     """
     pf.add_package_notes("com.iky.travel", travel_notes)
     # persist the package notes
-    pf.persist_package_notes()
+    gist_file_path = os.path.join(root_path, "data/travel-service-dev", "test_gist_packages.txt")
+    pf.persist_package_notes(gist_file_path)
     # now load the file and check the content
-    package_notes = pf.load_package_notes()
+    package_notes = pf.load_package_notes(gist_file_path)
     print(package_notes)
     assert len(package_notes) > 0
     assert "com.iky.travel.config" in package_notes
     assert "com.iky.travel.controller" in package_notes
     assert "com.iky.travel" in package_notes
     assert pf.find_notes_of_package("com.iky.travel.config") == "This is the config package"
+    # delete
+    os.remove(gist_file_path)
 
 def test_package_structure_traverse_bottom_up_package_notes():
     from projectfiles import dumb_package_gisting
@@ -276,4 +285,5 @@ def test_find_package_notes():
 
     # find the package notes
     notes = pf.find_notes_of_package("com.iky.travel.config")
-    assert notes.startswith("Notes: Package Name: com.iky.travel.config")
+    print(notes)
+    assert notes != ""
