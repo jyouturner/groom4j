@@ -61,3 +61,35 @@ If there are any custom exceptions in the `com.iky.travel.exception.city` packag
 [Step 8]
 Review any unit tests that may be affected by this change to ensure they still
 ```
+
+### Challenges
+
+Based on testing for examle letting GPT-4 to review the steps geneated from GPT-3.5, GPT-4 does not respond with "need improve", even though it can make BETTER results.
+
+So I asked ChatGPT-4 on the evaluation of recordings of Grooming (since it is very very good at this type of things). Here are from ChatGPT-4:
+
+
+Evaluating the effectiveness of a grooming session using only the text artifact (e.g., notes or records) involves 
+analyzing the content for specific characteristics that reflect high-quality grooming practices. Here are some metrics and aspects you can use to assess the text:
+
+* Completeness of Descriptions: Check if tasks, user stories, and acceptance criteria are described with sufficient detail. There should be enough information for anyone reading the document to understand what needs to be done, why it's important, and how to determine when it's completed.
+
+* Clarity and Understandability: Evaluate the language used for clarity and simplicity. Technical jargon should be explained or minimized to ensure that the document is understandable by all stakeholders, including non-technical ones.
+
+* Consistency in Formatting and Structure: Look for a consistent structure and format across the document. This includes the way tasks are numbered or categorized, how estimates are recorded, and the format used for user stories and acceptance criteria.
+
+* Estimation Details: Assess how estimations are provided. Good grooming artifacts include estimations for tasks (e.g., in story points, hours, or days) and an explanation of the rationale behind these estimates, if possible.
+
+* Prioritization Indicators: Determine if the document clearly indicates the priority of tasks and stories. High, medium, and low priorities should be distinguishable, with reasoning for prioritization when necessary.
+
+* Identification of Dependencies and Risks: Look for notes on dependencies between tasks and identified risks. High-quality grooming documents will mention potential blockers or challenges and might also suggest mitigation strategies.
+
+* Definition of Done (DoD): Ensure that the document includes or references a clear Definition of Done for tasks or stories. This might be a checklist or a set of criteria that specifies when a task is considered complete.
+
+* Action Items and Assignees: Check if the document lists action items coming out of the grooming session, along with the team members responsible for them. This shows planning and accountability.
+
+* Feedback and Adjustments: Look for evidence of feedback incorporation from previous sprints or stakeholders. This could be in the form of adjustments to tasks, changes in prioritization, or notes on new requirements.
+
+* Stakeholder Engagement: While harder to quantify, notes that indicate active participation or input from various stakeholders (e.g., product owner, developers, QA engineers) suggest a collaborative grooming process.
+
+To systematically evaluate the grooming session artifact, you could create a checklist or scorecard based on these metrics. Each section of your document could be scored based on how well it meets these criteria, helping identify areas of strength and opportunities for improvement in future grooming sessions.
