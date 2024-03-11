@@ -8,13 +8,12 @@ load_dotenv(override=True)
 
 from llm_router import query, load_the_last_response, reset_prompt_response
 from typing import Union
-from functions import ask_for_file, ask_for_package
+from functions import get_file, get_package
 
 prompt_continue_template = """
-You are a world class Java developer, assigned to work on an existing project and accomplish a task. 
+You are a world class Java developer, you are grooming a development task in a Java project: 
 
-Here is the task you need to accomplish:
-{}
+"{}"
 
 Below is the Java project structure for your reference:
 {}
@@ -25,34 +24,29 @@ Since you are new to this project, if you have questions or need help, you are e
 [I need access files: <file1 name>,<file2 name>,<file3 name>]
 [I need info about packages: <package1 name>,<package2 name>,<package3 name>]
 
-ONLY ask for the file or package that you know exists. If you are unsure, ask for info of project.
-[I need to know the project structure]
-
 If you need more information, please ask for it in the following format:
 [I need clarification about <what you need clarification about>]
-
-You are known for deep thinking and detail oriented but also occasionally suffer from memory loss, therefore you likie writing down your own reasoing and train of thoughts. 
-This way I can ensure to remind you of the reasoning and thoughts in the future.
 
 Your end goal is to write the steps in a clear and concise manner, for example
 [Step 1]
 [Step 2]
 ...
 
+You only write the steps after you are very sure of the steps. If you are not sure, ask for more info of the files or packages and your reasoning.
 
 below are your notes from previous research of the project:
 {}
 
 {}
 
-Only stop when you are very sure of the steps. If you are not sure, ask for more info of the files or packages and your reasoning.
+The steps need to be as specific as possible. 
 """
 
 def read_files(pf, file_names) -> str:
     additional_reading = ""
     for file_name in file_names:
         file_name = file_name.strip()
-        filename,filesummary, filepath, filecontent = ask_for_file(pf, file_name, package=None)
+        filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=None)
        
         if filename:
             additional_reading += f"Regarding file: {filename}\n"
@@ -68,11 +62,17 @@ def read_packages(pf, package_names) -> str:
     for package_name in package_names:
         # clean it
         package_name = package_name.strip()
-        packagename, packagenotes, subpackages, filenames = ask_for_package(pf, package_name)
+        packagename, packagenotes, subpackages, filenames = get_package(pf, package_name)
         if packagename:
             additional_reading += f"Info about package: {packagename} :\n {packagenotes}\n"
             additional_reading += f"this package has below sub packages: {subpackages}\n"
             additional_reading += f"this package has files: {filenames}\n"
+    return additional_reading
+
+def read_all_packages(pf) -> str:
+    additional_reading = ""
+    for package in pf.package_notes:
+        additional_reading += f"Info about package: {package} :\n {pf.package_notes[package]}\n"
     return additional_reading
 
 def read_from_human(line) -> str:
@@ -95,10 +95,6 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             package_names = line.split(":")[1].strip().rstrip("]").split(",")
             print(f"Need more info of package: {package_names}")
             additional_reading += read_packages(package_names)
-            
-        elif line.startswith("[I need to know the project structure]"):
-            print("LLM needs to know the project structure")
-            additional_reading += f"Info about project structure: \n{projectTree}\n"
         elif line.startswith("[I need clarification about"):
             # extract the part between '[I need clarification about' and ']'
             what = line.split("[I need clarification about")[1].split("]")[0]
@@ -114,9 +110,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
         # either the first time or the last conversation needs more information
         if last_response=="":
             # this is the initial conversation with LLM, we just pass the whole package notes.
-            package_notes_str = ""
-            for package, notes in pf.package_notes.items():
-                package_notes_str += f"Package: {package}\nNotes: {notes}\n\n"
+            package_notes_str = read_all_packages(pf)
             last_response = package_notes_str
             
         prompt = prompt_continue_template.format(task, projectTree, last_response, "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)

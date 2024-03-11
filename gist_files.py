@@ -53,8 +53,8 @@ if __name__ == "__main__":
     pf = ProjectFiles(root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     # scan the files in the project, and create package structure
     pf.from_gist_files()
-    if pf.files is not None:
-        print(f"Gist files already exist at {root_path}, are you sure you want to continue? (y/n)")
+    if pf.files:
+        print(f"Gist files already exist at {pf.gist_file_path}, are you sure you want to continue? (y/n)")
         if input() != "y":
             sys.exit(1)
     # now talk with LLM to get the notes of files
