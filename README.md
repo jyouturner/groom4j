@@ -83,13 +83,13 @@ pip3 install -r requirements.txt
 
 ### Set LLM and API Key
 
-We are using OpenAI gpt-4-1106-preview, first to set the OPENAI_API_KEY in dot env file
+You can choose to use OpenAI, Gemini or Anthropic LLMs
 
 ```sh
 cp .env.example .env
 ```
 
-The .env should looks like below
+The .env should looks like below if OpenAI is used
 
 ```
 USE_LLM=openai
@@ -102,19 +102,18 @@ We use Ariz Phoenix for tracing.
 
 ### install the Phoenix at local
 
-You can use below docker image or start it from notebook
+You can use below docker image or start it at terminal
 
 ```sh
 docker pull jy2947/arize-ai-phoenix:20240303
 docker run -d --name phoenix -p 6006:6006 jy2947/arize-ai-phoenix:20240303
 ```
 
-from notebook
+or
 
 ```
-!pip install --quiet arize-phoenix
-import phoenix as px
-px.launch_app()
+pip install --quiet arize-phoenix
+python3 -m phoenix.server.main serve
 ```
 
 Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
@@ -143,6 +142,15 @@ python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a 
 python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new feature to search city by name"
 
 python3 grooming_task.py --project_root=./data/travel-service-dev --task="refactor the Rest API to GraphQL"
+
+```
+
+### Or Ask LLM to Groom A JIRA issue
+
+Make sure to set the JIRA properties in the .env file first.
+
+```sh
+python3 grooming_task.py --project_root=[path to the project] --jira=[issue key]
 
 ```
 

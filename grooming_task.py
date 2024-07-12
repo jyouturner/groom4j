@@ -1,6 +1,7 @@
 from typing import Tuple
 import os
 import sys
+import re
 import argparse
 from projectfiles import ProjectFiles
 from dotenv import load_dotenv
@@ -21,11 +22,11 @@ Below is the Java project structure for your reference:
 You need to write the steps to accomplish the task. For now only focus on development tasks only. Do not focus on testing, deployment, or other tasks.
 
 Since you are new to this project, if you have questions or need help, you are encouraged to ask for help, in below format:
-[I need access files: <file1 name>,<file2 name>,<file3 name>]
-[I need info about packages: <package1 name>,<package2 name>,<package3 name>]
+[I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
+[I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
 
 If you need more information, please ask for it in the following format:
-[I need clarification about <what you need clarification about>]
+[I need clarification about <ask>what you need clarification about</ask>]
 
 Your end goal is to write the steps in a clear and concise manner, for example
 [Step 1]
@@ -86,18 +87,21 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
     additional_reading = ""
     for line in last_response.split("\n"):
         if line.startswith("[I need access files:"):
-            # for example [I need access files: <file1 name>,<file2 name>,<file3 name>]
-            file_names = line.split(":")[1].strip().rstrip("]").split(",")
+            # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
+            # Define a regex pattern to match content between <file> and </file> tags
+            pattern = r'<file>(.*?)</file>'
+            file_names = re.findall(pattern, line)
             print(f"LLM needs access to files: {file_names}")
             additional_reading += read_files(pf, file_names)            
         elif line.startswith("[I need info about packages:"):
-            # example [I need info about packages: <package1 name>,<package2 name>,<package3 name>]
-            package_names = line.split(":")[1].strip().rstrip("]").split(",")
+            # [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
+            pattern = r'<package>(.*?)</package>'
+            package_names = re.findall(pattern, line)
             print(f"Need more info of package: {package_names}")
             additional_reading += read_packages(package_names)
         elif line.startswith("[I need clarification about"):
-            # extract the part between '[I need clarification about' and ']'
-            what = line.split("[I need clarification about")[1].split("]")[0]
+            # [I need clarification about <ask>what you need clarification about</ask>]
+            what = re.search(r'<ask>(.*?)</ask>', line).group(1)
             print(f"LLM needs more information: \n{what}")
             # ask user to enter manually through commmand line
             additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
@@ -125,7 +129,8 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Grooming development task")
     parser.add_argument("--project_root", type=str, default="", required= True, help="absolute path to the project root")
-    parser.add_argument("--task", type=str, default="", required=True, help="development task, for example 'Add a health check endpoint to the web service'")
+    parser.add_argument("--task", type=str, default="", required=False, help="development task, for example 'Add a health check endpoint to the web service'")
+    parser.add_argument("--jira", type=str, default="", required= False, help="URL of the Jira ticket")
     parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()
 
@@ -139,6 +144,17 @@ if __name__ == "__main__":
     pf.from_gist_files()
 
     task = args.task
+    jira = args.jira
+    # one of task or jira should be provided
+    if not task and not jira:
+        print("Please provide either task or jira")
+        sys.exit(1)
+    # if jira is provided, then get the task from Jira
+    if jira:
+        from my_jira import MyJira
+        myJira = MyJira(host=os.environ.get("JIRA_SERVER"), user=os.environ.get("JIRA_USERNAME"), api_token=os.environ.get("JIRA_API_TOKEN"))
+        issue = myJira.find_issue(jira)
+        task = issue.fields.description
     max_rounds = args.max_rounds
     print(f"Task: {task} max_rounds: {max_rounds}")
     # looping until the user is confident of the steps and instructions, or 8 rounds of conversation

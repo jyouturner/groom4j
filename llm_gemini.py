@@ -9,7 +9,7 @@ def query_gemini(
     prompt: str,
     retries: int = 10,
 ) -> str:
-    llm = ChatGoogleGenerativeAI(model="gemini-pro")
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro")
     result = llm.invoke(prompt)
     return result.content
 

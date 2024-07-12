@@ -36,6 +36,10 @@ elif use_llm == "gemini":
     # use gemini
     from llm_gemini import query_gemini
     print("Using Gemini LLM")
+elif use_llm == "anthropic":
+    # use anthropic
+    from llm_anthropic import query_anthropic
+    print("Using Anthropic LLM")
 else:
     print("Please set the environment variable USE_LLM to either openai or gemini")
     exit(1)
@@ -46,6 +50,8 @@ def query(prompt):
         response = query_gpt(prompt)
     elif use_llm == "gemini":
         response = query_gemini(prompt)
+    elif use_llm == "anthropic":
+        response = query_anthropic(system_promot="You are an world class software architect.", user_prompt=prompt)
     else:
         print("Please set the environment variable USE_LLM to either openai or gemini")
         exit(1)

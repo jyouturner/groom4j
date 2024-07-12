@@ -11,7 +11,7 @@ OpenAIInstrumentor().instrument()
 def query_gpt(
     prompt: str,
     #lm: str = 'gpt-3.5-turbo-1106',
-    lm: str = 'gpt-4-1106-preview',
+    lm: str = 'gpt-4o',
     temperature: float = 0.0,
     max_decode_steps: int = 512,
     seconds_to_reset_tokens: float = 30.0,
