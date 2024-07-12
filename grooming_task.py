@@ -89,7 +89,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             # for example [I need access files: <file1 name>,<file2 name>,<file3 name>]
             file_names = line.split(":")[1].strip().rstrip("]").split(",")
             print(f"LLM needs access to files: {file_names}")
-            additional_reading += read_files(file_names)            
+            additional_reading += read_files(pf, file_names)            
         elif line.startswith("[I need info about packages:"):
             # example [I need info about packages: <package1 name>,<package2 name>,<package3 name>]
             package_names = line.split(":")[1].strip().rstrip("]").split(",")
