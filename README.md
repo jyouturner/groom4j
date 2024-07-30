@@ -1,9 +1,28 @@
-# Grooming Development Task with LLM
+# Grooming Java Development Tasks with LLM
 
-Inspired by the research on [A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts](https://arxiv.org/abs/2402.09727), this project applies a similar gisting approach to groom development tasks within large Java codebases. By summarizing and indexing Java files and packages, our system enables developers to easily navigate and understand complex projects, streamlining the maintenance and enhancement process.
+## Project Goal
 
+This project aims to revolutionize Java development assistance by focusing on task "grooming" rather than direct code generation. Our approach is designed to:
 
-## About the Paper
+1. Support entry-level developers by providing a clear path forward before coding begins.
+2. Integrate seamlessly with existing development processes, including Jira workflows.
+3. Effectively handle large codebases and inter-project dependencies.
+4. Offer language-specific assistance tailored to Java projects.
+
+## Why Grooming Matters
+
+LLM-based development tools often fall short in real-world scenarios:
+
+1. They rely heavily on conversational interactions, which can be inefficient for complex projects.
+2. They struggle with understanding large codebases and project structures.
+3. They lack the specificity needed for language-specific optimizations.
+
+Our grooming-focused approach addresses these limitations by providing structured, context-aware assistance.
+
+## Inspiration
+
+This project draws inspiration from the research paper ["A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts"](https://arxiv.org/abs/2402.09727). We apply a similar gisting approach to Java development tasks, enabling efficient navigation and understanding of complex projects.
+
 
 The research paper discusses "ReadAgent," a system inspired by how humans read and understand long documents. Unlike current computer models that struggle with very long texts, ReadAgent mimics human reading by breaking texts into manageable parts (episodes), summarizing them into "gist memories" (key ideas), and referring back to the original text for details when necessary. This approach helps ReadAgent understand and remember the main points from long documents better than traditional methods, allowing it to perform better on tasks that involve reading comprehension of lengthy texts.
 
@@ -12,26 +31,11 @@ below image from [https://read-agent.github.io/](https://read-agent.github.io/) 
 <img src="docs/read-agent.jpg" width="800" alt="read agent">
 
 
-## Apply the Approach to Large Java Codebase
-
-GitHub Copilot have proven highly effective at providing code completion for smaller coding tasks. However, navigating and understanding large codebases remains a significant challenge.
-
-The primary objective of this project is to apply diverse techniques to assist with ~~coding~~ grooming development tasks. For instance, offer guidance on programming steps for junior engineers, as opposed to generating code directly, which might be more suitably handled by Copilot. 
-
-## Overview
-
-Leveraging the concept of "gisting," our system preprocesses Java projects to create concise summaries or "gists" of both individual files and entire packages. These gists serve as an easily navigable index, helping developers and language models alike grasp the project's structure and content at a glance.
-
-### Try Notebook
-
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jyouturner/read-agent-java/HEAD?labpath=read-agent-java.ipynb)
-
-
 ## How It Works
 
 Similar to how human being appoach to any maintenance of legacy code, we ask LLM to do a one time "gisting"
 
-1. Gist Java programs
+1. **Gist Java programs**
 
 We send the Java files to LLM one by one with prompt for summaries
 
@@ -45,7 +49,7 @@ We can build our code files graph now.
 <img src="docs/package_file_graph.png" width="800" alt="Package and Files graph">
 
 
-2.Gist Java packages
+2. **Gist Java packages**
 
 We do a travers of the graph recusivingly from bottom up. For each package, we combine the summaries of sub-packages and files and send to LLM to summarize it.
 
@@ -55,7 +59,7 @@ We do a travers of the graph recusivingly from bottom up. For each package, we c
 The results are saved in a local file "package_notes.txt" file.
 
 
-3. Grooming
+3. **Grooming**
 
 Once we have the "indexing" or "gisting" done. We can start to groom a development task, by ask LLM to provide steps to accomplish the task.
 
@@ -63,12 +67,6 @@ In the first prompt to LLM, we specify its role, the task to work on, and the br
 
 <img src="docs/ask.png" width="800" alt="Ask LLM">
 
-
-### About the Sample Project
-
-A sample Java project is included in this repo, under "data" folder. It is an open source project available at Github [https://github.com/ilkeratik/travel-service](https://github.com/ilkeratik/travel-service).
-
-<img src="docs/travel_service_project_structure.png" width="500" alt="Travel Service Java Project Structure">
 
 
 ### Getting Started
@@ -112,9 +110,11 @@ Visit http://localhost:3000, Make sure to enable Java script on the browser.
 
 ### Java Project Source
 
-You can use "project_root" to specify the Java repo location. For testing purpose, there is a sample Java project "travel-service-dev" included in the "data" folder. 
+You can use "project_root" to specify the Java repo location. For testing purpose, there is a sample Java project "travel-service-dev" included in the "data" folder. It is an open source project available at Github [https://github.com/ilkeratik/travel-service](https://github.com/ilkeratik/travel-service).
 
-### Step One to Gist code files
+<img src="docs/travel_service_project_structure.png" width="500" alt="Travel Service Java Project Structure">
+
+## Step One to Gist code files
 
 ```sh
 python3 gist_files.py --project_root=./data/travel-service-dev
@@ -122,7 +122,7 @@ python3 gist_files.py --project_root=./data/travel-service-dev
 
 It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the "data/travel-service-dev" folder.
 
-### Step Two to Gist packages
+## Step Two to Gist packages
 
 ```sh
 python3 gist_packages.py --project_root=./data/travel-service-dev
@@ -130,7 +130,7 @@ python3 gist_packages.py --project_root=./data/travel-service-dev
 
 After the process is done, you will see a file "package_notes.txt" created in the "data/travel-service-dev" folder.
 
-### Now Ask LLM to Groom Coding Task
+## Now Ask LLM to Groom Coding Task
 
 ```sh
 python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
@@ -141,7 +141,7 @@ python3 grooming_task.py --project_root=./data/travel-service-dev --task="refact
 
 ```
 
-### Ask LLM to Groom A JIRA issue
+## Ask LLM to Groom A JIRA issue
 
 In reality, developers often work on development stories from Jira. In this case, you can set up the necessary credentials and we can read the Jira story directly.
 
