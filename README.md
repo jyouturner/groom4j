@@ -98,17 +98,23 @@ OPENAI_API_KEY='sk-...'
 
 ## Tracing
 
-We use the Opensource Langtrace (https://github.com/Scale3-Labs/langtrace) to trace the prompt and response between our app and LLM
+If you want to leverage any tracing options, for example, the Opensource Langtrace (https://github.com/Scale3-Labs/langtrace)
 
-To start a Langtrace at local, use the docker composer
+You can self host the langtrace stack at local, including the web app, the Postgres, etc. Refer to https://docs.langtrace.ai/hosting/overview
 
 ```sh
+git clone https://github.com/Scale3-Labs/langtrace.git
 docker compose up -d
 ```
 
-then use browser to visit https://localhost:3000
+Visit http://localhost:3000, Make sure to enable Java script on the browser.
 
-### First to Gist code files
+
+### Java Project Source
+
+You can use "project_root" to specify the Java repo location. For testing purpose, there is a sample Java project "travel-service-dev" included in the "data" folder. 
+
+### Step One to Gist code files
 
 ```sh
 python3 gist_files.py --project_root=./data/travel-service-dev
@@ -116,7 +122,7 @@ python3 gist_files.py --project_root=./data/travel-service-dev
 
 It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the "data/travel-service-dev" folder.
 
-### Next to Gist packages
+### Step Two to Gist packages
 
 ```sh
 python3 gist_packages.py --project_root=./data/travel-service-dev
@@ -124,7 +130,7 @@ python3 gist_packages.py --project_root=./data/travel-service-dev
 
 After the process is done, you will see a file "package_notes.txt" created in the "data/travel-service-dev" folder.
 
-### Now Ask LLM to Assist Coding Task
+### Now Ask LLM to Groom Coding Task
 
 ```sh
 python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
@@ -135,9 +141,17 @@ python3 grooming_task.py --project_root=./data/travel-service-dev --task="refact
 
 ```
 
-### Or Ask LLM to Groom A JIRA issue
+### Ask LLM to Groom A JIRA issue
+
+In reality, developers often work on development stories from Jira. In this case, you can set up the necessary credentials and we can read the Jira story directly.
 
 Make sure to set the JIRA properties in the .env file first.
+
+```
+JIRA_SERVER="https://[domain].atlassian.net"
+JIRA_USERNAME="your email address"
+JIRA_API_TOKEN="your API token"
+```
 
 ```sh
 python3 grooming_task.py --project_root=[path to the project] --jira=[issue key]
