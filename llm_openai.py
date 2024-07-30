@@ -2,25 +2,23 @@
 import openai
 from datetime import datetime, time
 import os
-import phoenix as px
-from phoenix.trace.openai import OpenAIInstrumentor
+
 key = os.environ.get("OPENAI_API_KEY")  #@param {type: "string"}
 gpt_client = openai.OpenAI(api_key=key)
-OpenAIInstrumentor().instrument()
 
 def query_gpt(
     prompt: str,
     #lm: str = 'gpt-3.5-turbo-1106',
     lm: str = 'gpt-4o',
     temperature: float = 0.0,
-    max_decode_steps: int = 512,
-    seconds_to_reset_tokens: float = 30.0,
-) -> str:
+    max_tokens: int = 40560,
+    seconds_to_reset_tokens: int = 60,
+    ) -> str:
   while True:
     try:
       raw_response = gpt_client.chat.completions.with_raw_response.create(
         model=lm,
-        max_tokens=max_decode_steps,
+        max_tokens=max_tokens,
         temperature=temperature,
         messages=[
           {'role': 'user', 'content': prompt},

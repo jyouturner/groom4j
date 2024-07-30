@@ -14,10 +14,10 @@ from functions import get_file, get_package
 prompt_continue_template = """
 You are a world class Java developer, you are grooming a development task in a Java project: 
 
-"{}"
+"{task}"
 
 Below is the Java project structure for your reference:
-{}
+{project_tree}
 
 You need to write the steps to accomplish the task. For now only focus on development tasks only. Do not focus on testing, deployment, or other tasks.
 
@@ -36,9 +36,9 @@ Your end goal is to write the steps in a clear and concise manner, for example
 You only write the steps after you are very sure of the steps. If you are not sure, ask for more info of the files or packages and your reasoning.
 
 below are your notes from previous research of the project:
-{}
+{notes}
 
-{}
+{additional_reading}
 
 The steps need to be as specific as possible. 
 """
@@ -50,11 +50,11 @@ def read_files(pf, file_names) -> str:
         filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=None)
        
         if filename:
-            additional_reading += f"Regarding file: {filename}\n"
-            additional_reading += f"{filesummary}\n"
-            additional_reading += f"Below is the file Content:\n {filecontent}\n"
+            additional_reading += f"<file name=\"{filename}\">\n"
+            additional_reading += f"<summary>{filesummary}</summary>\n"
+            additional_reading += f"<content>{filecontent}</content></file>\n"
         else:
-            additional_reading += f"File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+            additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
     return additional_reading
 
 
@@ -65,15 +65,17 @@ def read_packages(pf, package_names) -> str:
         package_name = package_name.strip()
         packagename, packagenotes, subpackages, filenames = get_package(pf, package_name)
         if packagename:
-            additional_reading += f"Info about package: {packagename} :\n {packagenotes}\n"
-            additional_reading += f"this package has below sub packages: {subpackages}\n"
-            additional_reading += f"this package has files: {filenames}\n"
+            additional_reading += f"<package name=\"{packagename}\">\n"
+            additional_reading += f"<notes>{packagenotes}</notes>\n"
+            additional_reading += f"<sub_packages>{subpackages}</sub_package>\n"
+            additional_reading += f"<files>{filenames}</files>\n"
+            additional_reading += f"</package>\n"
     return additional_reading
 
 def read_all_packages(pf) -> str:
     additional_reading = ""
     for package in pf.package_notes:
-        additional_reading += f"Info about package: {package} :\n {pf.package_notes[package]}\n"
+        additional_reading += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
     return additional_reading
 
 def read_from_human(line) -> str:
@@ -117,7 +119,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             package_notes_str = read_all_packages(pf)
             last_response = package_notes_str
             
-        prompt = prompt_continue_template.format(task, projectTree, last_response, "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        prompt = prompt_continue_template.format(task = task, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
         # input("Press Enter to continue to send message to LLM ...")
         response = query(prompt)
@@ -167,7 +169,7 @@ if __name__ == "__main__":
     while True and i < max_rounds:
         last_response = load_the_last_response()
         response, additional_reading, doneNow = ask_continue(task, last_response, pf, past_additional_reading=past_additional_reading)
-        
+        print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
             print(response)

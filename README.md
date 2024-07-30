@@ -98,25 +98,15 @@ OPENAI_API_KEY='sk-...'
 
 ## Tracing
 
-We use Ariz Phoenix for tracing.
+We use the Opensource Langtrace (https://github.com/Scale3-Labs/langtrace) to trace the prompt and response between our app and LLM
 
-### install the Phoenix at local
-
-You can use below docker image or start it at terminal
+To start a Langtrace at local, use the docker composer
 
 ```sh
-docker pull jy2947/arize-ai-phoenix:20240303
-docker run -d --name phoenix -p 6006:6006 jy2947/arize-ai-phoenix:20240303
+docker compose up -d
 ```
 
-or
-
-```
-pip install --quiet arize-phoenix
-python3 -m phoenix.server.main serve
-```
-
-Then, visit [http://localhost:6006/tracing](http://localhost:6006/tracing)
+then use browser to visit https://localhost:3000
 
 ### First to Gist code files
 
@@ -163,16 +153,3 @@ python3 grooming_task.py --project_root=[path to the project] --jira=[issue key]
 
 <img src="docs/ask_tracing.jpg" width="600" alt="tracing image of asking">
 
-## Thoughts on Future Improvements
-
-This project serves as an effective starting point for leveraging Large Language Models (LLMs) to assist in maintaining large legacy codebases. Similar to other efforts in this domain, the quality of the outcomes is significantly influenced by below factors:
-
-1. The sophistication of the LLM. For instance, throughout our testing, we have observed markedly improved outcomes with the use of OpenAI's GPT-4, highlighting the impact of the model's "intelligence" on the results.
-
-2. The relevance of the assistance provided to the LLM. Currently, our input to the LLM consists mainly of summaries of programs and packages. However, in practice, developers derive the most benefit from examining and understanding changes made in previous similar tasks. This includes, for example, searching for and comprehending adjustments from past Pull Requests (PRs). This insight suggests that enhancing the context and specificity of the information supplied to the LLM could significantly improve its utility in real-world programming scenarios.
-
-3. Capitalizing on the "memory" of the LLM. Each interaction with the LLM brings it closer to the optimal solution. However, given the stateless nature of these models, they rely solely on the information provided in the current prompt. Therefore, effectively preserving and incorporating relevant details from past conversations into new requests is crucial. This strategy helps the LLM build on previous interactions, accelerating the progress towards the final answer. Ensuring that essential insights and progress are seamlessly integrated into each new request can significantly enhance the LLM's ability to assist in complex tasks, making it a more effective tool for navigating and understanding large codebases.
-
-4. Exploring more efficient strategies - Currently, our approach involves distinct phases, such as initially creating a gist of the entire project. This method, while comprehensive, is not the most cost-effective for large codebases. Specifically, in the context of Java projects, numerous files (such as data, DTOs, exceptions, constants, etc.) may be unnecessary for understanding the high-level design. A more efficient approach could be to implement a "gist-on-demand" approach. This may lead to a "multi-agenta" architecture.
-
-5. Refining the Gisting Process: Given our focus on addressing high-level tasks rather than detailed coding, the current gisting method is "good enough." It significantly reduces the workload by eliminating the need for indexing Java classes and methods, as would be required in static analysis, thanks to the assistance of LLMs. Therefore, there's minimal necessity for sophisticated persistence mechanisms like databases. However, it remains essential to ensure that the generated gists are accessible to all team developers and that the "source record" is maintained. To achieve this, it' make sense to integrate the gisting process into the codebase as part of the Continuous Integration (CI) workflow. We can leave this to the user to decide.

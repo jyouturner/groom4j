@@ -1,4 +1,12 @@
 
+# only set up langtrace when the environment variable is set
+import os
+if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
+    from langtrace_python_sdk import langtrace, with_langtrace_root_span
+    langtrace.init(api_key=os.environ.get("LANGTRACE_API_KEY"),
+    api_host=os.environ.get("LANGTRACE_API_HOST")),
+
+# the response file serves as a memory for the conversation
 default_respose_file = "response.txt"
 
 def save_response(response, response_file=default_respose_file):
@@ -31,19 +39,20 @@ print(f"Using LLM: {use_llm}")
 if use_llm == "openai":
     # use openai
     from llm_openai import query_gpt
-    print("Using OpenAI LLM")
+    print("Using OpenAI")
 elif use_llm == "gemini":
     # use gemini
     from llm_gemini import query_gemini
-    print("Using Gemini LLM")
+    print("Using Gemini")
 elif use_llm == "anthropic":
     # use anthropic
     from llm_anthropic import query_anthropic
-    print("Using Anthropic LLM")
+    print("Using Anthropic")
 else:
-    print("Please set the environment variable USE_LLM to either openai or gemini")
+    print("Please set the environment variable USE_LLM to either openai or gemini or anthropic")
     exit(1)
-
+    
+@with_langtrace_root_span()
 def query(prompt):
 
     if use_llm == "openai":
@@ -53,7 +62,7 @@ def query(prompt):
     elif use_llm == "anthropic":
         response = query_anthropic(system_promot="You are an world class software architect.", user_prompt=prompt)
     else:
-        print("Please set the environment variable USE_LLM to either openai or gemini")
+        print("Please set the environment variable USE_LLM to either openai or gemini or anthropic")
         exit(1)
     # save the response to a file for next round of conversation
     save_response(response)
