@@ -12,35 +12,28 @@ from typing import Union
 from functions import get_file, get_package
 
 prompt_continue_template = """
-You are a world class Java developer, you are grooming a development task in a Java project: 
+You are a world class Java developer, you are the maintainer of a Java project, and you need to answer a question:
 
-"{task}"
+"{question}"
 
 Below is the Java project structure for your reference:
 {project_tree}
 
-You need to write the steps to accomplish the task. For now only focus on development tasks only. Do not focus on testing, deployment, or other tasks.
-
-Since you are new to this project, if you have questions or need help, you are encouraged to ask for help, in below format:
+If you have questions or need help, you are encouraged to ask for help, in below format:
 [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
 [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
 
 If you need more information, please ask for it in the following format:
 [I need clarification about <ask>what you need clarification about</ask>]
 
-Your end goal is to write the steps in a clear and concise manner, for example
-[Step 1]
-[Step 2]
+Your end goal is to answer the question in a clear and concise manner.
 ...
-
-You only write the steps after you are very sure of the steps. If you are not sure, ask for more info of the files or packages and your reasoning.
 
 below are your notes from previous research of the project:
 {notes}
 
 {additional_reading}
 
-The steps need to be as specific as possible. 
 """
 
 def read_files(pf, file_names) -> str:
@@ -84,7 +77,7 @@ def read_from_human(line) -> str:
     additional_reading = f"{human_response}"
     return additional_reading
 
-def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
@@ -119,7 +112,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             package_notes_str = read_all_packages(pf)
             last_response = package_notes_str
             
-        prompt = prompt_continue_template.format(task = task, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        prompt = prompt_continue_template.format(question = question, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
         # input("Press Enter to continue to send message to LLM ...")
         response = query(prompt)
@@ -129,10 +122,9 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
         return last_response, None, True
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Grooming development task")
+    parser = argparse.ArgumentParser(description="Tell me about")
     parser.add_argument("--project_root", type=str, default="", required= True, help="absolute path to the project root")
-    parser.add_argument("--task", type=str, default="", required=False, help="development task, for example 'Add a health check endpoint to the web service'")
-    parser.add_argument("--jira", type=str, default="", required= False, help="URL of the Jira ticket")
+    parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
     parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()
 
@@ -145,20 +137,14 @@ if __name__ == "__main__":
     # load the files and package gists from persistence.
     pf.from_gist_files()
 
-    task = args.task
-    jira = args.jira
+    question = args.question
     # one of task or jira should be provided
-    if not task and not jira:
-        print("Please provide either task or jira")
+    if not question:
+        print("Please provide either question or jira")
         sys.exit(1)
-    # if jira is provided, then get the task from Jira
-    if jira:
-        from my_jira import MyJira
-        myJira = MyJira(host=os.environ.get("JIRA_SERVER"), user=os.environ.get("JIRA_USERNAME"), api_token=os.environ.get("JIRA_API_TOKEN"))
-        issue = myJira.find_issue(jira)
-        task = issue.fields.description
+   
     max_rounds = args.max_rounds
-    print(f"Task: {task} max_rounds: {max_rounds}")
+    print(f"question: {question} max_rounds: {max_rounds}")
     # looping until the user is confident of the steps and instructions, or 8 rounds of conversation
     i = 0
     past_additional_reading = ""
@@ -168,7 +154,7 @@ if __name__ == "__main__":
     
     while True and i < max_rounds:
         last_response = load_the_last_response()
-        response, additional_reading, doneNow = ask_continue(task, last_response, pf, past_additional_reading=past_additional_reading)
+        response, additional_reading, doneNow = ask_continue(question, last_response, pf, past_additional_reading=past_additional_reading)
         print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
