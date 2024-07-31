@@ -141,7 +141,7 @@ if __name__ == "__main__":
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
         sys.exit(1)
-    pf = ProjectFiles(root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
+    pf = ProjectFiles(repo_root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     # load the files and package gists from persistence.
     pf.from_gist_files()
 

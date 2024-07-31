@@ -2,7 +2,7 @@
 
 ## Project Goal
 
-This project aims to revolutionize Java development assistance by focusing on task "grooming" rather than direct code generation. Our approach is designed to:
+This project aims to provide Java development assistance by focusing on task "grooming" rather than direct code generation. Our approach is designed to:
 
 1. Support entry-level developers by providing a clear path forward before coding begins.
 2. Integrate seamlessly with existing development processes, including Jira workflows.
@@ -69,7 +69,7 @@ In the first prompt to LLM, we specify its role, the task to work on, and the br
 
 
 
-### Getting Started
+## Getting Started
 
 To set up and start using the Gist-Based Development Assistant:
 
@@ -79,7 +79,7 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
-### Set LLM and API Key
+## Set LLM and API Key
 
 You can choose to use OpenAI, Gemini or Anthropic LLMs
 
@@ -94,7 +94,7 @@ USE_LLM=openai
 OPENAI_API_KEY='sk-...'
 ```
 
-## Tracing
+## Tracing (Optional)
 
 If you want to leverage any tracing options, for example, the Opensource Langtrace (https://github.com/Scale3-Labs/langtrace)
 
@@ -108,29 +108,16 @@ docker compose up -d
 Visit http://localhost:3000, Make sure to enable Java script on the browser.
 
 
-### Java Project Source
+## Java Project Source
 
 You can use "project_root" to specify the Java repo location. For testing purpose, there is a sample Java project "travel-service-dev" included in the "data" folder. It is an open source project available at Github [https://github.com/ilkeratik/travel-service](https://github.com/ilkeratik/travel-service).
 
 <img src="docs/travel_service_project_structure.png" width="500" alt="Travel Service Java Project Structure">
 
-## Step One to Gist code files
 
-```sh
-python3 gist_files.py --project_root=./data/travel-service-dev
-```
+## Try the Example Java Project
 
-It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the "data/travel-service-dev" folder.
-
-## Step Two to Gist packages
-
-```sh
-python3 gist_packages.py --project_root=./data/travel-service-dev
-```
-
-After the process is done, you will see a file "package_notes.txt" created in the "data/travel-service-dev" folder.
-
-## Now Ask LLM to Groom Coding Task
+The "gist" files are already created in the "data/travel-service-dev" project, under ".gist" folder. You can test the grooming with below command
 
 ```sh
 python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
@@ -141,13 +128,37 @@ python3 grooming_task.py --project_root=./data/travel-service-dev --task="refact
 
 ```
 
-## Ask LLM to Groom A JIRA issue
+## Try Your Project
+
+### **Step One to Gist code files**
+
+```sh
+python3 gist_files.py --project_root=[path to the Java project]
+```
+
+It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the ".gist" folder within the Java project.
+
+### **Step Two to Gist packages**
+
+```sh
+python3 gist_packages.py --project_root=[path to the Java project]
+```
+
+After the process is done, you will see a file "package_notes.txt" created in the ".gist" folder.
+
+## Groom Coding Task
+
+```sh
+python3 grooming_task.py --project_root=[path to the Java project]--task="..."
+```
+
+## Groom A JIRA issue
 
 In reality, developers often work on development stories from Jira. In this case, you can set up the necessary credentials and we can read the Jira story directly.
 
 Make sure to set the JIRA properties in the .env file first.
 
-```
+```sh
 JIRA_SERVER="https://[domain].atlassian.net"
 JIRA_USERNAME="your email address"
 JIRA_API_TOKEN="your API token"

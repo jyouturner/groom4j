@@ -54,9 +54,10 @@ class ProjectFiles:
     # define const value
     default_codefile_gist_file = "code_files.txt"
     default_package_notes_file = "package_notes.txt"
+    default_gist_foler = ".gist"
 
-    def __init__(self, root_path, prefix_list, suffix_list):
-        self.root_path = root_path
+    def __init__(self, repo_root_path, prefix_list, suffix_list):
+        self.root_path = repo_root_path
         self.prefix_list = prefix_list
         self.suffix_list = suffix_list
         # self.files = self.get_files_of_project(root_path, suffix_list)
@@ -90,14 +91,15 @@ class ProjectFiles:
         this function is recommended to use after gisting, as it will load everything if the files exist
         """
         if gist_file_path is None:
-            gist_file_path = os.path.join(self.root_path, self.default_codefile_gist_file)
+            gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
         if os.path.exists(gist_file_path):
             print(f"Loading code gist files from {gist_file_path}")
             self.files = self.load_code_files(gist_file_path)
             self.gist_file_path = gist_file_path
             self.packages = self.generate_package_structure(self.files)
-            # load the package notes if the file exists
-            if os.path.exists(os.path.join(self.root_path, self.default_package_notes_file)):
+            # load the package notes if the file exists in the same folder of the gist file
+            gist_folder_path = os.path.dirname(gist_file_path)
+            if os.path.exists(os.path.join(gist_folder_path, self.default_package_notes_file)):
                 print(f"Loading package notes from {self.default_package_notes_file}")
                 self.package_notes = self.load_package_notes()
     
@@ -312,7 +314,11 @@ class ProjectFiles:
     # function to persist the package notes
     def persist_package_notes(self, file_path=None) -> str:
         if file_path is None:
-            file_path = os.path.join(self.root_path, self.default_package_notes_file)
+            file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_package_notes_file)
+        # if the gist_file_path foler does not exist, then create it
+        gist_folder_path = os.path.dirname(file_path)
+        if not os.path.exists(gist_folder_path):
+            os.makedirs(gist_folder_path)
         with open(file_path, "w") as f:
             for package, notes in self.package_notes.items():
                 f.write(f"Package: {package}\nNotes: {notes}\n\n")
@@ -321,7 +327,7 @@ class ProjectFiles:
     # funciton to load the package notes from persistence
     def load_package_notes(self, file_path=None):
         if file_path is None:
-            file_path = os.path.join(self.root_path, self.default_package_notes_file)
+            file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_package_notes_file)
         # the package notes file format is as below
         # each package starts with "Package:", with name, the from the next line are "Notes:" and notes lines, which can be one or multiple lines
         # for each package, read until the end of the file or another package.
@@ -350,7 +356,11 @@ class ProjectFiles:
         if files is None:
             files = self.files
         if gist_file_path is None:
-            gist_file_path = os.path.join(self.root_path, self.default_codefile_gist_file)
+            gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
+        # if the gist_file_path foler does not exist, then create it
+        gist_folder_path = os.path.dirname(gist_file_path)
+        if not os.path.exists(gist_folder_path):
+            os.makedirs(gist_folder_path)
         with open(gist_file_path, "w") as f:
             for file in files:
                 f.write(f"Filename: {file.filename}\nPath: {file.path}\nPackage: {file.package}\nSummary: {file.summary}\n\n")
@@ -358,7 +368,7 @@ class ProjectFiles:
 
     def load_code_files(self, gist_file_path=None):
         if gist_file_path is None:
-            gist_file_path = os.path.join(self.root_path, self.default_codefile_gist_file)
+            gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
         # the file format follow below example
         # Filename: ...java
         # Path: /Users/...

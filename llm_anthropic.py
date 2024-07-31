@@ -4,8 +4,7 @@ def query_anthropic(system_promot, user_prompt):
 
     llm = ChatAnthropic(
         model=os.environ.get("ANTHROPIC_MODEL"),
-        temperature=0.0,
-        max_decode_steps=40560,)
+        temperature=0.0,)
 
     messages = [
     (
