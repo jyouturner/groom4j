@@ -1,22 +1,29 @@
-from langchain_anthropic import ChatAnthropic
+from anthropic import Anthropic
 import os
-def query_anthropic(system_promot, user_prompt):
+from dotenv import load_dotenv
 
-    llm = ChatAnthropic(
-        model=os.environ.get("ANTHROPIC_MODEL"),
-        temperature=0.0,)
+def query_anthropic(system_prompt, user_prompt):
+    anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"), 
+                          #default_headers={"anthropic-beta": "max-tokens-3-5-sonnet-2024-07-15"}
+                          )
+    print("Using Anthropic ... interestingly using max_tokens beyond 2048 seems to make the LLM dumb and ask more questions...")
+    response = anthropic.messages.create(
+        model=os.environ.get("ANTHROPIC_MODEL", "claude-3-opus-20240229"),
+        max_tokens=2048,
+        temperature=0.0,
+        system=system_prompt,
+        messages=[
+            {"role": "user", "content": user_prompt}
+        ]
+    )
 
-    messages = [
-    (
-        "system",
-        system_promot,
-    ),
-        ("human", user_prompt),
-    ]
-    ai_msg = llm.invoke(messages)
-    return ai_msg.content
+    return response.content[0].text
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
     load_dotenv(override=True)
-    print(query_anthropic("hello world!", "hello world!"))
+    
+    system_prompt = "You are a helpful AI assistant."
+    user_prompt = "Hello, world!"
+    
+    response = query_anthropic(system_prompt, user_prompt)
+    print(response)

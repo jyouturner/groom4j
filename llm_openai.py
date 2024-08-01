@@ -7,7 +7,8 @@ key = os.environ.get("OPENAI_API_KEY")  #@param {type: "string"}
 gpt_client = openai.OpenAI(api_key=key)
 
 def query_gpt(
-    prompt: str,
+    system_prompt: str,
+    user_prompt: str,
     #lm: str = 'gpt-3.5-turbo-1106',
     lm: str = 'gpt-4o',
     temperature: float = 0.0,
@@ -21,7 +22,8 @@ def query_gpt(
         max_tokens=max_tokens,
         temperature=temperature,
         messages=[
-          {'role': 'user', 'content': prompt},
+          {'role': 'system', 'content': system_prompt},
+          {'role': 'user', 'content': user_prompt},
         ]
       )
       completion = raw_response.parse()
