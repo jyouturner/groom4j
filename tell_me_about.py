@@ -7,11 +7,12 @@ from projectfiles import ProjectFiles
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from llm_router import query, load_the_last_response, reset_prompt_response
+from llm_router import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package
+from buddy import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
 
-prompt_continue_template = """
+system_prompt = """
 You are an AI assistant designed to help Java developers understand existing Java projects. 
 When asked about a specific attribute in a Java class, follow these steps:
 
@@ -53,9 +54,6 @@ For each step, explain your reasoning and provide relevant code snippets or file
 
 Begin your analysis with: "Let's analyze the [attribute name] attribute in the [class name] class."
 
-Below is the Java project structure for your reference:
-{project_tree}
-
 If you have questions or need help, you are encouraged to ask for help, in below format:
 [I need to search <keyword>keywords</keyword> in project]
 [I need content of files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
@@ -64,75 +62,27 @@ If you have questions or need help, you are encouraged to ask for help, in below
 If you need more information, please ask for it in the following format:
 [I need clarification about <ask>what you need clarification about</ask>]
 
-You should write notes while you are reseraching, below are your notes from previous research of the project:
+You must follow exactly the above specified format.
+"""
+user_prompt_template = """
+
+The ask is <question>{question}</question>
+
+Below is the Java project structure for your reference:
+{project_tree}
+
+
+
+Previous research notes:
 {notes}
 
+Additional reading:
 {additional_reading}
 
-"{question}"
 
 """
 
-def read_files(pf, file_names) -> str:
-    additional_reading = ""
-    for file_name in file_names:
-        file_name = file_name.strip()
-        filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=None)
-       
-        if filename:
-            additional_reading += f"<file name=\"{filename}\">\n"
-            additional_reading += f"<summary>{filesummary}</summary>\n"
-            additional_reading += f"<content>{filecontent}</content></file>\n"
-        else:
-            additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
-    return additional_reading
-
-
-def read_packages(pf, package_names) -> str:
-    additional_reading = ""
-    for package_name in package_names:
-        # clean it
-        package_name = package_name.strip()
-        packagename, packagenotes, subpackages, filenames = get_package(pf, package_name)
-        if packagename:
-            additional_reading += f"<package name=\"{packagename}\">\n"
-            additional_reading += f"<notes>{packagenotes}</notes>\n"
-            additional_reading += f"<sub_packages>{subpackages}</sub_package>\n"
-            additional_reading += f"<files>{filenames}</files>\n"
-            additional_reading += f"</package>\n"
-    return additional_reading
-
-def read_all_packages(pf) -> str:
-    additional_reading = ""
-    for package in pf.package_notes:
-        additional_reading += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
-    return additional_reading
-
-def read_from_human(line) -> str:
-    # ask user to enter manually through commmand line
-    human_response = input("Please enter the additional reading for the LLM\n")
-    additional_reading = f"{human_response}"
-    return additional_reading
-
-import os
-
-def search_files_with_keyword(root_path, keyword):
-    # search for files with the keyword within the project
-    # return the list of file names
-    print(f"Searching for files with the keyword: {keyword} under {root_path}")
-    matching_files = []
-    for root, dirs, files in os.walk(root_path):
-        for file in files:
-            if file.endswith(".java") or file.endswith(".json"):
-                file_path = os.path.join(root, file)
-                with open(file_path, "r") as f:
-                    for line in f:
-                        if keyword in line:
-                            matching_files.append(file)
-                            print(f"Found {keyword} in file: {file_path}")
-                            break  # Stop reading the file once the keyword is found
-    return matching_files
-    
+query_manager = LLMQueryManager()
 
 def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
@@ -168,7 +118,7 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
             # ask user to enter manually through commmand line
             additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
         elif line.startswith("[I need"):
-            print(f"LLM needs more information from human being: \n{line}")
+            print(f"LLM needs more information: \n{line}")
             additional_reading += f"{read_from_human(line)}\n"
         else:
             pass
@@ -179,10 +129,10 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
             package_notes_str = read_all_packages(pf)
             last_response = package_notes_str
             
-        prompt = prompt_continue_template.format(question = question, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        user_prompt = user_prompt_template.format(question = question, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
         # input("Press Enter to continue to send message to LLM ...")
-        response = query(prompt)
+        response = query_manager.query(system_prompt, user_prompt)
         return response, additional_reading, False
     else:
         print("the LLM does not need any more information, so we can end the conversation")
@@ -217,10 +167,10 @@ if __name__ == "__main__":
     past_additional_reading = ""
     doneNow = False
     additional_reading = ""
-    reset_prompt_response()
+    ResponseManager.reset_prompt_response()
     
     while True and i < max_rounds:
-        last_response = load_the_last_response()
+        last_response = ResponseManager.load_last_response()
         response, additional_reading, doneNow = ask_continue(question, last_response, pf, past_additional_reading=past_additional_reading)
         print(response)
         # check if the user is confident of the steps and instructions
