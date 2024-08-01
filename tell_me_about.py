@@ -12,27 +12,64 @@ from typing import Union
 from functions import get_file, get_package
 
 prompt_continue_template = """
-You are a world class Java developer, you are the maintainer of a Java project, and you need to answer a question:
+You are an AI assistant designed to help Java developers understand existing Java projects. 
+When asked about a specific attribute in a Java class, follow these steps:
 
-"{question}"
+1. Identify the attribute: Recognize the attribute name, its type, and any annotations.
+
+2. Search for usage:
+   - Command: search "[attribute name]" across all project files
+   - Look for direct references, getters, and setters
+   - Note: Include variations like camelCase and snake_case in the search
+
+3. Analyze setter methods:
+   - Command: search "set[AttributeName]" in Java files
+   - Identify where and how the attribute is being set
+   - Look for any data transformations or validations
+
+4. Analyze getter methods:
+   - Command: search "get[AttributeName]" in Java files
+   - Identify where the attribute is being accessed
+   - Note any data transformations or business logic using this attribute
+
+5. Check for JSON/API usage:
+   - Command: search "[attribute name]" in JSON files
+   - Identify if it's part of API requests or responses
+
+6. Examine test files:
+   - Command: search "[attribute name]" in test files
+   - Look for how the attribute is set in unit and integration tests
+   - Identify any mock data or expected values for this attribute
+
+7. Trace data flow:
+   - Analyze how the attribute's value moves through the system
+   - Identify source (e.g., API call, database) and final usage (e.g., API response)
+
+8. Summarize findings:
+   - Provide a concise overview of how the attribute is used
+   - Highlight any important patterns or potential issues
+
+For each step, explain your reasoning and provide relevant code snippets or file locations. If you need more information to complete a step, ask for it.
+
+Begin your analysis with: "Let's analyze the [attribute name] attribute in the [class name] class."
 
 Below is the Java project structure for your reference:
 {project_tree}
 
 If you have questions or need help, you are encouraged to ask for help, in below format:
-[I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
+[I need to search <keyword>keywords</keyword> in project]
+[I need content of files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
 [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
 
 If you need more information, please ask for it in the following format:
 [I need clarification about <ask>what you need clarification about</ask>]
 
-Your end goal is to answer the question in a clear and concise manner.
-...
-
-below are your notes from previous research of the project:
+You should write notes while you are reseraching, below are your notes from previous research of the project:
 {notes}
 
 {additional_reading}
+
+"{question}"
 
 """
 
@@ -77,17 +114,47 @@ def read_from_human(line) -> str:
     additional_reading = f"{human_response}"
     return additional_reading
 
+import os
+
+def search_files_with_keyword(root_path, keyword):
+    # search for files with the keyword within the project
+    # return the list of file names
+    print(f"Searching for files with the keyword: {keyword} under {root_path}")
+    matching_files = []
+    for root, dirs, files in os.walk(root_path):
+        for file in files:
+            if file.endswith(".java") or file.endswith(".json"):
+                file_path = os.path.join(root, file)
+                with open(file_path, "r") as f:
+                    for line in f:
+                        if keyword in line:
+                            matching_files.append(file)
+                            print(f"Found {keyword} in file: {file_path}")
+                            break  # Stop reading the file once the keyword is found
+    return matching_files
+    
+
 def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
-        if line.startswith("[I need access files:"):
+        if line.startswith("[I need to search"):
+            # [I need to search <search>what you need to search</search>]
+            what = re.search(r'<keyword>(.*?)</keyword>', line).group(1)
+            print(f"LLM needs to search: {what}")
+            # search for files with the keyword within the project
+            files = search_files_with_keyword(pf.root_path, what)
+            for file in files:
+                additional_reading += f"Found {what} in file: {file}\n"
+            additional_reading += f"Found {len(files)} files with the keyword: {what}\n "
+        elif line.startswith("[I need content of files:") or line.startswith("[I need access files:"):
             # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
             # Define a regex pattern to match content between <file> and </file> tags
             pattern = r'<file>(.*?)</file>'
             file_names = re.findall(pattern, line)
             print(f"LLM needs access to files: {file_names}")
-            additional_reading += read_files(pf, file_names)            
+            additional_reading += read_files(pf, file_names)
+            print(f"contents provided for {file_names}")            
         elif line.startswith("[I need info about packages:"):
             # [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
             pattern = r'<package>(.*?)</package>'
@@ -101,7 +168,7 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
             # ask user to enter manually through commmand line
             additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
         elif line.startswith("[I need"):
-            print(f"LLM needs more information: \n{line}")
+            print(f"LLM needs more information from human being: \n{line}")
             additional_reading += f"{read_from_human(line)}\n"
         else:
             pass
