@@ -10,7 +10,7 @@ load_dotenv(override=True)
 from llm_router import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package
-from buddy import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
+from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
 
 system_prompt = """
 You are an AI assistant designed to help Java developers understand existing Java projects. 

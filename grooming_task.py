@@ -9,7 +9,7 @@ load_dotenv(override=True)
 from llm_router import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package
-from buddy import ask_continue, search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
+from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
 
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks). Follow this structured approach:
@@ -20,13 +20,13 @@ You are a world-class Java developer tasked with grooming development tasks in J
  - Consider any potential impacts on existing functionality
 
 2. Research the codebase:
- - If you need to examine specific files, request them like this:
+ - If you need to examine specific files, request them in this format:
  [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
- - If you need information about packages, ask like this:
+ - If you need information about packages, ask in this format:
  [I need info about packages: <package>package name</package>,<package>package2 name</package>]
  - If you need to search for specific information within the project, use below format:
  [I need to search <keyword>keyword</keyword> in the project]
- - For any other clarifications, use this format:
+ - You MUST try your best researching the codebase, before asking me any questions, use this format:
  [I need clarification about <ask>what you need clarification about</ask>]
 
 3. Plan the implementation:
@@ -73,7 +73,7 @@ Please analyze this task and provide a detailed plan following the structured ap
 
 """
 
-query_manager = LLMQueryManager()
+query_manager = LLMQueryManager(system_prompt=system_prompt)
 
 
 def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
@@ -91,6 +91,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             additional_reading += f"Found {len(files)} files with the keyword: {what}\n "
         elif line.startswith("[I need content of files:") or line.startswith("[I need access files:"):
             # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
+            # LLM needs access to files: ['com/homedepot/fbr/response/Item.java', 'com/homedepot/fbr/service/FBRResource.java']
             # Define a regex pattern to match content between <file> and </file> tags
             pattern = r'<file>(.*?)</file>'
             file_names = re.findall(pattern, line)
@@ -99,6 +100,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             print(f"contents provided for {file_names}")            
         elif line.startswith("[I need info about packages:"):
             # [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
+            # Need more info of package: ['com.fasterxml.jackson.databind']
             pattern = r'<package>(.*?)</package>'
             package_names = re.findall(pattern, line)
             print(f"Need more info of package: {package_names}")
@@ -124,7 +126,7 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
         user_prompt = user_prompt_template.format(task = task, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
         # input("Press Enter to continue to send message to LLM ...")
-        response = query_manager.query(system_prompt, user_prompt)
+        response = query_manager.query(user_prompt)
         return response, additional_reading, False
     else:
         print("the LLM does not need any more information, so we can end the conversation")

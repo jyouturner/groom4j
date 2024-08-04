@@ -5,15 +5,6 @@ from abc import ABC, abstractmethod
 # Langtrace setup
 if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
     from langtrace_python_sdk import langtrace, with_langtrace_root_span
-    langtrace.init(
-        api_key=os.environ.get("LANGTRACE_API_KEY"),
-        api_host=os.environ.get("LANGTRACE_API_HOST")
-    )
-else:
-    def with_langtrace_root_span():
-        def decorator(func):
-            return func
-        return decorator
 
 DEFAULT_RESPONSE_FILE = "response.txt"
 
@@ -43,52 +34,88 @@ class ResponseManager:
 
 class LLMInterface(ABC):
     @abstractmethod
-    def query(self, system_prompt: str, user_prompt: str) -> str:
+    def query(self, user_prompt: str) -> str:
         pass
 
 class OpenAILLM(LLMInterface):
-    def query(self, system_prompt: str, user_prompt: str) -> str:
-        from llm_openai import query_gpt
-        return query_gpt(system_prompt, user_prompt)
+    def __init__(self, system_prompt: str):
+        from llm_openai import OpenAIAssistant
+        assistant_without_history = OpenAIAssistant(system_prompt=system_prompt, model=os.environ.get("OPENAI_MODEL"), use_history=False)
+        self.assistant = assistant_without_history
 
-class GeminiLLM(LLMInterface):
-    def __init__(self):
-        from llm_gemini import Gemini
+    def query(self, user_prompt: str) -> str:
+        return self.assistant.query(user_prompt)
+
+class GoogleGenAILLM(LLMInterface):
+    def __init__(self, system_prompt: str):
+        from llm_google_genai import GenAIAssistant
+        api_key = os.getenv("GOOGLE_API_KEY")
+        model_name = os.getenv("GEMINI_MODEL")
+        self.assistant = GenAIAssistant(api_key, model_name, system_prompt= system_prompt, use_history=False)
+
+    def query(self, user_prompt: str) -> str:
+        return self.assistant.query(user_prompt)
+    
+class VertexAILLM(LLMInterface):
+    def __init__(self, system_prompt: str):
+        from llm_google_vertexai import VertexAssistant
         project_id = os.getenv("GCP_PROJECT_ID")
         location = os.getenv("GCP_LOCATION")
         model_name = os.getenv("GEMINI_MODEL")
-        self.gemini = Gemini(project_id, location, model_name, "")
+        self.assistant = VertexAssistant(project_id, location, model_name, system_prompt, use_history=False)
 
-    def query(self, system_prompt: str, user_prompt: str) -> str:
-        self.gemini.system_prompt = system_prompt
-        return self.gemini.query([user_prompt])
+    def query(self, user_prompt: str) -> str:
+        return self.assistant.query([user_prompt])
 
 class AnthropicLLM(LLMInterface):
-    def query(self, system_prompt: str, user_prompt: str) -> str:
-        from llm_anthropic import query_anthropic
-        return query_anthropic(system_prompt=system_prompt, user_prompt=user_prompt)
+    def __init__(self, system_prompt: str):
+        from llm_anthropic import AnthropicAssistant
+        self.assistant = AnthropicAssistant(system_prompt=system_prompt, use_history=False)
+
+    def query(self, user_prompt: str) -> str:
+        return self.assistant.query(user_prompt)
 
 class LLMFactory:
+
+    def __init__(self):
+        # Langtrace setup
+        if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
+            langtrace.init(
+                api_key=os.environ.get("LANGTRACE_API_KEY"),
+                api_host=os.environ.get("LANGTRACE_API_HOST")
+            )
+        else:
+            def with_langtrace_root_span():
+                def decorator(func):
+                    return func
+                return decorator
+    
     @staticmethod
-    def get_llm() -> LLMInterface:
-        use_llm = os.environ.get("USE_LLM", "").lower()
+    def get_llm(use_llm: str = None, system_prompt: str = "You are a helpful assistant") -> LLMInterface:
+        if use_llm is None:
+            use_llm = os.environ.get("USE_LLM", "").lower()
+        else:
+            use_llm = use_llm.lower()
+
         if use_llm == "openai":
-            return OpenAILLM()
+            return OpenAILLM(system_prompt = system_prompt)
         elif use_llm == "gemini":
-            return GeminiLLM()
+            return GoogleGenAILLM(system_prompt = system_prompt)
+        elif use_llm == "vertexai":
+            return VertexAILLM(system_prompt = system_prompt)
         elif use_llm == "anthropic":
-            return AnthropicLLM()
+            return AnthropicLLM(system_prompt = system_prompt)
         else:
             raise ValueError("Please set the environment variable USE_LLM to either openai, gemini, or anthropic")
 
 class LLMQueryManager:
-    def __init__(self):
-        self.llm = LLMFactory.get_llm()
+    def __init__(self, use_llm: str =  None, system_prompt: str = "You are a helpful assistant."):
+        self.llm = LLMFactory.get_llm(use_llm= use_llm, system_prompt = system_prompt)
         self.response_manager = ResponseManager()
 
     @with_langtrace_root_span()
-    def query(self, system_prompt: str, user_prompt: str) -> str:
-        response = self.llm.query(system_prompt, user_prompt)
+    def query(self, user_prompt: str) -> str:
+        response = self.llm.query(user_prompt)
         self.response_manager.save_response(response)
         return response
 
@@ -96,8 +123,25 @@ class LLMQueryManager:
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv(override=True)
-    query_manager = LLMQueryManager()
+    
     system_prompt = "You are a helpful assistant."
     user_prompt = "What's the weather like today?"
-    response = query_manager.query(system_prompt, user_prompt)
-    print(response)
+   
+   # now we test each of the LLMs, including OpenAI, Google GenAI, Google VertexAI, and Anthropic
+
+    assistant = LLMQueryManager(use_llm='openai', system_prompt = system_prompt)
+    response = assistant.query(user_prompt)
+    print(response[:100])
+
+    assistant = LLMQueryManager(use_llm='gemini', system_prompt = system_prompt)
+    response = assistant.query(user_prompt)
+    print(response[:100])
+
+    assistant = LLMQueryManager(use_llm='vertexai', system_prompt = system_prompt)
+    response = assistant.query(user_prompt)
+    print(response[:100])
+
+    assistant = LLMQueryManager(use_llm='anthropic', system_prompt = system_prompt)
+    response = assistant.query(user_prompt)
+    print(response[:100])
+

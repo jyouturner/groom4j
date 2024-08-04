@@ -6,15 +6,19 @@ from projectfiles import ProjectFiles
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from llm_router import query
+from llm_router import LLMQueryManager
 
-prompt_shorten_template = """
+system_prompt = """
 You are a world class Java developer. You are given a Java program to maintain. You need to read the code and write notes.
 The notes should be short, concise and to the point.
 Make sure to include the following points:
 - The purpose of the code
 - The functionality of the code
 - The important classes and methods used in the code
+
+"""
+
+user_prompt_template = """
 
 Just return the notes. DO NOT explain your reason.
 
@@ -28,12 +32,15 @@ Code:
 
 """
 
+query_manager = LLMQueryManager(system_prompt=system_prompt)
+
+
 # the function to generate the summary of the code file
 def code_gisting(code_file, verbose=True) -> str:
     with open(code_file.path, 'r') as file:
         code = file.read()
-    prompt = prompt_shorten_template.format(code_file.filename, code_file.package, code)
-    summary = query(prompt)
+    prompt = user_prompt_template.format(code_file.filename, code_file.package, code)
+    summary = query_manager.query(prompt)
     if verbose:
         print(f"Summary of the code file {code_file.filename}: {summary}")
     return summary

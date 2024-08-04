@@ -8,15 +8,17 @@ import argparse
 from projectfiles import ProjectFiles
 # load env before importing LLM functions
 load_dotenv(override=True)
-from llm_router import query
+from llm_router import LLMQueryManager
 
-
-prompt_pacakge_notes_template = """
+system_prompt = """
 You are a world class Java developer. You are given a legacy code base to maintain. 
 You already read the code and wrote notes about the code files. Now you need to write notes about the packages.
 Below you are given the notes of the code files in the package, as well as the notes of its sub-packages.
 Make sure to include the following points:
 - The purpose of the package
+"""
+
+user_prompt_template = """
 
 Just return the notes.
 DO NOT explain your reason.
@@ -31,10 +33,13 @@ Notes of Direct Child Files:
 
 """
 
+query_manager = LLMQueryManager(system_prompt=system_prompt)
+
+
 def real_package_gisting(package, subpackage_notes, filenotes):
     print(f"\n\nchecking LLM on package: {package}")
-    prompt = prompt_pacakge_notes_template.format(package, subpackage_notes, filenotes)
-    notes = query(prompt)
+    prompt = user_prompt_template.format(package, subpackage_notes, filenotes)
+    notes = query_manager.query(prompt)
     return notes
 
 
