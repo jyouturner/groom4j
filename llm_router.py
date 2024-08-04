@@ -2,9 +2,7 @@ import os
 from typing import Callable, Optional
 from abc import ABC, abstractmethod
 
-# Langtrace setup
-if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
-    from langtrace_python_sdk import langtrace, with_langtrace_root_span
+
 
 DEFAULT_RESPONSE_FILE = "response.txt"
 
@@ -44,7 +42,13 @@ class OpenAILLM(LLMInterface):
         self.assistant = assistant_without_history
 
     def query(self, user_prompt: str) -> str:
-        return self.assistant.query(user_prompt)
+        response = self.assistant.query(user_prompt)
+        print(f"OpenAILLM self.assistant.query returning: {type(response)}")
+        while callable(response):
+            response = response()
+        print(f"OpenAILLM.query returning: {type(response)}")
+        
+        return response
 
 class GoogleGenAILLM(LLMInterface):
     def __init__(self, system_prompt: str):
@@ -75,20 +79,7 @@ class AnthropicLLM(LLMInterface):
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
 
-class LLMFactory:
-
-    def __init__(self):
-        # Langtrace setup
-        if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
-            langtrace.init(
-                api_key=os.environ.get("LANGTRACE_API_KEY"),
-                api_host=os.environ.get("LANGTRACE_API_HOST")
-            )
-        else:
-            def with_langtrace_root_span():
-                def decorator(func):
-                    return func
-                return decorator
+class LLMFactory: 
     
     @staticmethod
     def get_llm(use_llm: str = None, system_prompt: str = "You are a helpful assistant") -> LLMInterface:
@@ -113,9 +104,10 @@ class LLMQueryManager:
         self.llm = LLMFactory.get_llm(use_llm= use_llm, system_prompt = system_prompt)
         self.response_manager = ResponseManager()
 
-    @with_langtrace_root_span()
+   
     def query(self, user_prompt: str) -> str:
         response = self.llm.query(user_prompt)
+        print(f"LLMQueryManager.query received: {type(response)}")
         self.response_manager.save_response(response)
         return response
 

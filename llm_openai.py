@@ -1,8 +1,34 @@
+# Langtrace setup
+import os
+if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
+    from functools import wraps
+    from langtrace_python_sdk import langtrace, with_langtrace_root_span
+    
+    def langtrace_wrapper(func):
+      @wraps(func)
+      def wrapper(*args, **kwargs):
+          return func(*args, **kwargs)
+      return wrapper
+    
+    langtrace.init(
+        api_key=os.environ.get("LANGTRACE_API_KEY"),
+        api_host=os.environ.get("LANGTRACE_API_HOST")
+    )
+
 import openai
 from datetime import datetime
 import time
 import os
 from typing import List, Dict
+
+
+
+
+#else:
+#    def with_langtrace_root_span():
+#      def decorator(any, func):
+#              return func
+#      return decorator
 
 class OpenAIAssistant:
     def __init__(self, system_prompt: str, model: str = 'gpt-4', temperature: float = 0.0, max_tokens: int = 2048, use_history: bool = True):
@@ -17,7 +43,9 @@ class OpenAIAssistant:
     def reset_conversation(self):
         self.messages = [{"role": "system", "content": self.system_prompt}]
 
-    def query(self, user_prompt: str, seconds_to_reset_tokens: int = 60) -> str:
+    @langtrace_wrapper
+    @with_langtrace_root_span(name="OpenAIAssistant.query")
+    def query(self, user_prompt: str) -> str:
         if not self.use_history:
             self.reset_conversation()
         
@@ -39,11 +67,12 @@ class OpenAIAssistant:
                 else:
                     self.reset_conversation()
                 
+                print(f"OpenAIAssistant.query returning: {type(assistant_message)}")
                 return assistant_message
             
             except openai.RateLimitError as e:
                 print(f'{datetime.now()}: query_gpt_model: RateLimitError {e.message}: {e}')
-                time.sleep(seconds_to_reset_tokens)
+                time.sleep(60)
             except openai.APIError as e:
                 print(f'{datetime.now()}: query_gpt_model: APIError {e.message}: {e}')
                 print(f'{datetime.now()}: query_gpt_model: Retrying after 5 seconds...')
