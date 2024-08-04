@@ -26,8 +26,7 @@ You are a world-class Java developer tasked with grooming development tasks in J
  [I need info about packages: <package>package name</package>,<package>package2 name</package>]
  - If you need to search for specific information within the project, use below format:
  [I need to search <keyword>keyword</keyword> in the project]
- - You MUST try your best researching the codebase, before asking me any questions, use this format:
- [I need clarification about <ask>what you need clarification about</ask>]
+
 
 3. Plan the implementation:
  - Break down the task into logical steps
@@ -43,6 +42,7 @@ You are a world-class Java developer tasked with grooming development tasks in J
  - Be as specific as possible, mentioning exact file names, method names, or class names where applicable
  - Include any necessary code modifications or additions
  - Provide coding snippets, examples, or best practices to follow when applicable
+ - If you have questions that you can not find answer by researching the codebase, you can leave them at the end of the steps. In a section named "Questions".
 
 5. Review and refine:
  - After writing the steps, review them for completeness and clarity
@@ -50,7 +50,6 @@ You are a world-class Java developer tasked with grooming development tasks in J
  - Consider any potential challenges or risks associated with each step
 
 Remember:
-- You are new to this project, so don't hesitate to ask for more information if needed
 - Explain your reasoning when requesting additional information
 - Begin your analysis with: "Let's break down the task and plan our approach."
 
@@ -82,13 +81,15 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
     for line in last_response.split("\n"):
         if line.startswith("[I need to search"):
             # [I need to search <search>what you need to search</search>]
-            what = re.search(r'<keyword>(.*?)</keyword>', line).group(1)
-            print(f"LLM needs to search: {what}")
-            # search for files with the keyword within the project
-            files = search_files_with_keyword(pf.root_path, what)
-            for file in files:
-                additional_reading += f"Found {what} in file: {file}\n"
-            additional_reading += f"Found {len(files)} files with the keyword: {what}\n "
+            match = re.search(r'<keyword>(.*?)</keyword>', line)
+            if match:
+                what = match.group(1)
+                print(f"LLM needs to search: {what}")
+                # search for files with the keyword within the project
+                files = search_files_with_keyword(pf.root_path, what)
+                for file in files:
+                    additional_reading += f"Found {what} in file: {file}\n"
+                additional_reading += f"Found {len(files)} files with the keyword: {what}\n "
         elif line.startswith("[I need content of files:") or line.startswith("[I need access files:"):
             # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
             # LLM needs access to files: ['com/homedepot/fbr/response/Item.java', 'com/homedepot/fbr/service/FBRResource.java']
