@@ -206,20 +206,10 @@ While LLMs are evolving rapidly, handling private, enterprise-scale codebases wi
 
 1. **Integration with Internal Knowledge Bases**
 
-Large organizations often have extensive internal documentation, wikis, and presentations that explain various aspects of their systems. Options to leverage these valuable assets by:
-
-Implementing a RAG (Retrieval-Augmented Generation) based system, potentially using GraphRAG to combine graph structures with RAG capabilities.
-
-Developing connectors for popular documentation platforms (e.g., Confluence, SharePoint).
-
-Creating a flexible indexing system that can handle diverse document formats.
+Large organizations often have extensive internal documentation, wikis, and presentations that explain various aspects of their systems. For example, setup a RAG (Retrieval-Augmented Generation) based system, potentially using GraphRAG to index those documents and provide query interface. Then integrate this tool with such RAG system for Q/A.
 
 2. **Leveraging Approved Pull Requests (PRs)**
 
-Pull requests are a gold mine of information on how to implement new features or fix issues. We can:
+Pull requests are a gold mine of information on how to implement new features or fix issues. We can apply the similar strategy to index those PRs and code changes.
 
-Develop a system to analyze and index merged PRs.
 
-Extract patterns and best practices from successful PRs.
-
-Integrate PR insights into our task grooming process, providing real-world examples of similar tasks.
