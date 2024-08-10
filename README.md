@@ -212,4 +212,6 @@ Large organizations often have extensive internal documentation, wikis, and pres
 
 Pull requests are a gold mine of information on how to implement new features or fix issues. We can apply the similar strategy to index those PRs and code changes.
 
+3. **Leverage Integration Testing**
 
+Integration tests are a valuable resource for understanding how a project interacts with its dependencies and how data flows between systems. In today's microservices-oriented world, these tests often encapsulate critical knowledge about system interactions.
