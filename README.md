@@ -63,12 +63,16 @@ In the first prompt to LLM, we specify its role, the task to work on, and the br
 
 ## Getting Started
 
-To set up and start using the Gist-Based Development Assistant:
+This project uses Poetry to manage dependencies, please install Poetry first
 
 ```sh
-python3 -m venv venv
-source venv/bin/activate
-pip3 install -r requirements.txt
+pip install poetry
+```
+
+Install dependencies:
+
+```sh
+poetry install
 ```
 
 ## Set LLM and API Key
@@ -81,23 +85,21 @@ cp .env.example .env
 
 The .env should looks like below if OpenAI is used
 
-```
+```sh
 USE_LLM=openai
 OPENAI_API_KEY='sk-...'
 ```
 
 ## Tracing (Optional)
 
-If you want to leverage any tracing options, for example, the Opensource Langtrace (<https://github.com/Scale3-Labs/langtrace>)
-
-You can self host the langtrace stack at local, including the web app, the Postgres, etc. Refer to <https://docs.langtrace.ai/hosting/overview>
+This project supports opensource tracing tool langfuse (https://github.com/langfuse/langfuse)
 
 ```sh
-git clone https://github.com/Scale3-Labs/langtrace.git
+git clone https://github.com/langfuse/langfuse
 docker compose up -d
 ```
 
-Visit <http://localhost:3000>, Make sure to enable Java script on the browser.
+Visit <http://localhost:3000> to find the tracing (usually under "generations").
 
 ## Java Project Source
 
@@ -110,11 +112,11 @@ You can use "project_root" to specify the Java repo location. For testing purpos
 The "gist" files are already created in the "data/travel-service-dev" project, under ".gist" folder. You can test the grooming with below command
 
 ```sh
-python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
+poetry run python grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
 
-python3 grooming_task.py --project_root=./data/travel-service-dev --task="add a new feature to search city by name"
+poetry run python grooming_task.py --project_root=./data/travel-service-dev --task="add a new feature to search city by name"
 
-python3 grooming_task.py --project_root=./data/travel-service-dev --task="refactor the Rest API to GraphQL"
+poetry run python grooming_task.py --project_root=./data/travel-service-dev --task="refactor the Rest API to GraphQL"
 
 ```
 
@@ -123,7 +125,7 @@ python3 grooming_task.py --project_root=./data/travel-service-dev --task="refact
 ### **Step One to Gist code files**
 
 ```sh
-python3 gist_files.py --project_root=[path to the Java project]
+poetry run python gist_files.py --project_root=[path to the Java project]
 ```
 
 It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the ".gist" folder within the Java project.
@@ -131,7 +133,7 @@ It will take a while before all the Java files are gisted. You will see a txt fi
 ### **Step Two to Gist packages**
 
 ```sh
-python3 gist_packages.py --project_root=[path to the Java project]
+poetry run python gist_packages.py --project_root=[path to the Java project]
 ```
 
 After the process is done, you will see a file "package_notes.txt" created in the ".gist" folder.
@@ -139,7 +141,7 @@ After the process is done, you will see a file "package_notes.txt" created in th
 ## Groom Coding Task
 
 ```sh
-python3 grooming_task.py --project_root=[path to the Java project]--task="..."
+poetry run python grooming_task.py --project_root=[path to the Java project]--task="..."
 ```
 
 ## Groom A JIRA issue
@@ -155,7 +157,7 @@ JIRA_API_TOKEN="your API token"
 ```
 
 ```sh
-python3 grooming_task.py --project_root=[path to the project] --jira=[issue key]
+poetry run python grooming_task.py --project_root=[path to the project] --jira=[issue key]
 
 ```
 
