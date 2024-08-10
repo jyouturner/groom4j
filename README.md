@@ -63,9 +63,10 @@ In the first prompt to LLM, we specify its role, the task to work on, and the br
 
 ## Getting Started
 
-This project uses Poetry to manage dependencies, please install Poetry first
+This project uses Python 3.11+, and Poetry to manage dependencies, please verify your Python interpreter version and install Poetry first
 
 ```sh
+python --version
 pip install poetry
 ```
 
@@ -74,6 +75,8 @@ Install dependencies:
 ```sh
 poetry install
 ```
+
+### There is also a requirements.txt file provided if you want to stay with pip
 
 ## Set LLM and API Key
 
