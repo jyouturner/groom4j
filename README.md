@@ -61,22 +61,11 @@ In the first prompt to LLM, we specify its role, the task to work on, and the br
 
 <img src="docs/ask.png" width="800" alt="Ask LLM">
 
+
 ## Getting Started
 
-This project uses Python 3.11+, and Poetry to manage dependencies, please verify your Python interpreter version and install Poetry first
+This project uses Python 3.11+ and Poetry to manage dependencies. You can run it directly on your system or use Docker for easier setup, especially if you're not familiar with Python environments.
 
-```sh
-python --version
-pip install poetry
-```
-
-Install dependencies:
-
-```sh
-poetry install
-```
-
-### There is also a requirements.txt file provided if you want to stay with pip
 
 ## Set LLM and API Key
 
@@ -93,7 +82,47 @@ USE_LLM=openai
 OPENAI_API_KEY='sk-...'
 ```
 
-## Tracing (Optional)
+### Running with Poetry (for Python developers)
+
+If you have Python and Poetry installed:
+
+1. Install dependencies:
+
+   ```sh
+   poetry install
+   ```
+2. Run Tool
+
+```sh
+poetry run python gist_files.py path/to/the/Java/Project/Repo
+poetry run python gist_packages.py path/to/the/Java/Project/Repo
+poetry run python grooming_task.py path/to/the/Java/Project/Repo --task="Your task description"
+```
+
+### Running with Docker (recommended for Java developers)
+
+If you prefer using Docker or are not familiar with Python environments:
+
+Install Docker on your system if you haven't already.
+
+Use the provided run-read-agent.sh script to run the tool:
+
+```sh
+# To gist files
+./run-read-agent.sh gist-files /path/to/your/java/project
+
+# To gist packages
+./run-read-agent.sh gist-packages /path/to/your/java/project
+
+# To groom a task
+./run-read-agent.sh groom-task --task="Your task description" /path/to/your/java/project
+```
+
+The script will automatically build the Docker image if needed and run the tool inside a container using Poetry. The Java project directory is mounted into the container, allowing the tool to access and analyze the project files.
+
+Note: Make sure you have read access to the Java project directory you're trying to analyze.
+
+## About Tracing (Optional)
 
 This project supports opensource tracing tool langfuse (https://github.com/langfuse/langfuse)
 
@@ -115,11 +144,11 @@ You can use "project_root" to specify the Java repo location. For testing purpos
 The "gist" files are already created in the "data/travel-service-dev" project, under ".gist" folder. You can test the grooming with below command
 
 ```sh
-poetry run python grooming_task.py --project_root=./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
+poetry run python grooming_task.py ./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
 
-poetry run python grooming_task.py --project_root=./data/travel-service-dev --task="add a new feature to search city by name"
+poetry run python grooming_task.py ./data/travel-service-dev --task="add a new feature to search city by name"
 
-poetry run python grooming_task.py --project_root=./data/travel-service-dev --task="refactor the Rest API to GraphQL"
+poetry run python grooming_task.py ./data/travel-service-dev --task="refactor the Rest API to GraphQL"
 
 ```
 
@@ -128,7 +157,7 @@ poetry run python grooming_task.py --project_root=./data/travel-service-dev --ta
 ### **Step One to Gist code files**
 
 ```sh
-poetry run python gist_files.py --project_root=[path to the Java project]
+poetry run python gist_files.py path/to/the/Java/Project/Repo
 ```
 
 It will take a while before all the Java files are gisted. You will see a txt file "code_files.txt" generated afterwards, under the ".gist" folder within the Java project.
@@ -136,7 +165,7 @@ It will take a while before all the Java files are gisted. You will see a txt fi
 ### **Step Two to Gist packages**
 
 ```sh
-poetry run python gist_packages.py --project_root=[path to the Java project]
+poetry run python gist_packages.py path/to/the/Java/Project/Repo
 ```
 
 After the process is done, you will see a file "package_notes.txt" created in the ".gist" folder.
@@ -144,7 +173,7 @@ After the process is done, you will see a file "package_notes.txt" created in th
 ## Groom Coding Task
 
 ```sh
-poetry run python grooming_task.py --project_root=[path to the Java project]--task="..."
+poetry run python grooming_task.py path/to/the/Java/Project/Repo --task="..."
 ```
 
 ## Groom A JIRA issue
@@ -160,7 +189,7 @@ JIRA_API_TOKEN="your API token"
 ```
 
 ```sh
-poetry run python grooming_task.py --project_root=[path to the project] --jira=[issue key]
+poetry run python grooming_task.py path/to/the/Java/Project/Repo --jira=[issue key]
 
 ```
 

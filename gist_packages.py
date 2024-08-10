@@ -46,11 +46,11 @@ def real_package_gisting(package, subpackage_notes, filenotes):
 # Main function to run the code
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gisting the Packages using LLM")
-    parser.add_argument("--project_root", type=str, default="", required= True, help="path to the project root")
+    parser.add_argument("project_root", type=str, help="Path to the project root")
        
     args = parser.parse_args()
 
-    # if args.project_root is relative path, then get the absolute path
+    # Convert to absolute path if it's a relative path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")

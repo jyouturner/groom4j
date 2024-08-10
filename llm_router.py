@@ -1,7 +1,20 @@
 import os
 from typing import Callable, Optional
 from abc import ABC, abstractmethod
-from langfuse.decorators import observe, langfuse_context
+# only import langfuse if the env has langfuse_api_key set
+if os.getenv("LANGFUSE_HOST"):
+    from langfuse.decorators import observe, langfuse_context
+else:
+    # fake the langfuse decorators to avoid import errors
+    def observe(as_type: Optional[str] = None, capture_input: bool = False, capture_output: bool = False) -> Callable:
+        def decorator(func):
+            return func
+        return decorator
+
+    class langfuse_context:
+        @staticmethod
+        def update_current_observation(input: Optional[str], model: Optional[str], output: Optional[str], usage: Optional[dict]):
+            pass
 
 
 

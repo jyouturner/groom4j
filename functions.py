@@ -85,7 +85,8 @@ def get_file(pf, file_name, package=None) -> Tuple[str, str, str, str]:
     file = pf.find_codefile_by_name(file_name, package)
     if file:
         # now let's get the file content, since we have the path
-        with open(file.path, "r") as f:
+        full_path = os.path.join(pf.root_path, file.path)
+        with open(full_path, "r") as f:
             file_content = f.read()
         return file.filename, file.summary, file.path, file_content
     else:

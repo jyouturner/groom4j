@@ -36,8 +36,9 @@ query_manager = LLMQueryManager(system_prompt=system_prompt)
 
 
 # the function to generate the summary of the code file
-def code_gisting(code_file, verbose=True) -> str:
-    with open(code_file.path, 'r') as file:
+def code_gisting(project_root, code_file, verbose=True) -> str:
+    full_path = os.path.join(project_root, code_file.path)
+    with open(full_path, 'r') as file:
         code = file.read()
     prompt = user_prompt_template.format(code_file.filename, code_file.package, code)
     summary = query_manager.query(prompt)
@@ -48,11 +49,11 @@ def code_gisting(code_file, verbose=True) -> str:
 # the main function to run the code
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gisting the code files using LLM")
-    parser.add_argument("--project_root", type=str, default="", required= True, help="path to the project root")
+    parser.add_argument("project_root", type=str, help="Path to the project root")
        
     args = parser.parse_args()
 
-    # if args.project_root is relative path, then get the absolute path
+    # Convert to absolute path if it's a relative path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
@@ -70,7 +71,7 @@ if __name__ == "__main__":
         
     for file in codefiles:
         print(file.filename, file.package, file.path)
-        notes = code_gisting(file)
+        notes = code_gisting(root_path, file)
         file.set_summary(notes)
     # now that we have the notes for each file, we can persist them to a file for future use
     gist_file_path = pf.persist_code_files(codefiles)

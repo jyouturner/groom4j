@@ -14,8 +14,11 @@ import json
 
 class CodeFile:
     def __init__(self, filename, path, package):
+        # file name, like WebSecurityConfiguration.java
         self.filename = filename
+        # relative path to the project root
         self.path = path
+        # package name, like com.iky.travel.config
         self.package = package
         self.summary = ""
         
@@ -119,12 +122,15 @@ class ProjectFiles:
             for filename in filenames:
                 # if the file name ends with anyone of the suffix list, then it is a code file
                 if filename.endswith(tuple(self.suffix_list)):
-                    file_path = os.path.join(root, filename)
+                    
+                    file_full_path = os.path.join(root, filename)
                     # file_name is WebSecurityConfiguration.java
                     # file_path is .com.iky.travel.config.WebSecurityConfiguration.java
                     # package is com.iky.travel.config
-                    package = file_path[len(folder_path) + 1: -len(filename) - 1].replace("/", ".")
-                    files.append(CodeFile(filename, file_path, package))
+                    package = file_full_path[len(folder_path) + 1: -len(filename) - 1].replace("/", ".")
+                    file_relative_path = file_full_path[len(self.root_path) + 1:]
+                    #print(f"Found file: {filename} {root} {file_relative_path} {package}")
+                    files.append(CodeFile(filename, file_relative_path, package))
         return files
 
     def generate_package_structure(self, files):
@@ -371,7 +377,7 @@ class ProjectFiles:
             gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
         # the file format follow below example
         # Filename: ...java
-        # Path: /Users/...
+        # Path: path of the file, relative to the project root...
         # Package: com....
         # Summary: - Purpose: Represents a Java class for anonymous complex type
         # - Main functionality: ...

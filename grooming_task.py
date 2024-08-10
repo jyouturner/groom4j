@@ -135,17 +135,18 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Grooming development task")
-    parser.add_argument("--project_root", type=str, default="", required= True, help="absolute path to the project root")
-    parser.add_argument("--task", type=str, default="", required=False, help="development task, for example 'Add a health check endpoint to the web service'")
-    parser.add_argument("--jira", type=str, default="", required= False, help="URL of the Jira ticket")
-    parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
+    parser.add_argument("project_root", type=str, help="Path to the project root")
+    parser.add_argument("--task", type=str, default="", help="Development task, for example 'Add a health check endpoint to the web service'")
+    parser.add_argument("--jira", type=str, default="", help="URL of the Jira ticket")
+    parser.add_argument("--max-rounds", type=int, default=8, help="Maximum rounds of conversation with LLM before stopping the conversation (default: 8)")
     args = parser.parse_args()
-
-    # if args.project_root is relative path, then get the absolute path
+    print(args)
+    # Convert to absolute path if it's a relative path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
         sys.exit(1)
+
     pf = ProjectFiles(repo_root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     # load the files and package gists from persistence.
     pf.from_gist_files()
