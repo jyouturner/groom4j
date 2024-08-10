@@ -204,14 +204,18 @@ While LLMs are evolving rapidly, handling private, enterprise-scale codebases wi
 
 ## Roadmaps
 
-1. **Integration with Internal Knowledge Bases**
+### **Handle Code Changes**
+
+Instead of re-index (gist) the whole project, we need to find the diff betweeen the commits and only update the gist files of the changes since the last success indexing.
+
+### **Integration with Internal Knowledge Bases**
 
 Large organizations often have extensive internal documentation, wikis, and presentations that explain various aspects of their systems. For example, setup a RAG (Retrieval-Augmented Generation) based system, potentially using GraphRAG to index those documents and provide query interface. Then integrate this tool with such RAG system for Q/A.
 
-2. **Leveraging Approved Pull Requests (PRs)**
+### **Leveraging Approved Pull Requests (PRs)**
 
 Pull requests are a gold mine of information on how to implement new features or fix issues. We can apply the similar strategy to index those PRs and code changes.
 
-3. **Leverage Integration Testing**
+### **Leverage Integration Testing**
 
 Integration tests are a valuable resource for understanding how a project interacts with its dependencies and how data flows between systems. In today's microservices-oriented world, these tests often encapsulate critical knowledge about system interactions.
