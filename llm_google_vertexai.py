@@ -1,3 +1,4 @@
+from langfuse.decorators import observe, langfuse_context
 import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 import vertexai.preview.generative_models as generative_models
@@ -46,7 +47,7 @@ class VertexAssistant:
         self.use_history = use_history
         if not use_history:
             self._start_new_session()
-
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, message: str) -> str:
         if not self.use_history:
             self._start_new_session()
@@ -159,3 +160,4 @@ if __name__ == "__main__":
     print("\nSwitching history mode:")
     gemini.set_use_history(False)
     print(gemini.query("What's the difference between public and private methods in Java?"))
+    langfuse_context.flush()

@@ -1,28 +1,11 @@
-# Langtrace setup
+# langfuse setup
 import os
-if os.environ.get("LANGTRACE_API_KEY") and os.environ.get("LANGTRACE_API_HOST"):
-    from functools import wraps
-    from langtrace_python_sdk import langtrace, with_langtrace_root_span
-    
-    def langtrace_wrapper(func):
-      @wraps(func)
-      def wrapper(*args, **kwargs):
-          return func(*args, **kwargs)
-      return wrapper
-    
-    langtrace.init(
-        api_key=os.environ.get("LANGTRACE_API_KEY"),
-        api_host=os.environ.get("LANGTRACE_API_HOST")
-    )
-
-import openai
+from langfuse.decorators import observe
+from langfuse.openai import openai
 from datetime import datetime
 import time
 import os
 from typing import List, Dict
-
-
-
 
 #else:
 #    def with_langtrace_root_span():
@@ -43,8 +26,7 @@ class OpenAIAssistant:
     def reset_conversation(self):
         self.messages = [{"role": "system", "content": self.system_prompt}]
 
-    @langtrace_wrapper
-    @with_langtrace_root_span(name="OpenAIAssistant.query")
+    @observe()
     def query(self, user_prompt: str) -> str:
         if not self.use_history:
             self.reset_conversation()
@@ -53,13 +35,13 @@ class OpenAIAssistant:
         
         while True:
             try:
-                raw_response = self.client.chat.completions.with_raw_response.create(
+                completion = self.client.chat.completions.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     messages=self.messages
                 )
-                completion = raw_response.parse()
+                #completion = raw_response.parse()
                 assistant_message = completion.choices[0].message.content
                 
                 if self.use_history:
@@ -127,6 +109,9 @@ class OpenAIAssistant:
 
 if __name__ == "__main__":
     
+    from dotenv import load_dotenv
+    load_dotenv()
+    openai.langfuse_auth_check()
     system_prompt = "You are a helpful AI assistant specialized in Java development."
     
     # Example with history

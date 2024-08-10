@@ -1,6 +1,7 @@
 import os
 from typing import Callable, Optional
 from abc import ABC, abstractmethod
+from langfuse.decorators import observe, langfuse_context
 
 
 
@@ -40,7 +41,7 @@ class OpenAILLM(LLMInterface):
         from llm_openai import OpenAIAssistant
         assistant_without_history = OpenAIAssistant(system_prompt=system_prompt, model=os.environ.get("OPENAI_MODEL"), use_history=False)
         self.assistant = assistant_without_history
-
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.assistant.query(user_prompt)
         print(f"OpenAILLM self.assistant.query returning: {type(response)}")
@@ -57,6 +58,7 @@ class GoogleGenAILLM(LLMInterface):
         model_name = os.getenv("GEMINI_MODEL")
         self.assistant = GenAIAssistant(api_key, model_name, system_prompt= system_prompt, use_history=False)
 
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
     
@@ -68,6 +70,7 @@ class VertexAILLM(LLMInterface):
         model_name = os.getenv("GEMINI_MODEL")
         self.assistant = VertexAssistant(project_id, location, model_name, system_prompt, use_history=False)
 
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query([user_prompt])
 
@@ -104,7 +107,7 @@ class LLMQueryManager:
         self.llm = LLMFactory.get_llm(use_llm= use_llm, system_prompt = system_prompt)
         self.response_manager = ResponseManager()
 
-   
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.llm.query(user_prompt)
         print(f"LLMQueryManager.query received: {type(response)}")
@@ -136,4 +139,6 @@ if __name__ == "__main__":
     assistant = LLMQueryManager(use_llm='anthropic', system_prompt = system_prompt)
     response = assistant.query(user_prompt)
     print(response[:100])
+
+    langfuse_context.flush()
 

@@ -1,3 +1,5 @@
+from langfuse.decorators import observe, langfuse_context
+
 from anthropic import Anthropic
 import os
 from dotenv import load_dotenv
@@ -15,12 +17,13 @@ class AnthropicAssistant:
     def reset_messages(self):
         self.messages = []  # Remove the initial system message here
 
+    @observe(as_type="generation", capture_input=False, capture_output=False)
     def query(self, user_prompt: str) -> str:
         if not self.use_history:
             self.reset_messages()
 
         self.messages.append({"role": "user", "content": user_prompt})
-
+ 
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=2048,
@@ -28,7 +31,15 @@ class AnthropicAssistant:
             system=self.system_prompt,
             messages=self.messages
         )
-
+        langfuse_context.update_current_observation(
+            input=self.messages,
+            model=self.model,
+            output=response.content,
+            usage={
+                "input": response.usage.input_tokens,
+                "output": response.usage.output_tokens
+            }
+        )
         assistant_message = response.content[0].text
 
         # Add newline characters to the assistant's response
@@ -90,13 +101,14 @@ class AnthropicAssistant:
         if not use_history:
             self.reset_messages()
 
-if __name__ == "__main__":
+@observe()
+def main():
     system_prompt = "You are a helpful AI assistant specialized in Java development."
     
     # Example with history
     assistant_with_history = AnthropicAssistant(system_prompt, use_history=True)
     print("With history:")
-    response = assistant_with_history.query("Hello, can you explain Java interfaces?")
+    response = assistant_with_history.query("Hello, what is your name? can you explain Java interfaces?")
     print(response[:100])
     response = assistant_with_history.query("How do they differ from abstract classes?")
     print(response[:100])
@@ -124,3 +136,21 @@ if __name__ == "__main__":
     assistant_with_history.set_use_history(False)
     response = assistant_with_history.query("What's the difference between public and private methods?")
     print(response[:100])
+
+def simple():
+    system_prompt = "You are a helpful AI assistant."
+    
+    # Example with history
+    assistant = AnthropicAssistant(system_prompt, use_history=False)
+    response = assistant.query("Hello, what is the date today?")
+    print(response[:100])
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+    langfuse_context.configure(debug=True)
+    simple()
+    langfuse_context.flush()
+
+
+

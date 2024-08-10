@@ -1,4 +1,6 @@
 import os
+from langfuse.decorators import observe, langfuse_context
+
 import google.generativeai as genai
 from typing import List, Dict
 from dotenv import load_dotenv
@@ -37,7 +39,7 @@ class GenAIAssistant:
                 {"role": "model", "parts": ["Understood. I'm ready to assist with Java project analysis and task grooming. How can I help you today?"]}
             ]
         )
-
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, message: str) -> str:
         if not self.use_history:
             self._start_new_session()
@@ -94,6 +96,7 @@ class GenAIAssistant:
             
             # Convert the loaded messages to the format expected by Vertex AI
             loaded_history = []
+            from google.generativeai import content_types, generative_models
             for message in messages:
                 loaded_history.append(generative_models.Content(
                     role=message['role'],
@@ -129,10 +132,8 @@ class GenAIAssistant:
         if not use_history:
             self._start_new_session()
 
-
 def main():
-    # Load environment variables
-    load_dotenv()
+
     api_key = os.getenv('GOOGLE_API_KEY')
     model_name = "gemini-pro"
     system_prompt = "You are a helpful AI assistant specialized in Java development."
@@ -172,7 +173,11 @@ def main():
     print(response[:100])
 
 if __name__ == "__main__":
+    # Load environment variables
+    load_dotenv(override=True)
+    langfuse_context.configure(debug=True)
     main()
+    langfuse_context.flush()
 
 
     
