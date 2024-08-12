@@ -10,6 +10,7 @@ from llm_router import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package
 from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
+from gist_api import default_api_notes_file
 
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks). Follow this structured approach:
@@ -123,6 +124,11 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             # this is the initial conversation with LLM, we just pass the whole package notes.
             package_notes_str = read_all_packages(pf)
             last_response = package_notes_str
+            # if there is api_notes.md file, then read it and append to the last_response
+            api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
+            if os.path.exists(api_notes_file):
+                with open(api_notes_file, "r") as f:
+                    last_response += f"\n\n{f.read()}"
             
         user_prompt = user_prompt_template.format(task = task, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue

@@ -170,6 +170,14 @@ poetry run python gist_packages.py path/to/the/Java/Project/Repo
 
 After the process is done, you will see a file "package_notes.txt" created in the ".gist" folder.
 
+### **Optional to Gist API**
+
+```sh
+poetry run python gist_api.py path/to/the/Java/Project/Repo
+```
+
+After the process is done, you will see a mardown file "api_notes.md" created in the ".gist" folder.
+
 ## Groom Coding Task
 
 ```sh

@@ -13,60 +13,73 @@ from functions import get_file, get_package
 from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
 
 system_prompt = """
-You are an AI assistant designed to help Java developers understand existing Java projects. 
-When asked about a specific attribute in a Java class, follow these steps:
+You are an AI assistant designed to help Java developers understand existing Java projects.
+Your task is to analyze the project structure, identify API endpoints, and provide detailed notes on their implementation, with a strong focus on data flow analysis.
 
-1. Identify the attribute: Recognize the attribute name, its type, and any annotations.
+For each API endpoint you identify, provide the following information in markdown format:
 
-2. Search for usage:
-   - Command: search "[attribute name]" across all project files
-   - Look for direct references, getters, and setters
-   - Note: Include variations like camelCase and snake_case in the search
+## [Endpoint Name]
 
-3. Analyze setter methods:
-   - Command: search "set[AttributeName]" in Java files
-   - Identify where and how the attribute is being set
-   - Look for any data transformations or validations
+1. **Purpose**: Briefly describe the purpose of this endpoint.
 
-4. Analyze getter methods:
-   - Command: search "get[AttributeName]" in Java files
-   - Identify where the attribute is being accessed
-   - Note any data transformations or business logic using this attribute
+2. **Functionality**: Explain what this endpoint does in detail.
 
-5. Check for JSON/API usage:
-   - Command: search "[attribute name]" in JSON files
-   - Identify if it's part of API requests or responses
+3. **Request Structure**:
+   - HTTP Method
+   - Path parameters
+   - Query parameters
+   - Request body (if applicable)
 
-6. Examine test files:
-   - Command: search "[attribute name]" in test files
-   - Look for how the attribute is set in unit and integration tests
-   - Identify any mock data or expected values for this attribute
+4. **Response Structure**:
+   - Response body
+   - Possible status codes
 
-7. Trace data flow:
-   - Analyze how the attribute's value moves through the system
-   - Identify source (e.g., API call, database) and final usage (e.g., API response)
+5. **Data Flow**:
+   - For GET requests: 
+     - Explain in detail how data is retrieved, including all database queries and external service calls.
+     - Trace the data flow from the initial request to the final response, including any intermediate services or caches.
+     - Describe any data transformations that occur along the way.
+     - If multiple data sources are involved, explain how the data is aggregated or joined.
+   - For POST requests: 
+     - Describe how data is processed and saved, step by step.
+     - Detail all validations and transformations applied to the incoming data.
+     - If data is stored in a database, provide details on the schema and any constraints.
+     - Explain any cascading effects or triggers that might be activated by the data change.
 
-8. Summarize findings:
-   - Provide a concise overview of how the attribute is used
-   - Highlight any important patterns or potential issues
+6. **Data Processing**: 
+   - Detail all transformations or business logic applied to the data.
+   - Explain any caching mechanisms used and how they affect data retrieval or storage.
+   - Describe any asynchronous processing or background jobs triggered by this endpoint.
 
-For each step, explain your reasoning and provide relevant code snippets or file locations. If you need more information to complete a step, ask for it.
+7. **Key Classes/Methods**: 
+   - List the main classes and methods involved in handling this endpoint.
+   - For each key method, briefly explain its role in the data flow.
 
-Begin your analysis with: "Let's analyze the [attribute name] attribute in the [class name] class."
+8. **Notable Design Patterns or Architectural Choices**: 
+   - Highlight any interesting implementation details.
+   - Explain how these choices affect the data flow or system performance.
 
-If you have questions or need help, you are encouraged to ask for help, in below format:
+9. **Error Handling and Edge Cases**:
+   - Describe how errors are handled at different stages of the data flow.
+   - Explain any retry mechanisms or circuit breakers in place.
+
+10. **Performance Considerations**:
+    - Discuss any optimizations in place for data retrieval or processing.
+    - Mention any potential performance bottlenecks in the data flow.
+
+Provide code snippets and file locations where relevant. If you need more information to complete any section, ask for it using the following format:
+
 [I need to search <keyword>keywords</keyword> in project]
 [I need content of files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
 [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
 
-If you need more information, please ask for it in the following format:
-[I need clarification about <ask>what you need clarification about</ask>]
+If you encounter unclear or complex code, state your assumptions and any potential alternative interpretations. Always err on the side of providing more detail, especially when it comes to data flow analysis.
 
-You must follow exactly the above specified format.
+Prioritize thoroughness over speed. If the project is large, focus on the most important or frequently used endpoints first, but ensure that the data flow analysis for each endpoint is as complete as possible.
+
+You must follow exactly the above specified format for requests and structure your response using markdown.
 """
 user_prompt_template = """
-
-The ask is <question>{question}</question>
 
 Below is the Java project structure for your reference:
 {project_tree}
@@ -84,7 +97,9 @@ Additional reading:
 
 query_manager = LLMQueryManager(system_prompt=system_prompt)
 
-def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+default_api_notes_file = "api_notes.md"
+
+def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
@@ -129,7 +144,7 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
             package_notes_str = read_all_packages(pf)
             last_response = package_notes_str
             
-        user_prompt = user_prompt_template.format(question = question, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        user_prompt = user_prompt_template.format(project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         # request user click any key to continue
         # input("Press Enter to continue to send message to LLM ...")
         response = query_manager.query(user_prompt)
@@ -140,28 +155,22 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tell me about")
-    parser.add_argument("--project_root", type=str, default="", required= True, help="absolute path to the project root")
-    parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
+    parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()
 
-    # if args.project_root is relative path, then get the absolute path
+    # Convert to absolute path if it's a relative path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
         sys.exit(1)
+
     pf = ProjectFiles(repo_root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     # load the files and package gists from persistence.
     pf.from_gist_files()
-
-    question = args.question
-    # one of task or jira should be provided
-    if not question:
-        print("Please provide either question or jira")
-        sys.exit(1)
    
     max_rounds = args.max_rounds
-    print(f"question: {question} max_rounds: {max_rounds}")
+
     # looping until the user is confident of the steps and instructions, or 8 rounds of conversation
     i = 0
     past_additional_reading = ""
@@ -171,7 +180,7 @@ if __name__ == "__main__":
     
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(question, last_response, pf, past_additional_reading=past_additional_reading)
+        response, additional_reading, doneNow = ask_continue(last_response, pf, past_additional_reading=past_additional_reading)
         print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
@@ -180,4 +189,8 @@ if __name__ == "__main__":
         else:
             past_additional_reading += ("\n" + additional_reading)
             i += 1
-
+    # save to a gist file
+    api_notes = response
+    api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
+    with open(api_notes_file, "w") as file:
+        file.write(api_notes)
