@@ -88,6 +88,8 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
+        # clean line
+        line = line.strip()
         if line.startswith("[I need to search"):
             # [I need to search <search>what you need to search</search>]
             what = re.search(r'<keyword>(.*?)</keyword>', line).group(1)
@@ -140,7 +142,7 @@ def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tell me about")
-    parser.add_argument("--project_root", type=str, default="", required= True, help="absolute path to the project root")
+    parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
     parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()

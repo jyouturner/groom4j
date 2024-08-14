@@ -80,6 +80,8 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
+        # clean line
+        line = line.strip()
         if line.startswith("[I need to search"):
             # [I need to search <search>what you need to search</search>]
             match = re.search(r'<keyword>(.*?)</keyword>', line)
