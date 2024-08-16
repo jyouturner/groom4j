@@ -15,10 +15,27 @@ from gist_api import default_api_notes_file
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks). Follow this structured approach:
 
-1. Analyze the task:
- - Identify the main components or classes that will be affected
- - Determine if new classes or methods need to be created
- - Consider any potential impacts on existing functionality
+1. Task Analysis:
+   Before proceeding with the implementation steps, perform the following analysis:
+   a) Summarize the main objective of the task in 1-2 sentences.
+   b) List the key metrics or issues presented in the task description.
+   c) Reframe the task into 3-5 specific questions or investigation points that need to be addressed.
+   d) Identify any assumptions or potential misunderstandings in the task description.
+
+   Present your analysis using the following format:
+   [Task Summary: Brief summary of the main objective]
+   [Key Metrics/Issues: 
+    - Metric/Issue 1
+    - Metric/Issue 2
+    ...]
+   [Investigation Points:
+    1. Question or point to investigate
+    2. Another question or point
+    ...]
+   [Assumptions/Potential Misunderstandings:
+    - Assumption 1
+    - Potential misunderstanding 1
+    ...]
 
 2. Research the codebase:
  - If you need to examine specific files, request them in this format:
@@ -27,7 +44,6 @@ You are a world-class Java developer tasked with grooming development tasks in J
  [I need info about packages: <package>package name</package>,<package>package2 name</package>]
  - If you need to search for specific information within the project, use below format:
  [I need to search <keyword>keyword</keyword> in the project]
-
 
 3. Plan the implementation:
  - Break down the task into logical steps
@@ -52,8 +68,7 @@ You are a world-class Java developer tasked with grooming development tasks in J
 
 Remember:
 - Explain your reasoning when requesting additional information
-- Begin your analysis with: "Let's break down the task and plan our approach."
-
+- Begin your analysis with the Task Analysis section, then proceed with "Let's break down the task and plan our approach."
 """
 
 user_prompt_template = """
@@ -69,8 +84,7 @@ Previous research notes:
 Additional reading:
 {additional_reading}
 
-Please analyze this task and provide a detailed plan following the structured approach outlined in your instructions.
-
+Please perform a Task Analysis following the structured approach outlined in your instructions, then proceed with analyzing this task and providing a detailed plan.
 """
 
 query_manager = LLMQueryManager(system_prompt=system_prompt)
@@ -79,6 +93,29 @@ query_manager = LLMQueryManager(system_prompt=system_prompt)
 def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
+
+    if last_response == "":
+        # Initial conversation: perform Task Analysis
+        # notes
+        notes_str = read_all_packages(pf)
+        
+        # if there is api_notes.md file, then read it and append to the last_response
+        api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
+        if os.path.exists(api_notes_file):
+            with open(api_notes_file, "r") as f:
+                notes_str += f"\n\n{f.read()}"
+
+        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=notes_str, additional_reading="")
+        response = query_manager.query(user_prompt)
+        
+        # Extract Task Analysis results
+        task_analysis = extract_task_analysis(response)
+        
+        # Use Task Analysis to guide further research
+        additional_reading = perform_guided_research(task_analysis, pf)
+        
+        return response, additional_reading, False
+    
     for line in last_response.split("\n"):
         # clean line
         line = line.strip()
@@ -120,26 +157,63 @@ def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str,
             additional_reading += f"{read_from_human(line)}\n"
         else:
             pass
-    if last_response=="" or additional_reading:
-        # either the first time or the last conversation needs more information
-        if last_response=="":
-            # this is the initial conversation with LLM, we just pass the whole package notes.
-            package_notes_str = read_all_packages(pf)
-            last_response = package_notes_str
-            # if there is api_notes.md file, then read it and append to the last_response
-            api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
-            if os.path.exists(api_notes_file):
-                with open(api_notes_file, "r") as f:
-                    last_response += f"\n\n{f.read()}"
-            
-        user_prompt = user_prompt_template.format(task = task, project_tree = projectTree, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
-        # request user click any key to continue
-        # input("Press Enter to continue to send message to LLM ...")
+    if additional_reading:
+        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=last_response, additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         response = query_manager.query(user_prompt)
         return response, additional_reading, False
     else:
-        print("the LLM does not need any more information, so we can end the conversation")
+        print("The LLM does not need any more information, so we can end the conversation")
         return last_response, None, True
+
+def extract_task_analysis(response):
+    # Extract Task Analysis results from the LLM's response
+    # This is a simple implementation; you might want to use regex for more robust extraction
+    task_analysis = {
+        'summary': '',
+        'metrics_issues': [],
+        'investigation_points': [],
+        'assumptions': []
+    }
+    
+    lines = response.split('\n')
+    current_section = None
+    
+    for line in lines:
+        if line.startswith('[Task Summary:'):
+            current_section = 'summary'
+            task_analysis['summary'] = line.split(':', 1)[1].strip()
+        elif line.startswith('[Key Metrics/Issues:'):
+            current_section = 'metrics_issues'
+        elif line.startswith('[Investigation Points:'):
+            current_section = 'investigation_points'
+        elif line.startswith('[Assumptions/Potential Misunderstandings:'):
+            current_section = 'assumptions'
+        elif line.strip().startswith('-') or line.strip().startswith('1.'):
+            if current_section in ['metrics_issues', 'investigation_points', 'assumptions']:
+                task_analysis[current_section].append(line.strip()[2:].strip())
+    
+    return task_analysis
+
+def perform_guided_research(task_analysis, pf):
+    additional_reading = ""
+    
+    # Use investigation points to guide research
+    for point in task_analysis['investigation_points']:
+        # Search for keywords related to the investigation point
+        keywords = extract_keywords(point)
+        for keyword in keywords:
+            files = search_files_with_keyword(pf.root_path, keyword)
+            for file in files:
+                additional_reading += f"Found {keyword} in file: {file}\n"
+            additional_reading += f"Found {len(files)} files with the keyword: {keyword}\n"
+    
+    # Add any other guided research based on the task analysis
+    
+    return additional_reading
+
+def extract_keywords(text):
+    # Simple keyword extraction (you might want to use NLP techniques for better results)
+    return [word.lower() for word in text.split() if len(word) > 3]
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Grooming development task")
