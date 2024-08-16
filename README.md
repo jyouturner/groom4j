@@ -250,6 +250,16 @@ While LLMs are evolving rapidly, handling private, enterprise-scale codebases wi
 
 Instead of re-index (gist) the whole project, we need to find the diff betweeen the commits and only update the gist files of the changes since the last success indexing.
 
+### **Implement a "critical thinking" phase**
+
+Before proposing solutions, prompt the LLM to critically evaluate its own assumptions and initial ideas
+Ask it to consider alternative explanations for the observed behavior
+
+### **Implement a review and refinement stage**
+
+After the initial analysis, prompt the LLM to review its own work
+Ask it to identify potential oversights or areas that need more investigation
+
 ### **Integration with Internal Knowledge Bases**
 
 Large organizations often have extensive internal documentation, wikis, and presentations that explain various aspects of their systems. For example, setup a RAG (Retrieval-Augmented Generation) based system, potentially using GraphRAG to index those documents and provide query interface. Then integrate this tool with such RAG system for Q/A.
