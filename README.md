@@ -271,3 +271,7 @@ Pull requests are a gold mine of information on how to implement new features or
 ### **Leverage Integration Testing**
 
 Integration tests are a valuable resource for understanding how a project interacts with its dependencies and how data flows between systems. In today's microservices-oriented world, these tests often encapsulate critical knowledge about system interactions.
+
+### **Add Cost Estimate**
+
+Estimate the cost before and after gisting files and grooming tasks.
