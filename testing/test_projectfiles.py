@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 from projectfiles import CodeFile, ProjectFiles
 import os
@@ -5,7 +9,7 @@ import json
 
 def test_create():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -17,7 +21,7 @@ def test_create():
 
 def test_get_files_of_folder():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -32,7 +36,7 @@ def test_get_files_of_folder():
 
 def test_get_files_of_project():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -47,7 +51,7 @@ def test_get_files_of_project():
 
 def test_persist_code_files():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -71,7 +75,7 @@ def test_persist_code_files():
 
 def test_generate_package_structure():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -123,7 +127,7 @@ def test_packages_json():
 
 def test_package_structure_traverse_top_down():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -136,7 +140,7 @@ def test_package_structure_traverse_top_down():
 
 def test_package_structure_traverse_bottom_up():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -153,7 +157,7 @@ def test_package_structure_traverse_bottom_up():
 
 def test_print_tree():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -170,7 +174,7 @@ def test_print_tree():
 
 def test_find_package_node():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -185,7 +189,7 @@ def test_find_package_node():
 
 def test_find_codefile_by_name():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -198,7 +202,7 @@ def test_find_codefile_by_name():
 
 def test_find_subpackages_and_codefiles():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -213,7 +217,7 @@ def test_find_subpackages_and_codefiles():
 
 def test_persist_package_notes():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -252,7 +256,7 @@ def test_persist_package_notes():
 def test_package_structure_traverse_bottom_up_package_notes():
     from projectfiles import dumb_package_gisting
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -276,7 +280,7 @@ def test_package_structure_traverse_bottom_up_package_notes():
 def test_find_package_notes():
     from projectfiles import dumb_package_gisting
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)

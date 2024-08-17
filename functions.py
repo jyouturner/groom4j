@@ -109,7 +109,8 @@ def get_package(pf, package_name) -> Tuple[str, str, str, str]:
     notes = pf.find_notes_of_package(package_name.strip())
     if not notes:
         print(f"Package {package_name} does not exist in our gist files!")
-        return None, None, None, None
+        notes = ""
+        
     subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
     subpacakgenames = ', '.join(subpackages)
     codefilenames = ', '.join([f.filename for f in codefiles])

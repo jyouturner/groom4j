@@ -1,10 +1,12 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 from dotenv import load_dotenv
 import langfuse_setup
-from llm_router import LLMQueryManager
+from llm_anthropic import AnthropicAssistant
 from projectfiles import ProjectFiles
-
-use_llm = "gemini"
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
@@ -33,10 +35,9 @@ def assistant():
         package_notes += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
     cached_prompt = reused_prompt_template.format(project_tree=pf.to_tree(), package_notes=package_notes)   
     
-    assistant = LLMQueryManager(use_llm=use_llm, system_prompt = system_prompt, cached_prompt=cached_prompt)
-    
-
-    print(f"{use_llm} assistant setup complete")
+    assistant = AnthropicAssistant(use_history=False)
+    assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=cached_prompt)
+    print("Assistant setup complete")
     return assistant
 
 def test_java_assistant(assistant):
@@ -47,6 +48,8 @@ def test_java_assistant(assistant):
     response = assistant.query("what are the API endpoints available from the project?")
     assert response is not None
     print(response[:300])
+
+
 
 
 if __name__ == "__main__":

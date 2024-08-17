@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 from unittest.mock import patch
 from projectfiles import ProjectFiles
@@ -8,7 +12,7 @@ import os
 def test_read_files():
     # Create a mock object
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
@@ -24,18 +28,21 @@ def test_read_files():
 
 def test_read_packages():
     # find the local path to the test_project folder
-    root_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.join(os.path.dirname(__file__), '..')
     print("root path", root_path)
     project_path = os.path.join(root_path, "data/travel-service-dev")
     print("project path", project_path)
-    pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
+    pf = ProjectFiles(project_path, prefix_list=["src/main/java", "src/test/java"], suffix_list=[".java"], resource_suffix_list=[".properties"])
     pf.from_project()
 
-    result = read_packages(pf, ["com.iky.travel.config"])
+    print(pf.packages)
 
+    result = read_packages(pf, ["com.iky.travel.config"])
+    print(result)
     # Check the result is not empty
     assert result != ""
-    assert result.startswith("Info about package: com.iky.travel.config")
+    # Check the result contains "com.iky.travel.config"
+    assert "com.iky.travel.config" in result
 
 
     

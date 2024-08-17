@@ -76,7 +76,14 @@ class ProjectFiles:
         resource_files = self.get_resource_files()
         print(f"Resource files found: {len(resource_files)}")
         
-        if gist_file_path and os.path.exists(gist_file_path):
+        # if gist_file_path is not set, then use the default path
+        if gist_file_path is None:
+            gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
+
+        self.gist_file_path = gist_file_path
+
+        if os.path.exists(gist_file_path):
+            
             print(f"Loading existing gist files from {gist_file_path}")
             existing_files = self.load_code_files(gist_file_path)
             # Update summaries for existing files
@@ -84,17 +91,21 @@ class ProjectFiles:
                 for new_file in java_files + resource_files:
                     if existing_file.filename == new_file.filename and existing_file.path == new_file.path:
                         new_file.summary = existing_file.summary
+        else:
+            print(f"{gist_file_path} does not exist, so we will not load existing gist files")
+
         
         self.files = java_files
         self.resource_files = resource_files
         self.packages = self.generate_package_structure(self.files)
     
-        if gist_file_path:
-            self.gist_file_path = gist_file_path
-            gist_folder_path = os.path.dirname(gist_file_path)
-            if os.path.exists(os.path.join(gist_folder_path, self.default_package_notes_file)):
-                print(f"Loading package notes from {self.default_package_notes_file}")
-                self.package_notes = self.load_package_notes()
+        
+        gist_folder_path = os.path.dirname(gist_file_path)
+        if os.path.exists(os.path.join(gist_folder_path, self.default_package_notes_file)):
+            print(f"Loading package notes from {self.default_package_notes_file}")
+            self.package_notes = self.load_package_notes()
+        else:
+            print(f"No package notes file {self.default_package_notes_file} found at {gist_folder_path}")
 
     def from_gist_files(self, gist_file_path=None):
         if gist_file_path is None:

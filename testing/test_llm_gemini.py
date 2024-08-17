@@ -1,8 +1,13 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pytest
 from dotenv import load_dotenv
 import langfuse_setup
-from llm_anthropic import AnthropicAssistant
+from llm_google_vertexai import VertexAssistant
 from projectfiles import ProjectFiles
+import os
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
@@ -31,7 +36,7 @@ def assistant():
         package_notes += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
     cached_prompt = reused_prompt_template.format(project_tree=pf.to_tree(), package_notes=package_notes)   
     
-    assistant = AnthropicAssistant(use_history=False)
+    assistant = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
     assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=cached_prompt)
     print("Assistant setup complete")
     return assistant
