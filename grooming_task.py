@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 from llm_router import LLMQueryManager, ResponseManager
 from typing import Union
-from functions import get_file, get_package
+from functions import get_file, get_package, get_static_notes
 from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
 from gist_api import default_api_notes_file
 
@@ -94,30 +94,19 @@ Please perform a Task Analysis following the structured approach outlined in you
 """
 
 
-
-def get_static_notes(pf):
-    notes_str = read_all_packages(pf)
-        
-    # if there is api_notes.md file, then read it and append to the last_response
-    api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
-    if os.path.exists(api_notes_file):
-        with open(api_notes_file, "r") as f:
-            notes_str += f"\n\n{f.read()}"
-    return notes_str
-
 def initiate_llm_query_manager(pf):
     use_llm = os.environ.get("USE_LLM")
     # prompts can be reused and cached in the LLM if it is supported
-    cached_prompt = reused_prompt_template.format(project_tree="{pf.to_tree()}", package_notes="{get_static_notes(pf)}")
+    package_notes = get_static_notes(pf)
+    project_tree = pf.to_tree()
+    cached_prompt = reused_prompt_template.format(project_tree=project_tree, package_notes=package_notes)
     query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt)
     
     return query_manager
 
-
-
-
 def ask_continue(query_manager, task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
+    
     additional_reading = ""
 
     if last_response == "":

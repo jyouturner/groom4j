@@ -11,6 +11,8 @@ class CodeFile:
         self.imports = ""
         self.functions = ""
         self.todo_comments = ""
+        # a function to gist packages, only used in the package_structure_traverse
+        self.package_gisting_func = None
 
     def set_details(self, summary, imports, functions, todo_comments):
         self.summary = summary
@@ -31,7 +33,8 @@ class CodeFile:
     def from_json(json_str):
         data = json.loads(json_str)
         code_file = CodeFile(data['filename'], data['path'], data['package'])
-        code_file.set_summary(data.get('summary', ''))
+        code_file.set_details(data.get('summary', ''), data.get('imports', ''), data.get('functions', ''),data.get('todo_comments', ''))
+
         return code_file
 
     def __str__(self):
@@ -159,12 +162,15 @@ class ProjectFiles:
                 current = current[package_path]["sub_packages"]
         return packages
 
-    def execute_on_file(self, package, fileName):
+    def check_code_file_exists(self, package, fileName):
         file = self.find_codefile_by_name(fileName, package)
         if not file or not file.summary:
             raise Exception(f"expect file {fileName} have summary by now!")
 
-    def execute_on_package(self, package, subpackages, filenames):
+    def gist_package(self, package, subpackages, filenames):
+        # check to make sure the function is set
+        if not self.package_gisting_func:
+            raise ValueError("package_gisting_func is not set!")
         subpackage_notes = ""
         for subpackage, value in subpackages.items():
             notes = self.find_notes_of_package(subpackage)
@@ -179,10 +185,11 @@ class ProjectFiles:
             if not file.summary:
                 raise Exception(f"expect file {filename} have summary!")
             filenotes += f"File: {file.filename} : {file.summary}\n\n"
-        notes = self.package_gisting(package, subpackage_notes, filenotes)
+        
+        notes = self.package_gisting_func(package, subpackage_notes, filenotes)
         self.add_package_notes(package, notes)
 
-    def package_structure_traverse(self, packages=None, action_file=execute_on_file, action_package=execute_on_package, is_bottom_up=False):
+    def package_structure_traverse(self, packages=None, action_file_func=check_code_file_exists, action_package_func=gist_package, is_bottom_up=False):
         if packages is None:
             self.packages = self.generate_package_structure(self.files)
             packages = self.packages
@@ -191,17 +198,17 @@ class ProjectFiles:
             codefileNames = value["files"]
 
             if is_bottom_up:
-                self.package_structure_traverse(sub_packages, action_file, action_package, is_bottom_up)
+                self.package_structure_traverse(sub_packages, action_file_func, action_package_func, is_bottom_up)
 
-            if action_package:
-                action_package(package, sub_packages, codefileNames)
+            if action_package_func:
+                action_package_func(package, sub_packages, codefileNames)
 
             for fileName in (reversed(codefileNames) if is_bottom_up else codefileNames):
-                if action_file:
-                    action_file(package, fileName)
+                if action_file_func:
+                    action_file_func(package, fileName)
 
             if not is_bottom_up:
-                self.package_structure_traverse(sub_packages, action_file, action_package, is_bottom_up)
+                self.package_structure_traverse(sub_packages, action_file_func, action_package_func, is_bottom_up)
 
     def to_tree(self):
         return print_tree(self.packages)
@@ -302,9 +309,9 @@ class ProjectFiles:
                 f.write(f"Path: {file.path}\n")
                 f.write(f"Package: {file.package}\n")
                 f.write(f"Summary: {file.summary}\n")
-                f.write(f"Imports:\n{file.imports}\n")
-                f.write(f"Functions:\n{file.functions}\n")
-                f.write(f"TODO Comments:\n{file.todo_comments}\n")
+                f.write(f"Imports: {file.imports}\n")
+                f.write(f"Functions: {file.functions}\n")
+                f.write(f"TODO Comments: {file.todo_comments}\n")
                 f.write("\n")  # Empty line to separate file entries
         return gist_file_path
 

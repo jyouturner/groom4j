@@ -132,7 +132,7 @@ def test_package_structure_traverse_top_down():
     
     
     print("\n" + "-" * 110 + "\nTop-Down View:")
-    pf.package_structure_traverse(packages=None, action_file=lambda package, file: print(f"Executing on file: {package} {file}"), action_package=lambda package, subpackages, filenames: print(f"Executing on package: {package} Subpackages: {subpackages}, Filenames: {filenames}"), is_bottom_up=False)
+    pf.package_structure_traverse(packages=None, action_file_func=lambda package, file: print(f"Executing on file: {package} {file}"), action_package_func=lambda package, subpackages, filenames: print(f"Executing on package: {package} Subpackages: {subpackages}, Filenames: {filenames}"), is_bottom_up=False)
 
 def test_package_structure_traverse_bottom_up():
     # find the local path to the test_project folder
@@ -146,8 +146,8 @@ def test_package_structure_traverse_bottom_up():
     
     print("\n" + "-" * 110 + "\nBottom-Up View:")
     pf.package_structure_traverse(packages=None, 
-                                  action_file=lambda package, file: print(f"Executing on file: {package} {file}"), 
-                                  action_package=lambda package, subpackages, filenames: print(f"Executing on package: {package} Subpackages: {subpackages}, Filenames: {filenames}"), 
+                                  action_file_func=lambda package, file: print(f"Executing on file: {package} {file}"), 
+                                  action_package_func=lambda package, subpackages, filenames: print(f"Executing on package: {package} Subpackages: {subpackages}, Filenames: {filenames}"), 
                                   is_bottom_up=True)
 
 
@@ -269,8 +269,8 @@ def test_package_structure_traverse_bottom_up_package_notes():
         print(f"Package gisting: {dumb_package_gisting(package, subpackages, filenames)}")
     
     pf.package_structure_traverse(packages=None, 
-                                  action_file=fnFile, 
-                                  action_package=fnPackage, 
+                                  action_file_func=fnFile, 
+                                  action_package_func=fnPackage, 
                                   is_bottom_up=True)
 
 def test_find_package_notes():

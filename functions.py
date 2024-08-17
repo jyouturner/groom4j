@@ -125,3 +125,13 @@ def get_packages(pf, package_names) -> Tuple[Tuple[str, str, str, str]]:
             packages.append((package, notes, subpacakgenames, codefilenames))
     return packages
     
+def get_static_notes(pf):
+    notes_str = read_all_packages(pf)
+        
+    # if there is api_notes.md file, then read it and append to the last_response
+    default_api_notes_file = "api_notes.md"
+    api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
+    if os.path.exists(api_notes_file):
+        with open(api_notes_file, "r") as f:
+            notes_str += f"\n\n{f.read()}"
+    return notes_str
