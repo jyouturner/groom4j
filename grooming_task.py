@@ -6,7 +6,7 @@ import argparse
 from projectfiles import ProjectFiles
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from llm_router import LLMQueryManager, ResponseManager
+from llm_client import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package, get_static_notes
 from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human

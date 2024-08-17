@@ -5,7 +5,7 @@ import argparse
 from projectfiles import ProjectFiles
 
 load_dotenv(override=True)
-from llm_router import LLMQueryManager
+from llm_client import LLMQueryManager
 
 system_prompt = """
 You are a world-class software architect and developer. You are analyzing a codebase that includes both Java code and configuration files. Your task is to write comprehensive notes about each package in the project.

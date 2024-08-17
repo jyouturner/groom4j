@@ -1,8 +1,8 @@
 import os
 from typing import Callable, Optional
 from abc import ABC, abstractmethod
-# set up tracing
-from langfuse_setup import observe, langfuse_context
+# set up tracing, use relative import to avoid import errors since they are in the same path
+from .langfuse_setup import observe, langfuse_context
 
 
 DEFAULT_RESPONSE_FILE = "response.txt"
@@ -39,7 +39,7 @@ class LLMInterface(ABC):
 
 class OpenAILLM(LLMInterface):
     def __init__(self, system_prompt: str, cached_prompt: str = None):
-        from llm_openai import OpenAIAssistant
+        from llm_client.llm_openai import OpenAIAssistant
         assistant_without_history = OpenAIAssistant(model=os.environ.get("OPENAI_MODEL"), use_history=False)
         assistant_without_history.set_system_prompts(system_prompt = system_prompt, cached_prompt=cached_prompt)
         self.assistant = assistant_without_history
@@ -56,7 +56,7 @@ class OpenAILLM(LLMInterface):
     
 class VertexAILLM(LLMInterface):
     def __init__(self, system_prompt: str, cached_prompt: str = None):
-        from llm_google_vertexai import VertexAssistant
+        from llm_client.llm_google_vertexai import VertexAssistant
         project_id = os.getenv("GCP_PROJECT_ID")
         location = os.getenv("GCP_LOCATION")
         model_name = os.getenv("GEMINI_MODEL")
@@ -75,7 +75,7 @@ class VertexAILLM(LLMInterface):
 
 class AnthropicLLM(LLMInterface):
     def __init__(self, system_prompt: str, cached_prompt: str = None):
-        from llm_anthropic import AnthropicAssistant
+        from llm_client.llm_anthropic import AnthropicAssistant
         self.assistant = AnthropicAssistant(use_history=False)
         self.assistant.set_system_prompts(system_prompt = system_prompt, cached_prompt=cached_prompt)
 

@@ -4,8 +4,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import pytest
 from dotenv import load_dotenv
-import langfuse_setup
-from llm_openai import OpenAIAssistant
+import llm_client.langfuse_setup as langfuse_setup
+from llm_client import OpenAIAssistant
 from projectfiles import ProjectFiles
 
 @pytest.fixture(scope="module", autouse=True)

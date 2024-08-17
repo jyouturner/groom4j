@@ -7,7 +7,7 @@ import re
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from llm_router import LLMQueryManager
+from llm_client import LLMQueryManager
 
 system_prompt = """
 You are a world-class developer and configuration expert. When analyzing a file, provide a detailed summary focusing on the following aspects:

@@ -4,8 +4,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import pytest
 from dotenv import load_dotenv
-import langfuse_setup
-from llm_router import LLMQueryManager
+import llm_client.langfuse_setup as langfuse_setup
+from llm_client import LLMQueryManager
 from projectfiles import ProjectFiles
 
 use_llm = "gemini"
