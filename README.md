@@ -250,6 +250,9 @@ While LLMs are evolving rapidly, handling private, enterprise-scale codebases wi
 
 Instead of re-index (gist) the whole project, we need to find the diff betweeen the commits and only update the gist files of the changes since the last success indexing.
 
+### **Multi-Agent**
+
+
 ### **Implement a "critical thinking" phase**
 
 Before proposing solutions, prompt the LLM to critically evaluate its own assumptions and initial ideas

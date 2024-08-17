@@ -48,7 +48,7 @@ class ProjectFiles:
     default_package_notes_file = "package_notes.txt"
     default_gist_foler = ".gist"
 
-    def __init__(self, repo_root_path, prefix_list, suffix_list, resource_suffix_list=None):
+    def __init__(self, repo_root_path, prefix_list = None, suffix_list = None, resource_suffix_list=None):
         self.root_path = repo_root_path
         self.prefix_list = prefix_list
         self.suffix_list = suffix_list

@@ -5,12 +5,13 @@ import vertexai.preview.generative_models as generative_models
 from typing import List, Dict, Optional
 
 class VertexAssistant:
-    def __init__(self, project_id: str, location: str, model_name: str, system_prompt: str, use_history: bool = True) -> None:
+    def __init__(self, project_id: str, location: str, model_name: str, system_prompt: str = None, cached_prompt: str = None, use_history: bool = True) -> None:
         self.project_id = project_id
         self.location = location
         self.model_name = model_name
-        self.system_prompt = system_prompt
         self.use_history = use_history
+        self.system_prompt = system_prompt
+        self.cached_prompt = cached_prompt
         self.generation_config = generative_models.GenerationConfig(
             max_output_tokens=8192,
             temperature=1,
@@ -23,30 +24,26 @@ class VertexAssistant:
             generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         }
         self._initialize_vertexai()
-        self.load_model()
+        self._initialize_model()
 
     def _initialize_vertexai(self) -> None:
         vertexai.init(project=self.project_id, location=self.location)
 
-    def load_model(self) -> None:
-        self.model = GenerativeModel(self.model_name)
+    def _initialize_model(self) -> None:
+        combined_prompt = self.system_prompt or ""
+        if self.cached_prompt:
+            combined_prompt += "\n\n" + self.cached_prompt
+        self.model = GenerativeModel(self.model_name, system_instruction=combined_prompt)
         self._start_new_session()
 
     def _start_new_session(self) -> None:
         self.chat = self.model.start_chat(history=[])
-        if self.system_prompt:
-            self.chat.send_message(self.system_prompt)
 
-    def get_session_history(self) -> List[Dict[str, str]]:
-        if self.use_history:
-            return [{"role": msg.role, "content": msg.parts[0].text} for msg in self.chat.history]
-        else:
-            return []
+    def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
+        self.system_prompt = system_prompt
+        self.cached_prompt = cached_prompt
+        self._initialize_model()
 
-    def set_use_history(self, use_history: bool):
-        self.use_history = use_history
-        if not use_history:
-            self._start_new_session()
     @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, message: str) -> str:
         if not self.use_history:
@@ -57,22 +54,18 @@ class VertexAssistant:
                 message,
                 generation_config=self.generation_config,
                 safety_settings=self.safety_settings,
-                stream=True,
+                stream=False,
             )
-            full_response = ""
-            for chunk in response:
-                #print(chunk.text, end="", flush=True)
-                full_response += chunk.text
-            #print()  # New line after response
-            return full_response
+            
+            if response is not None and response.text is not None:
+                return response.text
+            else:
+                print("Received None response or empty text")
+                return ""
         except Exception as e:
-            print(f"An error occurred: {str(e)}")
-            print("Chat history:")
-            for msg in self.chat.history:
-                print(f"{msg.role}: {msg.parts[0].text[:50]}...")  # Print first 50 chars of each message
-            print("Resetting chat session...")
-            self._start_new_session()
-            return f"Error: {str(e)}"
+            print(f"Error during query: {e}")
+            print(f"Error type: {type(e)}")
+            raise e
 
     def save_session_history(self, filename: str) -> None:
         if self.use_history:
