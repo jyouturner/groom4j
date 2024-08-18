@@ -1,4 +1,4 @@
-# Grooming Java Development Tasks with LLM
+# JavaGroom: LLM-Powered Task Planning for Java Projects
 
 ## Project Goal
 
