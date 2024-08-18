@@ -22,45 +22,7 @@ By focusing on these aspects, JavaGroom fills a crucial gap between generic codi
 
 ## Inspiration
 
-This project draws inspiration from the research paper ["A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts"](https://arxiv.org/abs/2402.09727). We apply a similar gisting approach to Java development tasks, enabling efficient navigation and understanding of complex projects.
-
-The research paper discusses "ReadAgent," a system inspired by how humans read and understand long documents. Unlike current computer models that struggle with very long texts, ReadAgent mimics human reading by breaking texts into manageable parts (episodes), summarizing them into "gist memories" (key ideas), and referring back to the original text for details when necessary. This approach helps ReadAgent understand and remember the main points from long documents better than traditional methods, allowing it to perform better on tasks that involve reading comprehension of lengthy texts.
-
-below image from [https://read-agent.github.io/](https://read-agent.github.io/) demontrates the intuitive approach.
-
-<img src="docs/read-agent.jpg" width="800" alt="read agent">
-
-## How It Works
-
-Similar to how human being appoach to any maintenance of legacy code, we ask LLM to do a one time "gisting"
-
-1. **Gist Java programs**
-
-We send the Java files to LLM one by one with prompt for summaries
-
-<img src="docs/gist_files.png" width="600" alt="Gist the Files">
-
-The results are stored in a local file "code_files.txt", this is our "index".
-
-We can build our code files graph now.
-
-<img src="docs/package_file_graph.png" width="800" alt="Package and Files graph">
-
-2. **Gist Java packages**
-
-We do a travers of the graph recusivingly from bottom up. For each package, we combine the summaries of sub-packages and files and send to LLM to summarize it.
-
-<img src="docs/gist_packages.png" width="600" alt="Package and Files graph">
-
-The results are saved in a local file "package_notes.txt" file.
-
-3. **Grooming**
-
-Once we have the "indexing" or "gisting" done. We can start to groom a development task, by ask LLM to provide steps to accomplish the task.
-
-In the first prompt to LLM, we specify its role, the task to work on, and the brief information of the project (for example, the top-down tree view). We also instruct LLM to ask more information about files and packages whenver necessary. In the following conversations, we will provide the summary or notes of the files (including source code) or packages, this conversation will continue until the LLM does not need more information (or reach to the maximum round of conversations)
-
-<img src="docs/ask.png" width="800" alt="Ask LLM">
+More about this project can be found at [what inspired this project](inspiration.md)
 
 
 ## Getting Started
