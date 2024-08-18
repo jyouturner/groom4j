@@ -10,12 +10,13 @@ load_dotenv(override=True)
 from llm_router import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package
-from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
+from functions import efficient_file_search, read_files, read_packages, read_all_packages, read_from_human
+from functions import process_file_request
 
 system_prompt = """
 You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
 
-Begin your analysis with: "Let's investigate the Java project to answer the question: [restate the question]"
+Begin your analysis with: "Let's inspect the Java project to answer the question: [restate the question]"
 
 As you analyze, follow these guidelines:
 1. Start with a high-level overview of relevant components.
@@ -25,13 +26,13 @@ As you analyze, follow these guidelines:
 
 If you need more information, use the following formats to request it:
 
-1. To search for keywords:
+1. To search for keywords, request them in this specific format only:
    [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
 
-2. To request file contents:
-   [I need content of files:: <file>file1.java</file>, <file>file2.java</file>]
+2. To request file contents, request them in this specific format only:
+   [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
 
-3. To get information about packages:
+3. To get information about packages, request them in this specific format only:
    [I need info about packages:: <package>com.example.package1</package>, <package>com.example.package2</package>]
 
 Always use these exact formats for requests. After receiving information, analyze it and relate it back to the original question. If you need clarification on any information received, ask for it specifically.
@@ -40,15 +41,12 @@ Remember to consider:
 - Project structure and architecture
 - Relevant design patterns
 - Framework-specific configurations
-- Potential performance implications
-- Security considerations
-- Best practices and any deviations from them
 
 Conclude your analysis with a clear, concise summary that directly addresses the original question.
 """
 user_prompt_template = """
 
-The ask is <question>{question}</question>
+You need to inspect <question>{question}</question>
 
 Below is the Java project structure for your reference:
 {project_tree}
@@ -69,43 +67,51 @@ query_manager = LLMQueryManager(system_prompt=system_prompt)
 def ask_continue(question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
-    for line in last_response.split("\n"):
-        # clean line
-        line = line.strip()
+    lines = last_response.split("\n")
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
         if line.startswith("[I need to search"):
             # [I need to search <search>what you need to search</search>]
             what = re.search(r'<keyword>(.*?)</keyword>', line).group(1)
             print(f"LLM needs to search: {what}")
             # search for files with the keyword within the project
-            files = search_files_with_keyword(pf.root_path, what)
-            for file in files:
+            file_extensions = ['.java', '.yml', '.properties']  # Add or modify as needed
+    
+            matching_files = efficient_file_search(pf.root_path, what, file_extensions=file_extensions)
+            
+            for file in matching_files:
                 additional_reading += f"Found {what} in file: {file}\n"
-            additional_reading += f"Found {len(files)} files with the keyword: {what}\n "
+                
+            additional_reading += f"Found {len(matching_files)} files with the keyword: {what}\n "
         elif line.startswith("[I need content of files:") or line.startswith("[I need access files:"):
             # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
-            # Define a regex pattern to match content between <file> and </file> tags
-            pattern = r'<file>(.*?)</file>'
-            file_names = re.findall(pattern, line)
+            file_names = process_file_request(lines[i:])
             print(f"LLM needs access to files: {file_names}")
             additional_reading += read_files(pf, file_names)
-            print(f"contents provided for {file_names}")            
+            print(f"contents provided for {file_names}")
+            # Skip processed lines
+            while i < len(lines) and "]" not in lines[i]:
+                i += 1            
         elif line.startswith("[I need info about packages:"):
             # [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
             pattern = r'<package>(.*?)</package>'
             package_names = re.findall(pattern, line)
             print(f"Need more info of package: {package_names}")
             additional_reading += read_packages(pf, package_names)
-        elif line.startswith("[I need clarification about"):
+        #elif line.startswith("[I need clarification about"):
             # [I need clarification about <ask>what you need clarification about</ask>]
-            what = re.search(r'<ask>(.*?)</ask>', line).group(1)
-            print(f"LLM needs more information: \n{what}")
+        #    what = re.search(r'<ask>(.*?)</ask>', line).group(1)
+        #    print(f"LLM needs more information: \n{what}")
             # ask user to enter manually through commmand line
-            additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
-        elif line.startswith("[I need"):
-            print(f"LLM needs more information: \n{line}")
-            additional_reading += f"{read_from_human(line)}\n"
+        #    additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
+        #elif line.startswith("[I need"):
+        #    print(f"LLM needs more information: \n{line}")
+        #    additional_reading += f"{read_from_human(line)}\n"
         else:
             pass
+        i += 1
     if last_response=="" or additional_reading:
         # either the first time or the last conversation needs more information
         if last_response=="":
@@ -156,7 +162,7 @@ if __name__ == "__main__":
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
         response, additional_reading, doneNow = ask_continue(question, last_response, pf, past_additional_reading=past_additional_reading)
-        print(response)
+        #print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
             print(response)
@@ -164,4 +170,4 @@ if __name__ == "__main__":
         else:
             past_additional_reading += ("\n" + additional_reading)
             i += 1
-
+    print("Conversation with LLM ended")

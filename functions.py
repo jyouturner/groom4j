@@ -57,22 +57,63 @@ def read_from_human(line) -> str:
     additional_reading = f"{human_response}"
     return additional_reading
 
-def search_files_with_keyword(root_path, keyword):
-    # search for files with the keyword within the project
-    # return the list of file names
-    print(f"Searching for files with the keyword: {keyword} under {root_path}")
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Tuple
+
+def efficient_file_search(root_path: str, keyword: str, max_files: int = 1000, max_file_size: int = 1_000_000, file_extensions: List[str] = None) -> List[str]:
+    """
+    Search for a keyword in files within a directory, returning relative paths of matching files.
+    
+    :param root_path: The root directory to start the search from.
+    :param keyword: The keyword to search for.
+    :param max_files: Maximum number of files to search (default 1000).
+    :param max_file_size: Maximum file size in bytes to consider (default 1MB).
+    :param file_extensions: List of file extensions to search (e.g., ['.java', '.json']). If None, search all files.
+    :return: List of relative file paths containing the keyword.
+    """
     matching_files = []
-    for root, dirs, files in os.walk(root_path):
-        for file in files:
-            if file.endswith(".java") or file.endswith(".json"):
+    files_searched = 0
+    
+    def search_file(file_path: str, rel_path: str) -> Tuple[str, bool]:
+        try:
+            if os.path.getsize(file_path) > max_file_size:
+                return rel_path, False
+            
+            with open(file_path, 'r', errors='ignore') as file:
+                if keyword.lower() in file.read().lower():
+                    print(f"Found {keyword} in file: {rel_path}")
+                    return rel_path, True
+        except Exception as e:
+            print(f"Error reading {rel_path}: {e}")
+        
+        return rel_path, False
+
+    def is_valid_file(file_path: str) -> bool:
+        if file_extensions:
+            return any(file_path.lower().endswith(ext.lower()) for ext in file_extensions)
+        return True
+
+    with ThreadPoolExecutor(max_workers=min(32, os.cpu_count() or 1)) as executor:
+        futures = []
+        for root, _, files in os.walk(root_path):
+            if files_searched >= max_files:
+                break
+            for file in files:
+                if files_searched >= max_files:
+                    break
                 file_path = os.path.join(root, file)
-                with open(file_path, "r") as f:
-                    for line in f:
-                        if keyword in line:
-                            matching_files.append(file)
-                            print(f"Found {keyword} in file: {file_path}")
-                            break  # Stop reading the file once the keyword is found
+                rel_path = os.path.relpath(file_path, root_path)
+                if is_valid_file(file_path):
+                    futures.append(executor.submit(search_file, file_path, rel_path))
+                    files_searched += 1
+
+        for future in as_completed(futures):
+            rel_path, found = future.result()
+            if found:
+                matching_files.append(rel_path)
+
     return matching_files
+
 
 #
 # here are the functions to be used in the pipeline.
@@ -125,3 +166,34 @@ def get_packages(pf, package_names) -> Tuple[Tuple[str, str, str, str]]:
             packages.append((package, notes, subpacakgenames, codefilenames))
     return packages
     
+
+def process_file_request(lines):
+    file_request = ""
+    file_names = []
+    in_file_request = False
+    
+    for line in lines:
+        line = line.strip()
+        if "[I need content of files:" in line or "[I need access files:" in line:
+            in_file_request = True
+            file_request += line
+            if "]" in line:  # Handle single-line case
+                break
+        elif in_file_request and "]" in line:
+            file_request += line
+            break
+        elif in_file_request:
+            file_request += line
+        else:
+            break  # Stop if we're not in a file request and haven't found one
+    
+    if file_request:
+        # Extract content between square brackets
+        bracket_content = re.search(r'\[(I need (?:content of|access) files:.*?)\]', file_request, re.DOTALL)
+        if bracket_content:
+            content = bracket_content.group(1)
+            # Extract file names
+            pattern = r'<file>(.*?)</file>'
+            file_names = re.findall(pattern, content)
+    
+    return file_names

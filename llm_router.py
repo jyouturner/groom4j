@@ -57,10 +57,8 @@ class OpenAILLM(LLMInterface):
     @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.assistant.query(user_prompt)
-        print(f"OpenAILLM self.assistant.query returning: {type(response)}")
         while callable(response):
             response = response()
-        print(f"OpenAILLM.query returning: {type(response)}")
         
         return response
 
@@ -123,7 +121,6 @@ class LLMQueryManager:
     @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.llm.query(user_prompt)
-        print(f"LLMQueryManager.query received: {type(response)}")
         self.response_manager.save_response(response)
         return response
 
