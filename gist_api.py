@@ -7,7 +7,7 @@ from projectfiles import ProjectFiles
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from llm_router import LLMQueryManager, ResponseManager
+from llm_client import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package
 from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
@@ -95,11 +95,15 @@ Additional reading:
 
 """
 
-query_manager = LLMQueryManager(system_prompt=system_prompt)
+def initiate_llm_query_manager(pf):
+    use_llm = os.environ.get("USE_LLM")
+    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=None)
+    
+    return query_manager
 
 default_api_notes_file = "api_notes.md"
 
-def ask_continue(last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+def ask_continue(query_manager, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
     additional_reading = ""
     for line in last_response.split("\n"):
@@ -177,10 +181,11 @@ if __name__ == "__main__":
     doneNow = False
     additional_reading = ""
     ResponseManager.reset_prompt_response()
-    
+    # initiate the LLM query manager
+    query_manager = initiate_llm_query_manager(pf)
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(last_response, pf, past_additional_reading=past_additional_reading)
+        response, additional_reading, doneNow = ask_continue(query_manager, last_response, pf, past_additional_reading=past_additional_reading)
         print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:

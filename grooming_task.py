@@ -6,9 +6,9 @@ import argparse
 from projectfiles import ProjectFiles
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from llm_router import LLMQueryManager, ResponseManager
+from llm_client import LLMQueryManager, ResponseManager
 from typing import Union
-from functions import get_file, get_package
+from functions import get_file, get_package, get_static_notes
 from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
 from gist_api import default_api_notes_file
 
@@ -71,12 +71,18 @@ Remember:
 - Begin your analysis with the Task Analysis section, then proceed with "Let's break down the task and plan our approach."
 """
 
-user_prompt_template = """
-The task to be groomed is:
-"{task}"
+reused_prompt_template = """
 
 Below is the Java project structure for your reference:
 {project_tree}
+
+and summaries of the packages in the project:
+{package_notes}
+"""
+
+user_prompt_template = """
+The task to be groomed is:
+"{task}"
 
 Previous research notes:
 {notes}
@@ -87,25 +93,25 @@ Additional reading:
 Please perform a Task Analysis following the structured approach outlined in your instructions, then proceed with analyzing this task and providing a detailed plan.
 """
 
-query_manager = LLMQueryManager(system_prompt=system_prompt)
 
+def initiate_llm_query_manager(pf):
+    use_llm = os.environ.get("USE_LLM")
+    # prompts can be reused and cached in the LLM if it is supported
+    package_notes = get_static_notes(pf)
+    project_tree = pf.to_tree()
+    cached_prompt = reused_prompt_template.format(project_tree=project_tree, package_notes=package_notes)
+    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt)
+    
+    return query_manager
 
-def ask_continue(task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+def ask_continue(query_manager, task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
     projectTree = pf.to_tree()
+    
     additional_reading = ""
 
     if last_response == "":
         # Initial conversation: perform Task Analysis
-        # notes
-        notes_str = read_all_packages(pf)
-        
-        # if there is api_notes.md file, then read it and append to the last_response
-        api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
-        if os.path.exists(api_notes_file):
-            with open(api_notes_file, "r") as f:
-                notes_str += f"\n\n{f.read()}"
-
-        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=notes_str, additional_reading="")
+        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes="", additional_reading="")
         response = query_manager.query(user_prompt)
         
         # Extract Task Analysis results
@@ -229,7 +235,7 @@ if __name__ == "__main__":
         print(f"Error: {root_path} does not exist")
         sys.exit(1)
 
-    pf = ProjectFiles(repo_root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
+    pf = ProjectFiles(repo_root_path=root_path)
     # load the files and package gists from persistence.
     pf.from_gist_files()
 
@@ -253,10 +259,11 @@ if __name__ == "__main__":
     doneNow = False
     additional_reading = ""
     ResponseManager.reset_prompt_response()
-    
+    # initiate the LLM query manager
+    query_manager = initiate_llm_query_manager(pf)
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(task, last_response, pf, past_additional_reading=past_additional_reading)
+        response, additional_reading, doneNow = ask_continue(query_manager, task, last_response, pf, past_additional_reading=past_additional_reading)
         print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:

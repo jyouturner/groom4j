@@ -150,7 +150,8 @@ def get_package(pf, package_name) -> Tuple[str, str, str, str]:
     notes = pf.find_notes_of_package(package_name.strip())
     if not notes:
         print(f"Package {package_name} does not exist in our gist files!")
-        return None, None, None, None
+        notes = ""
+        
     subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
     subpacakgenames = ', '.join(subpackages)
     codefilenames = ', '.join([f.filename for f in codefiles])
@@ -197,3 +198,13 @@ def process_file_request(lines):
             file_names = re.findall(pattern, content)
     
     return file_names
+def get_static_notes(pf):
+    notes_str = read_all_packages(pf)
+        
+    # if there is api_notes.md file, then read it and append to the last_response
+    default_api_notes_file = "api_notes.md"
+    api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
+    if os.path.exists(api_notes_file):
+        with open(api_notes_file, "r") as f:
+            notes_str += f"\n\n{f.read()}"
+    return notes_str

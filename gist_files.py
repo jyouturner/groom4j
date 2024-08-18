@@ -7,7 +7,7 @@ import re
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
-from llm_router import LLMQueryManager
+from llm_client import LLMQueryManager
 
 system_prompt = """
 You are a world-class developer and configuration expert. When analyzing a file, provide a detailed summary focusing on the following aspects:
@@ -67,13 +67,18 @@ Full File Content:
 Please analyze this file based on the guidelines provided earlier, focusing on key functionalities, important methods, design patterns, and other crucial details.
 """
 
-query_manager = LLMQueryManager(system_prompt=system_prompt)
+def initiate_llm_query_manager(pf):
+    use_llm = os.environ.get("USE_LLM")
+    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=None)
+    
+    return query_manager
+
 
 def get_file_type(filename):
     _, ext = os.path.splitext(filename)
     return ext.lower()
 
-def code_gisting(project_root, code_file, verbose=True) -> str:
+def code_gisting(query_manager, project_root, code_file, verbose=True) -> str:
     full_path = os.path.join(project_root, code_file.path)
     with open(full_path, 'r') as file:
         content = file.read()
@@ -162,10 +167,10 @@ if __name__ == "__main__":
             sys.exit(1)
 
     input(f"Press Enter to start gisting {len(all_files)} files...")
-
+    query_manager = initiate_llm_query_manager(pf)
     for index, file in enumerate(all_files, start=1):
         print(f"Processing file {index}/{total_files}: {file.filename} ({file.package})")
-        notes = code_gisting(root_path, file)
+        notes = code_gisting(query_manager=query_manager, project_root=root_path, code_file=file)
         file.set_summary(notes)
 
     gist_file_path = pf.persist_code_files(all_files)

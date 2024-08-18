@@ -11,6 +11,8 @@ class CodeFile:
         self.imports = ""
         self.functions = ""
         self.todo_comments = ""
+        # a function to gist packages, only used in the package_structure_traverse
+        self.package_gisting_func = None
 
     def set_details(self, summary, imports, functions, todo_comments):
         self.summary = summary
@@ -31,7 +33,8 @@ class CodeFile:
     def from_json(json_str):
         data = json.loads(json_str)
         code_file = CodeFile(data['filename'], data['path'], data['package'])
-        code_file.set_summary(data.get('summary', ''))
+        code_file.set_details(data.get('summary', ''), data.get('imports', ''), data.get('functions', ''),data.get('todo_comments', ''))
+
         return code_file
 
     def __str__(self):
@@ -48,7 +51,7 @@ class ProjectFiles:
     default_package_notes_file = "package_notes.txt"
     default_gist_foler = ".gist"
 
-    def __init__(self, repo_root_path, prefix_list, suffix_list, resource_suffix_list=None):
+    def __init__(self, repo_root_path, prefix_list = None, suffix_list = None, resource_suffix_list=None):
         self.root_path = repo_root_path
         self.prefix_list = prefix_list
         self.suffix_list = suffix_list
@@ -73,7 +76,14 @@ class ProjectFiles:
         resource_files = self.get_resource_files()
         print(f"Resource files found: {len(resource_files)}")
         
-        if gist_file_path and os.path.exists(gist_file_path):
+        # if gist_file_path is not set, then use the default path
+        if gist_file_path is None:
+            gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
+
+        self.gist_file_path = gist_file_path
+
+        if os.path.exists(gist_file_path):
+            
             print(f"Loading existing gist files from {gist_file_path}")
             existing_files = self.load_code_files(gist_file_path)
             # Update summaries for existing files
@@ -81,17 +91,21 @@ class ProjectFiles:
                 for new_file in java_files + resource_files:
                     if existing_file.filename == new_file.filename and existing_file.path == new_file.path:
                         new_file.summary = existing_file.summary
+        else:
+            print(f"{gist_file_path} does not exist, so we will not load existing gist files")
+
         
         self.files = java_files
         self.resource_files = resource_files
         self.packages = self.generate_package_structure(self.files)
     
-        if gist_file_path:
-            self.gist_file_path = gist_file_path
-            gist_folder_path = os.path.dirname(gist_file_path)
-            if os.path.exists(os.path.join(gist_folder_path, self.default_package_notes_file)):
-                print(f"Loading package notes from {self.default_package_notes_file}")
-                self.package_notes = self.load_package_notes()
+        
+        gist_folder_path = os.path.dirname(gist_file_path)
+        if os.path.exists(os.path.join(gist_folder_path, self.default_package_notes_file)):
+            print(f"Loading package notes from {self.default_package_notes_file}")
+            self.package_notes = self.load_package_notes()
+        else:
+            print(f"No package notes file {self.default_package_notes_file} found at {gist_folder_path}")
 
     def from_gist_files(self, gist_file_path=None):
         if gist_file_path is None:
@@ -159,12 +173,15 @@ class ProjectFiles:
                 current = current[package_path]["sub_packages"]
         return packages
 
-    def execute_on_file(self, package, fileName):
+    def check_code_file_exists(self, package, fileName):
         file = self.find_codefile_by_name(fileName, package)
         if not file or not file.summary:
             raise Exception(f"expect file {fileName} have summary by now!")
 
-    def execute_on_package(self, package, subpackages, filenames):
+    def gist_package(self, package, subpackages, filenames):
+        # check to make sure the function is set
+        if not self.package_gisting_func:
+            raise ValueError("package_gisting_func is not set!")
         subpackage_notes = ""
         for subpackage, value in subpackages.items():
             notes = self.find_notes_of_package(subpackage)
@@ -179,10 +196,11 @@ class ProjectFiles:
             if not file.summary:
                 raise Exception(f"expect file {filename} have summary!")
             filenotes += f"File: {file.filename} : {file.summary}\n\n"
-        notes = self.package_gisting(package, subpackage_notes, filenotes)
+        
+        notes = self.package_gisting_func(package, subpackage_notes, filenotes)
         self.add_package_notes(package, notes)
 
-    def package_structure_traverse(self, packages=None, action_file=execute_on_file, action_package=execute_on_package, is_bottom_up=False):
+    def package_structure_traverse(self, packages=None, action_file_func=check_code_file_exists, action_package_func=gist_package, is_bottom_up=False):
         if packages is None:
             self.packages = self.generate_package_structure(self.files)
             packages = self.packages
@@ -191,17 +209,17 @@ class ProjectFiles:
             codefileNames = value["files"]
 
             if is_bottom_up:
-                self.package_structure_traverse(sub_packages, action_file, action_package, is_bottom_up)
+                self.package_structure_traverse(sub_packages, action_file_func, action_package_func, is_bottom_up)
 
-            if action_package:
-                action_package(package, sub_packages, codefileNames)
+            if action_package_func:
+                action_package_func(package, sub_packages, codefileNames)
 
             for fileName in (reversed(codefileNames) if is_bottom_up else codefileNames):
-                if action_file:
-                    action_file(package, fileName)
+                if action_file_func:
+                    action_file_func(package, fileName)
 
             if not is_bottom_up:
-                self.package_structure_traverse(sub_packages, action_file, action_package, is_bottom_up)
+                self.package_structure_traverse(sub_packages, action_file_func, action_package_func, is_bottom_up)
 
     def to_tree(self):
         return print_tree(self.packages)
@@ -302,9 +320,9 @@ class ProjectFiles:
                 f.write(f"Path: {file.path}\n")
                 f.write(f"Package: {file.package}\n")
                 f.write(f"Summary: {file.summary}\n")
-                f.write(f"Imports:\n{file.imports}\n")
-                f.write(f"Functions:\n{file.functions}\n")
-                f.write(f"TODO Comments:\n{file.todo_comments}\n")
+                f.write(f"Imports: {file.imports}\n")
+                f.write(f"Functions: {file.functions}\n")
+                f.write(f"TODO Comments: {file.todo_comments}\n")
                 f.write("\n")  # Empty line to separate file entries
         return gist_file_path
 

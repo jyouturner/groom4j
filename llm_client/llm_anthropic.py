@@ -6,16 +6,29 @@ from dotenv import load_dotenv
 from typing import List, Dict
 
 class AnthropicAssistant:
-    def __init__(self, system_prompt: str, use_history: bool = True):
+    def __init__(self, use_history: bool = True):
         load_dotenv(override=True)
         self.anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.model = os.environ.get("ANTHROPIC_MODEL", "claude-3-opus-20240229")
-        self.system_prompt = system_prompt
+        self.system_prompt = None
+        self.cached_prompt = None
         self.use_history = use_history
         self.reset_messages()
 
+    def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
+        self.system_prompt = system_prompt
+        if cached_prompt is not None:
+            if self.is_support_cached_prompt():
+                self.cached_prompt = cached_prompt
+            else:
+                print("Cached prompt is not supported by this assistant. Will append it to the system prompt.")
+                self.system_prompt += "\n" + cached_prompt
+
     def reset_messages(self):
         self.messages = []  # Remove the initial system message here
+
+    def is_support_cached_prompt(self):
+        return True
 
     @observe(as_type="generation", capture_input=False, capture_output=False)
     def query(self, user_prompt: str) -> str:
@@ -23,12 +36,29 @@ class AnthropicAssistant:
             self.reset_messages()
 
         self.messages.append({"role": "user", "content": user_prompt})
- 
+        system_prompt = [
+            {
+                "type": "text",
+                "text": self.system_prompt
+            }
+        ]
+        if self.is_support_cached_prompt() and self.cached_prompt is not None:
+            system_prompt.append({
+                "type": "text",
+                "text": self.cached_prompt,
+                "cache_control": {"type": "ephemeral"}
+            })
+        langfuse_context.update_current_observation(
+            input=system_prompt,
+        )
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=2048,
             temperature=0.0,
-            system=self.system_prompt,
+            # support for prompt caching
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+            #system=self.system_prompt,
+            system=system_prompt,
             messages=self.messages
         )
         langfuse_context.update_current_observation(
@@ -137,20 +167,6 @@ def main():
     response = assistant_with_history.query("What's the difference between public and private methods?")
     print(response[:100])
 
-def simple():
-    system_prompt = "You are a helpful AI assistant."
-    
-    # Example with history
-    assistant = AnthropicAssistant(system_prompt, use_history=False)
-    response = assistant.query("Hello, what is the date today?")
-    print(response[:100])
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv(override=True)
-    langfuse_context.configure(debug=True)
-    simple()
-    langfuse_context.flush()
 
 
 

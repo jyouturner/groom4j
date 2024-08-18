@@ -14,17 +14,31 @@ from typing import List, Dict
 #      return decorator
 
 class OpenAIAssistant:
-    def __init__(self, system_prompt: str, model: str = 'gpt-4', temperature: float = 0.0, max_tokens: int = 2048, use_history: bool = True):
+    def __init__(self, model: str = 'gpt-4o', temperature: float = 0.0, max_tokens: int = 2048, use_history: bool = True):
         self.client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.system_prompt = system_prompt
+        self.system_prompt = None
+        self.cached_prompt = None
         self.use_history = use_history
         self.reset_conversation()
 
+    def is_support_cached_prompt(self):
+          return False
+    
+    def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
+        self.system_prompt = system_prompt
+        self.cached_prompt = cached_prompt
+        if cached_prompt is not None and not self.is_support_cached_prompt():
+            print("Cached prompt is not supported by this assistant. Will add it to the system prompt.")
+            self.system_prompt += "\n" + cached_prompt
+            self.cached_prompt = None
+                
+
     def reset_conversation(self):
         self.messages = [{"role": "system", "content": self.system_prompt}]
+        
 
     @observe()
     def query(self, user_prompt: str) -> str:

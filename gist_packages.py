@@ -5,7 +5,7 @@ import argparse
 from projectfiles import ProjectFiles
 
 load_dotenv(override=True)
-from llm_router import LLMQueryManager
+from llm_client import LLMQueryManager
 
 system_prompt = """
 You are a world-class software architect and developer. You are analyzing a codebase that includes both Java code and configuration files. Your task is to write comprehensive notes about each package in the project.
@@ -36,7 +36,9 @@ Notes of Direct Child Files:
 Please provide a comprehensive summary of this package based on the information above.
 """
 
-query_manager = LLMQueryManager(system_prompt=system_prompt)
+
+use_llm = os.environ.get("USE_LLM")
+query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=None)
 
 def real_package_gisting(package, subpackage_notes, filenotes):
     print(f"\n\nAnalyzing package: {package}")
@@ -61,9 +63,6 @@ if __name__ == "__main__":
 
     pf = ProjectFiles(
         repo_root_path=root_path,
-        prefix_list=["src/main/java"],
-        suffix_list=[".java"],
-        resource_suffix_list=['.properties', '.yml', '.xml', '.json']
     )
 
     # Load existing gist files and create package structure
@@ -77,13 +76,14 @@ if __name__ == "__main__":
     print("Traversing Bottom-Up to generate package summaries:")
     print("-" * 50)
 
+
     pf.package_gisting = real_package_gisting
 
     # Traverse the package structure to generate summaries
     pf.package_structure_traverse(
         packages=None,
-        action_file=pf.execute_on_file,
-        action_package=pf.execute_on_package,
+        action_file_func=pf.check_code_file_exists,
+        action_package_func=pf.gist_package,
         is_bottom_up=True
     )
 
