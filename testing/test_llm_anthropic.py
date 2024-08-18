@@ -12,8 +12,8 @@ from projectfiles import ProjectFiles
 def setup_env():
     load_dotenv(override=True)
 
-@pytest.fixture
-def assistant():
+
+def java_assistant():
     system_prompt = """
     You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
 
@@ -40,16 +40,52 @@ def assistant():
     print("Assistant setup complete")
     return assistant
 
-def test_java_assistant(assistant):
-    response = assistant.query("how does the project query database?")
+def test_java_assistant():
+    java_assistant = java_assistant()
+    response = java_assistant.query("how does the project query database?")
     assert response is not None
     print(response[:300])
 
-    response = assistant.query("what are the API endpoints available from the project?")
+    response = java_assistant.query("what are the API endpoints available from the project?")
     assert response is not None
     print(response[:300])
 
+def test_system_prompt():
+    system_prompt = """
+    You manage the mapping between key and value as below:
+    Mile -> 102
+    Jack -> 3
+    Tom -> 22
 
+    You will be asked to provide the value for a given key.
+    You only need to return the value for the key. No need to return the key or any other information.
+    """
+    assistant = AnthropicAssistant(use_history=False)
+    assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    assert assistant.system_prompt == system_prompt
+    response = assistant.query("What is the value for Mile?")
+    print(f"response is {response}")
+    assert response is not None
+
+def test_cached_prompt():
+    system_prompt = """
+    You manage the mapping between key and value.
+    You will be asked to provide the value for a given key.
+    You only need to return the value for the key. No need to return the key or any other information.
+    """
+
+    cached_prompt = """
+    Below is the mapping between key and value:
+    Mile -> 102
+    Jack -> 3
+    Tom -> 22
+    """
+    assistant = AnthropicAssistant(use_history=False)
+    assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=cached_prompt)
+    assert assistant.system_prompt == system_prompt
+    response = assistant.query("What is the value for Mile?")
+    print(f"response is {response}")
+    assert response is not None
 
 
 if __name__ == "__main__":

@@ -12,13 +12,26 @@ def read_files(pf, file_names) -> str:
         file_name = file_name.strip()
         # check whether it is a single file name or a file name with path
         if "/" in file_name:
-            # it is a file name with path
+            # if it starts with '/', that is unexpected, since we don't read from absolute path
+            if file_name.startswith("/"):
+                print(f"!!!File {file_name} does not meet expectations we are looking for relative path!")
+                additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+                continue
+            # it is a file name with path, it could be src/main/java/com/iky/travel/config/TravelBeApplication.java ...
             file_path, file_name = os.path.split(file_name)
-            # get the file, package must be Java style
+            # let's find the "src/main/java" in the file_path, then we can get the package name
+            if "src/main/java" in file_path:
+                file_path = file_path.replace("src/main/java/", "")
+            elif "src/test/java" in file_path:
+                file_path = file_path.replace("src/test/java/", "")
+            else:
+                print(f"!!!File {file_name} does not meet expectations we are looking for src/main/java or src/test/java in the path!")
+                additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+                continue
             package = file_path.replace("/", ".")
             filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=package)
         else:
-            # it is a single file name
+            # it is a single file name, then we look up in the code_files to find the path and summary, then read the file
             filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=None)
        
         if filename:
@@ -26,6 +39,7 @@ def read_files(pf, file_names) -> str:
             additional_reading += f"<summary>{filesummary}</summary>\n"
             additional_reading += f"<content>{filecontent}</content></file>\n"
         else:
+            print(f"!!!File {file_name} does not exist!")
             additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
     return additional_reading
 
@@ -123,6 +137,7 @@ def get_file(pf, file_name, package=None) -> Tuple[str, str, str, str]:
     """
     given a file name, return the file name, summary, path, and content of the file
     """
+    print("attempting to find file:", file_name, "package:", package)
     file = pf.find_codefile_by_name(file_name, package)
     if file:
         # now let's get the file content, since we have the path

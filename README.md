@@ -152,6 +152,18 @@ poetry run python grooming_task.py ./data/travel-service-dev --task="refactor th
 
 ```
 
+or if you have a specific question to ask
+
+```sh
+poetry run python tell_me_about.py ./data/travel-service-dev/ --question="how data flow from database to the API"
+```
+
+or just use a dedicated script to find info in the API projects, which will generate a markdown file (api_note.md) under ".gist" folder
+
+```sh
+poetry run python gist_api.py ./data/travel-service-dev
+```
+
 ## Try Your Project
 
 ### **Step One to Gist code files**

@@ -8,9 +8,8 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 from llm_client import LLMQueryManager, ResponseManager
 from typing import Union
-from functions import get_file, get_package, get_static_notes
-from functions import search_files_with_keyword, read_files, read_packages, read_all_packages, read_from_human
-from gist_api import default_api_notes_file
+from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
+from functions import read_files, read_packages, read_all_packages, read_from_human
 
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks). Follow this structured approach:
@@ -39,11 +38,36 @@ You are a world-class Java developer tasked with grooming development tasks in J
 
 2. Research the codebase:
  - If you need to examine specific files, request them in this specific format only:
- [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
+    [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
+    Then I will provide the files that contain the keywords, in format:
+    <search><keyword>keyword</keyword>
+    <files><file>file1.java</file>, <file>file2.java</file></files>
+    </search>
+ 
  - If you need information about packages, ask in this specific format only:
- [I need info about packages: <package>package name</package>,<package>package2 name</package>]
+    [I need info about packages: <package>package name</package>,<package>package2 name</package>]
+    Then I will provide summary of the package next with format:
+    <package name="package name">
+        <notes>summary of package</notes>
+        <sub_packages>sub packages</sub_packages>
+        <files>files in the package</files>
+    </package>
+
  - If you need to search for specific information within the project, use below format only:
- [I need to search <keyword>keyword</keyword> in the project]
+    [I need to search <keyword>keyword</keyword> in the project]
+    Then I will provide the files that contain the keywords, in format:
+        <search><keyword>keyword</keyword>
+        <files><file>file1.java</file>, <file>file2.java</file></files>
+        </search>
+
+- During our conversations, your previous notes will be found within
+    <Previous research notes> 
+    ...
+    </Previous research notes>tags, 
+    and any answer to your requests including search results, file contents and package summaries will be found within 
+    <Additional Materials>
+    ...
+    <Additional Materials> tags.
 
 3. Plan the implementation:
  - Break down the task into logical steps
@@ -84,11 +108,13 @@ user_prompt_template = """
 The task to be groomed is:
 "{task}"
 
-Previous research notes:
+<Previous research notes>
 {notes}
+</Previous research notes>
 
-Additional reading:
+<Additional Materials>
 {additional_reading}
+</Additional Materials>
 
 Please perform a Task Analysis following the structured approach outlined in your instructions, then proceed with analyzing this task and providing a detailed plan.
 """
@@ -111,7 +137,7 @@ def ask_continue(query_manager, task, last_response, pf, past_additional_reading
 
     if last_response == "":
         # Initial conversation: perform Task Analysis
-        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes="", additional_reading="")
+        user_prompt = user_prompt_template.format(task=task, notes="", additional_reading="")
         response = query_manager.query(user_prompt)
         
         # Extract Task Analysis results
@@ -122,47 +148,54 @@ def ask_continue(query_manager, task, last_response, pf, past_additional_reading
         
         return response, additional_reading, False
     
-    for line in last_response.split("\n"):
-        # clean line
-        line = line.strip()
-        if line.startswith("[I need to search"):
-            # [I need to search <search>what you need to search</search>]
+    lines = last_response.split("\n")
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if "[I need to search" in line:
             match = re.search(r'<keyword>(.*?)</keyword>', line)
             if match:
                 what = match.group(1)
                 print(f"LLM needs to search: {what}")
                 # search for files with the keyword within the project
-                files = search_files_with_keyword(pf.root_path, what)
-                for file in files:
-                    additional_reading += f"Found {what} in file: {file}\n"
-                additional_reading += f"Found {len(files)} files with the keyword: {what}\n "
-        elif line.startswith("[I need content of files:") or line.startswith("[I need access files:"):
+                file_extensions = ['.java', '.yml', '.properties']  # Add or modify as needed
+        
+                matching_files = efficient_file_search(pf.root_path, what, file_extensions=file_extensions)
+
+                if matching_files:
+                    files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
+                    additional_reading += f"<search><keyword>{what}</keyword>\n    <files>{files_str}</files>\n</search>\n"
+                else:
+                    additional_reading += f"<search><keyword>{what}</keyword>\n    <files>No matching files found</files>\n</search>\n"
+
+        elif "[I need content of files:" in line or "[I need access files:" in line:
             # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
-            # LLM needs access to files: ['com/homedepot/fbr/response/Item.java', 'com/homedepot/fbr/service/FBRResource.java']
-            # Define a regex pattern to match content between <file> and </file> tags
-            pattern = r'<file>(.*?)</file>'
-            file_names = re.findall(pattern, line)
+            file_names = process_file_request(lines[i:])
             print(f"LLM needs access to files: {file_names}")
             additional_reading += read_files(pf, file_names)
-            print(f"contents provided for {file_names}")            
-        elif line.startswith("[I need info about packages:"):
-            # [I need info about packages: <package>package name</package>,<package>package2 name</package>,<package>package3 name</package>]
-            # Need more info of package: ['com.fasterxml.jackson.databind']
+            print(f"contents provided for {file_names}")
+            # Skip processed lines
+            while i < len(lines) and "]" not in lines[i]:
+                i += 1            
+        elif "[I need info about packages:" in line:
             pattern = r'<package>(.*?)</package>'
             package_names = re.findall(pattern, line)
             print(f"Need more info of package: {package_names}")
             additional_reading += read_packages(pf, package_names)
-        elif line.startswith("[I need clarification about"):
+        #elif "[I need clarification about" in line:
             # [I need clarification about <ask>what you need clarification about</ask>]
-            what = re.search(r'<ask>(.*?)</ask>', line).group(1)
-            print(f"LLM needs more information: \n{what}")
+        #    what = re.search(r'<ask>(.*?)</ask>', line).group(1)
+        #    print(f"LLM needs more information: \n{what}")
             # ask user to enter manually through commmand line
-            additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
-        elif line.startswith("[I need"):
-            print(f"LLM needs more information: \n{line}")
-            additional_reading += f"{read_from_human(line)}\n"
+        #    additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
+        #elif "[I need" in line:
+        #    print(f"LLM needs more information: \n{line}")
+        #    additional_reading += f"{read_from_human(line)}\n"
         else:
             pass
+        i += 1
+
     if additional_reading:
         user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=last_response, additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
         response = query_manager.query(user_prompt)
@@ -202,19 +235,21 @@ def extract_task_analysis(response):
 
 def perform_guided_research(task_analysis, pf):
     additional_reading = ""
-    
+    file_extensions = ['.java', '.yml', '.properties']  # Add or modify as needed
     # Use investigation points to guide research
     for point in task_analysis['investigation_points']:
         # Search for keywords related to the investigation point
         keywords = extract_keywords(point)
         for keyword in keywords:
-            files = search_files_with_keyword(pf.root_path, keyword)
-            for file in files:
-                additional_reading += f"Found {keyword} in file: {file}\n"
-            additional_reading += f"Found {len(files)} files with the keyword: {keyword}\n"
+            # search for files with the keyword within the project
+            matching_files = efficient_file_search(pf.root_path, keyword, file_extensions=file_extensions)
+            if matching_files:
+                files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
+                additional_reading += f"<search><keyword>{keyword}</keyword>\n    <files>{files_str}</files>\n</search>\n"
+            else:
+                additional_reading += f"<search><keyword>{keyword}</keyword>\n    <files>No matching files found</files>\n</search>\n"
     
     # Add any other guided research based on the task analysis
-    
     return additional_reading
 
 def extract_keywords(text):
@@ -264,7 +299,7 @@ if __name__ == "__main__":
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
         response, additional_reading, doneNow = ask_continue(query_manager, task, last_response, pf, past_additional_reading=past_additional_reading)
-        print(response)
+        #print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
             print(response)
@@ -272,4 +307,5 @@ if __name__ == "__main__":
         else:
             past_additional_reading += ("\n" + additional_reading)
             i += 1
+    print("Conversation with LLM ended")
 

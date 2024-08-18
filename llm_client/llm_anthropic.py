@@ -48,9 +48,7 @@ class AnthropicAssistant:
                 "text": self.cached_prompt,
                 "cache_control": {"type": "ephemeral"}
             })
-        langfuse_context.update_current_observation(
-            input=system_prompt,
-        )
+        #print(f"\n\nsystem_prompt: {system_prompt}\n\n")
         response = self.anthropic.messages.create(
             model=self.model,
             max_tokens=2048,
@@ -79,6 +77,8 @@ class AnthropicAssistant:
             self.messages.append({"role": "assistant", "content": assistant_message})
         else:
             self.reset_messages()
+        # flush trace
+        langfuse_context.flush()
 
         return assistant_message
 

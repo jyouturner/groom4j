@@ -43,6 +43,7 @@ class OpenAILLM(LLMInterface):
         assistant_without_history = OpenAIAssistant(model=os.environ.get("OPENAI_MODEL"), use_history=False)
         assistant_without_history.set_system_prompts(system_prompt = system_prompt, cached_prompt=cached_prompt)
         self.assistant = assistant_without_history
+
     @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.assistant.query(user_prompt)
@@ -77,6 +78,7 @@ class AnthropicLLM(LLMInterface):
         self.assistant = AnthropicAssistant(use_history=False)
         self.assistant.set_system_prompts(system_prompt = system_prompt, cached_prompt=cached_prompt)
 
+    @observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
 
@@ -101,7 +103,7 @@ class LLMQueryManager:
         self.llm = LLMFactory.get_llm(use_llm= use_llm, system_prompt = system_prompt, cached_prompt = cached_prompt)
         self.response_manager = ResponseManager()
 
-    def support_cached_prompt(self, use_llm) -> bool:
+    def support_cached_prompt(self) -> bool:
         # only turn on prompt caching with Anthropic
         return self.llm.is_support_cached_prompt()
 
