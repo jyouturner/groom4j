@@ -10,6 +10,7 @@ from llm_client import LLMQueryManager, ResponseManager
 from typing import Union
 from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
 from functions import read_files, read_packages, read_all_packages, read_from_human
+from llm_interaction import process_llm_response, initiate_llm_query_manager
 
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks).
@@ -130,86 +131,17 @@ Please perform a Task Analysis following the structured approach outlined in the
 """
 
 
-def initiate_llm_query_manager(pf):
-    use_llm = os.environ.get("USE_LLM")
-    # prompts can be reused and cached in the LLM if it is supported
-    package_notes = get_static_notes(pf)
-    project_tree = pf.to_tree()
-    cached_prompt = reused_prompt_template.format(project_tree=project_tree, package_notes=package_notes)
-    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt)
-    
-    return query_manager
 
 def ask_continue(query_manager, task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
-    projectTree = pf.to_tree()
+    additional_reading, processed_requests = process_llm_response(last_response, pf)
     
-    additional_reading = ""
-
-    if last_response == "":
-        # Initial conversation: perform Task Analysis
-        user_prompt = user_prompt_template.format(task=task, notes="", additional_reading="",instructions=instructions)
-        response = query_manager.query(user_prompt)
-        
-        # Extract Task Analysis results
-        task_analysis = extract_task_analysis(response)
-        
-        # Use Task Analysis to guide further research
-        additional_reading = perform_guided_research(task_analysis, pf)
-        
-        return response, additional_reading, False
-    
-    lines = last_response.split("\n")
-    
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        if "[I need to search" in line:
-            match = re.search(r'<keyword>(.*?)</keyword>', line)
-            if match:
-                what = match.group(1)
-                print(f"LLM needs to search: {what}")
-                # search for files with the keyword within the project
-                file_extensions = ['.java', '.yml', '.properties']  # Add or modify as needed
-        
-                matching_files = efficient_file_search(pf.root_path, what, file_extensions=file_extensions)
-
-                if matching_files:
-                    files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
-                    additional_reading += f"<search><keyword>{what}</keyword>\n    <files>{files_str}</files>\n</search>\n"
-                else:
-                    additional_reading += f"<search><keyword>{what}</keyword>\n    <files>No matching files found</files>\n</search>\n"
-
-        elif "[I need content of files:" in line or "[I need access files:" in line:
-            # example [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
-            file_names = process_file_request(lines[i:])
-            print(f"LLM needs access to files: {file_names}")
-            additional_reading += read_files(pf, file_names)
-            print(f"contents provided for {file_names}")
-            # Skip processed lines
-            while i < len(lines) and "]" not in lines[i]:
-                i += 1            
-        elif "[I need info about packages:" in line:
-            pattern = r'<package>(.*?)</package>'
-            package_names = re.findall(pattern, line)
-            print(f"Need more info of package: {package_names}")
-            additional_reading += read_packages(pf, package_names)
-        #elif "[I need clarification about" in line:
-            # [I need clarification about <ask>what you need clarification about</ask>]
-        #    what = re.search(r'<ask>(.*?)</ask>', line).group(1)
-        #    print(f"LLM needs more information: \n{what}")
-            # ask user to enter manually through commmand line
-        #    additional_reading += f"Regarding {what}, {read_from_human(line)}\n"
-        #elif "[I need" in line:
-        #    print(f"LLM needs more information: \n{line}")
-        #    additional_reading += f"{read_from_human(line)}\n"
-        else:
-            pass
-        i += 1
-
-    if additional_reading:
-        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=last_response, 
-                                                  additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading,
-                                                  instructions=instructions)
+    if last_response == "" or additional_reading:
+        user_prompt = user_prompt_template.format(
+            task=task,
+            notes=last_response,
+            additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading,
+            instructions=instructions
+        )
         response = query_manager.query(user_prompt)
         return response, additional_reading, False
     else:
@@ -307,7 +239,7 @@ if __name__ == "__main__":
     additional_reading = ""
     ResponseManager.reset_prompt_response()
     # initiate the LLM query manager
-    query_manager = initiate_llm_query_manager(pf)
+    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
         response, additional_reading, doneNow = ask_continue(query_manager, task, last_response, pf, past_additional_reading=past_additional_reading)
@@ -320,4 +252,3 @@ if __name__ == "__main__":
             past_additional_reading += ("\n" + additional_reading)
             i += 1
     print("Conversation with LLM ended")
-
