@@ -12,7 +12,13 @@ from functions import get_file, get_package, get_static_notes, efficient_file_se
 from functions import read_files, read_packages, read_all_packages, read_from_human
 
 system_prompt = """
-You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks). Follow this structured approach:
+You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks).
+"""
+
+instructions = """
+<instructions>
+
+Follow this structured approach:
 
 1. Task Analysis:
    Before proceeding with the implementation steps, perform the following analysis:
@@ -60,14 +66,15 @@ You are a world-class Java developer tasked with grooming development tasks in J
         <files><file>file1.java</file>, <file>file2.java</file></files>
         </search>
 
-- During our conversations, your previous notes will be found within
-    <Previous research notes> 
-    ...
-    </Previous research notes>tags, 
-    and any answer to your requests including search results, file contents and package summaries will be found within 
+    Answer to your requests including search results, file contents and package summaries will be found within 
     <Additional Materials>
     ...
     <Additional Materials> tags.
+
+    During our conversations, your previous notes will be found within
+    <Previous research notes> 
+    ...
+    </Previous research notes>tags.
 
 3. Plan the implementation:
  - Break down the task into logical steps
@@ -93,6 +100,8 @@ You are a world-class Java developer tasked with grooming development tasks in J
 Remember:
 - Explain your reasoning when requesting additional information
 - Begin your analysis with the Task Analysis section, then proceed with "Let's break down the task and plan our approach."
+
+</instructions>
 """
 
 reused_prompt_template = """
@@ -116,7 +125,8 @@ The task to be groomed is:
 {additional_reading}
 </Additional Materials>
 
-Please perform a Task Analysis following the structured approach outlined in your instructions, then proceed with analyzing this task and providing a detailed plan.
+Please perform a Task Analysis following the structured approach outlined in the instructions, then proceed with analyzing this task and providing a detailed plan.
+{instructions}
 """
 
 
@@ -137,7 +147,7 @@ def ask_continue(query_manager, task, last_response, pf, past_additional_reading
 
     if last_response == "":
         # Initial conversation: perform Task Analysis
-        user_prompt = user_prompt_template.format(task=task, notes="", additional_reading="")
+        user_prompt = user_prompt_template.format(task=task, notes="", additional_reading="",instructions=instructions)
         response = query_manager.query(user_prompt)
         
         # Extract Task Analysis results
@@ -197,7 +207,9 @@ def ask_continue(query_manager, task, last_response, pf, past_additional_reading
         i += 1
 
     if additional_reading:
-        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=last_response, additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        user_prompt = user_prompt_template.format(task=task, project_tree=projectTree, notes=last_response, 
+                                                  additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading,
+                                                  instructions=instructions)
         response = query_manager.query(user_prompt)
         return response, additional_reading, False
     else:
@@ -282,7 +294,7 @@ if __name__ == "__main__":
         sys.exit(1)
     # if jira is provided, then get the task from Jira
     if jira:
-        from my_jira import MyJira
+        from integration import MyJira
         myJira = MyJira(host=os.environ.get("JIRA_SERVER"), user=os.environ.get("JIRA_USERNAME"), api_token=os.environ.get("JIRA_API_TOKEN"))
         issue = myJira.find_issue(jira)
         task = issue.fields.description

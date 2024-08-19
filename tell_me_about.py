@@ -16,13 +16,19 @@ from functions import process_file_request
 system_prompt = """
 You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
 
+"""
+
+instructions = """
+
+<instructions>
 Begin your analysis with: "Let's inspect the Java project to answer the question: [restate the question]"
 
-As you analyze, follow these guidelines:
+<guidelines>
 1. Start with a high-level overview of relevant components.
 2. Dive deeper into specific areas as needed, leveraging the project structure, codebase, and feel free to search and access files.
 3. Provide clear, concise explanations.
-4. If you're unsure about something, state it clearly and suggest ways to find the information.
+4. If you're unsure about something, state it clearly.
+</guidelines>
 
 If you need more information, use the following formats to request it:
 
@@ -50,23 +56,20 @@ If you need more information, use the following formats to request it:
         <files>files in the package</files>
     </package>
 
-Always use these exact formats for requests. After receiving information, analyze it and relate it back to the original question. If you need clarification on any information received, ask for it specifically.
+After receiving information, analyze it and relate it back to the original question. 
 
-Remember to consider:
-- Project structure and architecture
-- Relevant design patterns
-- Framework-specific configurations
-
-During our conversations, your previous notes will be found within
-<Previous research notes> 
-...
-</Previous research notes>tags, 
-and any answer to your requests including search results, file contents and package summaries will be found within 
+Answer to your requests including search results, file contents and package summaries will be found within 
 <Additional Materials>
 ...
 <Additional Materials> tags.
 
+During our conversations, your previous notes will be found within
+<Previous research notes> 
+...
+</Previous research notes>tags.
+
 Conclude your analysis with a clear, concise summary that directly addresses the original question.
+</instructions>
 """
 
 reused_prompt_template = """
@@ -90,7 +93,7 @@ You need to inspect <question>{question}</question>
 {additional_reading}
 </Additional Materials>
 
-
+{instructions}
 """
 
 def initiate_llm_query_manager(pf):
@@ -141,6 +144,7 @@ def ask_continue(query_manager, question, last_response, pf, past_additional_rea
             package_names = re.findall(pattern, line)
             print(f"Need more info of package: {package_names}")
             additional_reading += read_packages(pf, package_names)
+            print(f"info provided for {package_names}")
         #elif "[I need clarification about" in line:
             # [I need clarification about <ask>what you need clarification about</ask>]
         #    what = re.search(r'<ask>(.*?)</ask>', line).group(1)
@@ -155,7 +159,9 @@ def ask_continue(query_manager, question, last_response, pf, past_additional_rea
         i += 1
     if last_response=="" or additional_reading:
         # either the first time or the last conversation needs more information            
-        user_prompt = user_prompt_template.format(question = question, notes = last_response, additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading)
+        user_prompt = user_prompt_template.format(question = question, notes = last_response, 
+                                                  additional_reading = "Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading,
+                                                  instructions = instructions)
         response = query_manager.query(user_prompt)
         return response, additional_reading, False
     else:
