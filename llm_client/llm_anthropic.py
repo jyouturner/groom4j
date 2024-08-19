@@ -1,9 +1,10 @@
 from langfuse.decorators import observe, langfuse_context
 
-from anthropic import Anthropic
+from anthropic import Anthropic, RateLimitError
 import os
 from dotenv import load_dotenv
 from typing import List, Dict
+from time import sleep
 
 class AnthropicAssistant:
     def __init__(self, use_history: bool = True):
@@ -14,6 +15,8 @@ class AnthropicAssistant:
         self.cached_prompt = None
         self.use_history = use_history
         self.reset_messages()
+        self.max_retries = 3
+        self.base_delay = 20  # 5 seconds
 
     def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
         self.system_prompt = system_prompt
@@ -48,17 +51,27 @@ class AnthropicAssistant:
                 "text": self.cached_prompt,
                 "cache_control": {"type": "ephemeral"}
             })
-        #print(f"\n\nsystem_prompt: {system_prompt}\n\n")
-        response = self.anthropic.messages.create(
-            model=self.model,
-            max_tokens=2048,
-            temperature=0.0,
-            # support for prompt caching
-            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
-            #system=self.system_prompt,
-            system=system_prompt,
-            messages=self.messages
-        )
+
+        for attempt in range(self.max_retries):
+            try:
+                response = self.anthropic.messages.create(
+                    model=self.model,
+                    max_tokens=2048,
+                    temperature=0.0,
+                    extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+                    system=system_prompt,
+                    messages=self.messages
+                )
+                break  # If successful, break out of the retry loop
+            except RateLimitError as e:
+                if attempt < self.max_retries - 1:
+                    delay = self.base_delay * (2 ** attempt)  # Exponential backoff
+                    print(f"Rate limit reached. Retrying in {delay} seconds...")
+                    sleep(delay)
+                else:
+                    print("Max retries reached. Please try again later.")
+                    raise e
+
         langfuse_context.update_current_observation(
             input=self.messages,
             model=self.model,
@@ -70,14 +83,11 @@ class AnthropicAssistant:
         )
         assistant_message = response.content[0].text
 
-        # Add newline characters to the assistant's response
-        # assistant_message = assistant_message.replace("\n", "\nassistant: ")
-
         if self.use_history:
             self.messages.append({"role": "assistant", "content": assistant_message})
         else:
             self.reset_messages()
-        # flush trace
+        
         langfuse_context.flush()
 
         return assistant_message
