@@ -108,9 +108,9 @@ langfuse:
   host: http://localhost:3000
 ```
 
-## Java Project Source
+## Example Java Project
 
-You can use "project_root" to specify the Java repo location. For testing purpose, there is a sample Java project "travel-service-dev" included in the "data" folder. It is an open source project available at Github [https://github.com/ilkeratik/travel-service](https://github.com/ilkeratik/travel-service).
+For testing purpose, there is a sample Java project "travel-service-dev" included in the "data" folder. It is an open source project available at Github [https://github.com/ilkeratik/travel-service](https://github.com/ilkeratik/travel-service).
 
 <img src="docs/travel_service_project_structure.png" width="500" alt="Travel Service Java Project Structure">
 
@@ -139,7 +139,7 @@ or just use a dedicated script to find info in the API projects, which will gene
 poetry run python gist_api.py ./data/travel-service-dev
 ```
 
-## Try Your Project
+## Use on Your Project
 
 ### **Step One to Gist code files**
 
@@ -159,13 +159,26 @@ After the process is done, you will see a file "package_notes.txt" created in th
 
 ### **Optional to Gist API**
 
+If your project is a API project, there is a dedicated script to create a markdown file to describe the endpoints of the API.
+
 ```sh
 poetry run python gist_api.py path/to/the/Java/Project/Repo
 ```
 
 After the process is done, you will see a mardown file "api_notes.md" created in the ".gist" folder.
 
+
+## Q&A
+
+If you have a specific question to ask about the codebase, you can use below command to inspect the codebase
+
+```sh
+poetry run python grooming_task.py path/to/the/Java/Project/Repo --question="..."
+```
+
 ## Groom Coding Task
+
+Development tasks and stories are often bigger than one single Q/A, you can use below command for the "grooming" purpose.
 
 ```sh
 poetry run python grooming_task.py path/to/the/Java/Project/Repo --task="..."
