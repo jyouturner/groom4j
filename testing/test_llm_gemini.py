@@ -9,6 +9,7 @@ import os
 
 # Global variable to hold the AnthropicAssistant class
 VertexAssistant = None
+from mock_vertex_assistant import mock_vertex_assistant
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
@@ -18,7 +19,10 @@ def setup_env():
     # Import VertexAssistant after loading config, and after langfuse is initialized
     # this is important because the VertexAssistant class is not available until langfuse is initialized
     global VertexAssistant
-    from llm_client import VertexAssistant
+    with mock_vertex_assistant():
+        from llm_client import VertexAssistant
+        yield
+
 
 @pytest.fixture
 def assistant():
@@ -43,41 +47,49 @@ def assistant():
         package_notes += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
     cached_prompt = reused_prompt_template.format(project_tree=pf.to_tree(), package_notes=package_notes)   
     
-    assistant = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
-    assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=cached_prompt)
-    print("Assistant setup complete")
-    return assistant
+    with mock_vertex_assistant():
+        assistant = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
+        assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=cached_prompt)
+        print("Assistant setup complete")
+        return assistant
+
 
 def test_java_assistant(assistant):
     response = assistant.query("how does the project query database?")
     assert response is not None
+    assert "Mocked Vertex AI response for:" in response
     print(response[:300])
 
     response = assistant.query("what are the API endpoints available from the project?")
     assert response is not None
+    assert "Mocked Vertex AI response for:" in response
     print(response[:300])
 
 def test_history():
+    with mock_vertex_assistant():
+        system_prompt = "You are a helpful assistant specialized in Java development."
 
-    system_prompt = "You are a helpful assistant specialized in Java development."
+        gemini = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
+        gemini.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+        
+        # Example usage
+        print("With history:")
+        print(gemini.query("Hello, can you explain Java interfaces?"))
+        print(gemini.query("How do they differ from abstract classes?"))
 
-    gemini = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
-    gemini.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
-    
-    # Example usage
-    print("With history:")
-    print(gemini.query("Hello, can you explain Java interfaces?"))
-    print(gemini.query("How do they differ from abstract classes?"))
+        # Save the session for later use
+        gemini.save_session_history("java_session_vertex.txt")
 
-    # Save the session for later use
-    gemini.save_session_history("java_session_vertex.txt")
+        # Example without history
+        gemini = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
+        gemini.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+        print("\nWithout history:")
+        response = gemini.query("Hello, can you explain Java interfaces?")
+        print(response[:100])
+        response = gemini.query("Can you give an example of polymorphism in Java?")
+        print(response[:100])
 
-    # Example without history
-    gemini = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
-    gemini.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
-    print("\nWithout history:")
-    print(gemini.query("What are the main features of Java?"))
-    print(gemini.query("Can you give an example of polymorphism in Java?"))
+        assert "Mocked Vertex AI response for:" in response
 
 
 
