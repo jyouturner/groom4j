@@ -61,6 +61,7 @@ class ProjectFiles:
         self.resource_files = []
         self.packages = {}
         self.gist_file_path = None
+        self.package_gisting_func = None
 
     def from_files(self, files):
         self.files = files
@@ -180,7 +181,7 @@ class ProjectFiles:
 
     def gist_package(self, package, subpackages, filenames):
         # check to make sure the function is set
-        if not self.package_gisting_func:
+        if self.package_gisting_func is None:
             raise ValueError("package_gisting_func is not set!")
         subpackage_notes = ""
         for subpackage, value in subpackages.items():

@@ -3,16 +3,26 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
-from dotenv import load_dotenv
-import llm_client.langfuse_setup as langfuse_setup
-from llm_client import LLMQueryManager
+
+
 from projectfiles import ProjectFiles
 
 use_llm = "gemini"
 
+# Global variable to hold the LLMQueryManager class, which is imported in the setup_env fixture
+# this is important because the LLMQueryManager class is not available until langfuse is initialized
+# which depends on the config_utils module
+LLMQueryManager = None
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
-    load_dotenv(override=True)
+    # Load configuration into environment variables
+    from config_utils import load_config_to_env
+    load_config_to_env(config_path="testing/application_test.yml")
+    global LLMQueryManager
+    from llm_client import LLMQueryManager
+    
+
 
 @pytest.fixture
 def assistant():

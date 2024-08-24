@@ -4,10 +4,6 @@ import argparse
 from projectfiles import ProjectFiles
 import re
 
-from dotenv import load_dotenv
-load_dotenv(override=True)
-
-from llm_client import LLMQueryManager
 
 system_prompt = """
 You are a world-class developer and configuration expert. When analyzing a file, provide a detailed summary focusing on the following aspects:
@@ -67,13 +63,6 @@ Full File Content:
 Please analyze this file based on the guidelines provided earlier, focusing on key functionalities, important methods, design patterns, and other crucial details.
 """
 
-def initiate_llm_query_manager(pf):
-    use_llm = os.environ.get("USE_LLM")
-    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=None)
-    
-    return query_manager
-
-
 def get_file_type(filename):
     _, ext = os.path.splitext(filename)
     return ext.lower()
@@ -132,6 +121,14 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
+    # the order of the following imports is important
+    # since the initialization of langfuse depends on the os environment variables
+    # which are loaded in the config_utils module
+    from config_utils import load_config_to_env
+    load_config_to_env()
+    from llm_client import LLMQueryManager, ResponseManager
+    from llm_interaction import process_llm_response, initiate_llm_query_manager
+
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
@@ -167,7 +164,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     input(f"Press Enter to start gisting {len(all_files)} files...")
-    query_manager = initiate_llm_query_manager(pf)
+    query_manager = initiate_llm_query_manager(pf=pf, system_prompt=system_prompt, reused_prompt_template=None)
     for index, file in enumerate(all_files, start=1):
         print(f"Processing file {index}/{total_files}: {file.filename} ({file.package})")
         notes = code_gisting(query_manager=query_manager, project_root=root_path, code_file=file)

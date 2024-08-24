@@ -1,4 +1,5 @@
 .env
+application.yml
 __pycache__
 venv
 *.pkl

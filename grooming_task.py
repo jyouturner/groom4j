@@ -4,13 +4,11 @@ import sys
 import re
 import argparse
 from projectfiles import ProjectFiles
-from dotenv import load_dotenv
-load_dotenv(override=True)
-from llm_client import LLMQueryManager, ResponseManager
+
 from typing import Union
 from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
 from functions import read_files, read_packages, read_all_packages, read_from_human
-from llm_interaction import process_llm_response, initiate_llm_query_manager
+
 
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks).
@@ -208,6 +206,15 @@ if __name__ == "__main__":
     parser.add_argument("--max-rounds", type=int, default=8, help="Maximum rounds of conversation with LLM before stopping the conversation (default: 8)")
     args = parser.parse_args()
     print(args)
+
+    # the order of the following imports is important
+    # since the initialization of langfuse depends on the os environment variables
+    # which are loaded in the config_utils module
+    from config_utils import load_config_to_env
+    load_config_to_env()
+    from llm_client import LLMQueryManager, ResponseManager
+    from llm_interaction import process_llm_response, initiate_llm_query_manager
+    
     # Convert to absolute path if it's a relative path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):

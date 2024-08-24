@@ -1,14 +1,12 @@
-from langfuse.decorators import observe, langfuse_context
+from .langfuse_setup import observe, langfuse_context
 
 from anthropic import Anthropic, RateLimitError
 import os
-from dotenv import load_dotenv
 from typing import List, Dict
 from time import sleep
 
 class AnthropicAssistant:
     def __init__(self, use_history: bool = True):
-        load_dotenv(override=True)
         self.anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.model = os.environ.get("ANTHROPIC_MODEL", "claude-3-opus-20240229")
         self.system_prompt = None
@@ -141,41 +139,7 @@ class AnthropicAssistant:
         if not use_history:
             self.reset_messages()
 
-@observe()
-def main():
-    system_prompt = "You are a helpful AI assistant specialized in Java development."
-    
-    # Example with history
-    assistant_with_history = AnthropicAssistant(system_prompt, use_history=True)
-    print("With history:")
-    response = assistant_with_history.query("Hello, what is your name? can you explain Java interfaces?")
-    print(response[:100])
-    response = assistant_with_history.query("How do they differ from abstract classes?")
-    print(response[:100])
 
-    # Example without history
-    assistant_without_history = AnthropicAssistant(system_prompt, use_history=False)
-    print("\nWithout history:")
-    response = assistant_without_history.query("Hello, can you explain Java interfaces?")
-    print(response[:100])
-    response = assistant_without_history.query("How do they differ from abstract classes?")
-    print(response[:100])
-
-    # Save the session for later use
-    assistant_with_history.save_session_history("java_session_anthropic.txt")
-
-    # Later, you can load the session and continue
-    new_assistant = AnthropicAssistant(system_prompt, use_history=True)
-    new_assistant.load_session_history("java_session_anthropic.txt")
-    print("\nContinuing loaded session:")
-    response = new_assistant.query("Given what we discussed about interfaces and abstract classes, when should I use each?")
-    print(response[:100])
-
-    # Switching history mode
-    print("\nSwitching history mode:")
-    assistant_with_history.set_use_history(False)
-    response = assistant_with_history.query("What's the difference between public and private methods?")
-    print(response[:100])
 
 
 

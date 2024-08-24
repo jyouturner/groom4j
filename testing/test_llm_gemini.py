@@ -3,15 +3,22 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
-from dotenv import load_dotenv
-import llm_client.langfuse_setup as langfuse_setup
-from llm_client import VertexAssistant
+
 from projectfiles import ProjectFiles
 import os
 
+# Global variable to hold the AnthropicAssistant class
+VertexAssistant = None
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
-    load_dotenv(override=True)
+    # Load configuration into environment variables
+    from config_utils import load_config_to_env
+    load_config_to_env(config_path="testing/application_test.yml")
+    # Import VertexAssistant after loading config, and after langfuse is initialized
+    # this is important because the VertexAssistant class is not available until langfuse is initialized
+    global VertexAssistant
+    from llm_client import VertexAssistant
 
 @pytest.fixture
 def assistant():
@@ -50,6 +57,27 @@ def test_java_assistant(assistant):
     assert response is not None
     print(response[:300])
 
+def test_history():
+
+    system_prompt = "You are a helpful assistant specialized in Java development."
+
+    gemini = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
+    gemini.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    
+    # Example usage
+    print("With history:")
+    print(gemini.query("Hello, can you explain Java interfaces?"))
+    print(gemini.query("How do they differ from abstract classes?"))
+
+    # Save the session for later use
+    gemini.save_session_history("java_session_vertex.txt")
+
+    # Example without history
+    gemini = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), model_name="gemini-1.5-pro", use_history=False)
+    gemini.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    print("\nWithout history:")
+    print(gemini.query("What are the main features of Java?"))
+    print(gemini.query("Can you give an example of polymorphism in Java?"))
 
 
 

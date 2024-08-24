@@ -58,7 +58,7 @@ class VertexAILLM(LLMInterface):
         from llm_client.llm_google_vertexai import VertexAssistant
         project_id = os.getenv("GCP_PROJECT_ID")
         location = os.getenv("GCP_LOCATION")
-        model_name = os.getenv("GEMINI_MODEL")
+        model_name = os.getenv("GCP_MODEL")
         self.assistant = VertexAssistant(
             project_id, 
             location, 
@@ -115,8 +115,9 @@ class LLMQueryManager:
 
 # Usage
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv(override=True)
+    # Load configuration into environment variables
+    from config_utils import load_config_to_env
+    load_config_to_env()
     
     system_prompt = "You are a helpful assistant."
     user_prompt = "What's the weather like today?"

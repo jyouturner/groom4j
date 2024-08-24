@@ -1,21 +1,14 @@
-# langfuse setup
 import os
-from langfuse.decorators import observe
-from langfuse.openai import openai
+from .langfuse_setup import observe, langfuse_context
+from openai import OpenAI, RateLimitError, APIError
 from datetime import datetime
 import time
 import os
 from typing import List, Dict
 
-#else:
-#    def with_langtrace_root_span():
-#      def decorator(any, func):
-#              return func
-#      return decorator
-
 class OpenAIAssistant:
     def __init__(self, model: str = 'gpt-4o', temperature: float = 0.0, max_tokens: int = 2048, use_history: bool = True):
-        self.client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -34,13 +27,14 @@ class OpenAIAssistant:
             print("Cached prompt is not supported by this assistant. Will add it to the system prompt.")
             self.system_prompt += "\n" + cached_prompt
             self.cached_prompt = None
+        self.reset_conversation()
                 
 
     def reset_conversation(self):
         self.messages = [{"role": "system", "content": self.system_prompt}]
         
 
-    @observe()
+    @observe(as_type="generation", capture_input=False, capture_output=False)
     def query(self, user_prompt: str) -> str:
         if not self.use_history:
             self.reset_conversation()
@@ -49,15 +43,23 @@ class OpenAIAssistant:
         
         while True:
             try:
-                completion = self.client.chat.completions.create(
+                response = self.client.chat.completions.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     messages=self.messages
                 )
                 #completion = raw_response.parse()
-                assistant_message = completion.choices[0].message.content
-                
+                assistant_message = response.choices[0].message.content
+                langfuse_context.update_current_observation(
+                    input=self.messages,
+                    model=self.model,
+                    output=assistant_message,
+                    usage={
+                        "input": response.usage.prompt_tokens,
+                        "output": response.usage.completion_tokens
+                    }
+                )
                 if self.use_history:
                     self.messages.append({"role": "assistant", "content": assistant_message})
                 else:
@@ -66,10 +68,11 @@ class OpenAIAssistant:
                 print(f"OpenAIAssistant.query returning: {type(assistant_message)}")
                 return assistant_message
             
-            except openai.RateLimitError as e:
+            except RateLimitError as e:
                 print(f'{datetime.now()}: query_gpt_model: RateLimitError {e.message}: {e}')
                 time.sleep(60)
-            except openai.APIError as e:
+            except APIError as e:
+                print("self.messages:", self.messages)
                 print(f'{datetime.now()}: query_gpt_model: APIError {e.message}: {e}')
                 print(f'{datetime.now()}: query_gpt_model: Retrying after 5 seconds...')
                 time.sleep(5)
@@ -120,42 +123,3 @@ class OpenAIAssistant:
         self.use_history = use_history
         if not use_history:
             self.reset_conversation()
-
-if __name__ == "__main__":
-    
-    from dotenv import load_dotenv
-    load_dotenv()
-    openai.langfuse_auth_check()
-    system_prompt = "You are a helpful AI assistant specialized in Java development."
-    
-    # Example with history
-    assistant_with_history = OpenAIAssistant(system_prompt, use_history=True)
-    print("With history:")
-    response = assistant_with_history.query("Hello, can you explain Java interfaces?")
-    print(response[:100])
-    response = assistant_with_history.query("How do they differ from abstract classes?")
-    print(response[:100])
-
-    # Example without history
-    assistant_without_history = OpenAIAssistant(system_prompt, use_history=False)
-    print("\nWithout history:")
-    response = assistant_without_history.query("Hello, can you explain Java interfaces?")
-    print(response[:100])
-    response = assistant_without_history.query("How do they differ from abstract classes?")
-    print(response[:100])
-
-    # Save the session for later use
-    assistant_with_history.save_session_history("java_session_openai.txt")
-
-    # Later, you can load the session and continue
-    new_assistant = OpenAIAssistant(system_prompt, use_history=True)
-    new_assistant.load_session_history("java_session_openai.txt")
-    print("\nContinuing loaded session:")
-    response = new_assistant.query("Given what we discussed about interfaces and abstract classes, when should I use each?")
-    print(response[:100])
-
-    # Switching history mode
-    print("\nSwitching history mode:")
-    assistant_with_history.set_use_history(False)
-    response = assistant_with_history.query("What's the difference between public and private methods?")
-    print(response[:100])

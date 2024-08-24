@@ -6,11 +6,18 @@ from functions import efficient_file_search, read_files, read_packages, process_
 from llm_client import LLMQueryManager
 
 def initiate_llm_query_manager(pf, system_prompt, reused_prompt_template):
-    use_llm = os.environ.get("USE_LLM")
+    use_llm = os.environ.get("LLM_USE")
     # prompts can be reused and cached in the LLM if it is supported
-    package_notes = get_static_notes(pf)
-    project_tree = pf.to_tree()
-    cached_prompt = reused_prompt_template.format(project_tree=project_tree, package_notes=package_notes)
+    if pf is not None:
+        package_notes = get_static_notes(pf)
+        project_tree = pf.to_tree()
+    else:
+        project_tree = ""
+        package_notes = ""
+    if reused_prompt_template is not None:
+        cached_prompt = reused_prompt_template.format(project_tree=project_tree, package_notes=package_notes)
+    else:
+        cached_prompt = None
     query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt)
     
     return query_manager

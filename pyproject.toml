@@ -11,10 +11,10 @@ anthropic = "0.31.0"
 jira = "3.8.0"
 langfuse = "2.40.0"
 pytest = "8.0.2"
-python-dotenv = "^1.0.1"
 openai = "^1.40.3"
 google-cloud-aiplatform = "^1.62.0"
 google-generativeai = "^0.7.2"
+pyyaml = "^6.0.2"
 
 
 [build-system]

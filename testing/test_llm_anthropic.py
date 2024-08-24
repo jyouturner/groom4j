@@ -3,17 +3,25 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
-from dotenv import load_dotenv
-import llm_client.langfuse_setup as langfuse_setup
-from llm_client import AnthropicAssistant
+
 from projectfiles import ProjectFiles
+# Global variable to hold the AnthropicAssistant class
+AnthropicAssistant = None
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
-    load_dotenv(override=True)
+    # Load configuration into environment variables
+    from config_utils import load_config_to_env
+    load_config_to_env(config_path="testing/application_test.yml")
+    # Import AnthropicAssistant after loading config, and after langfuse is initialized
+    # this is important because the AnthropicAssistant class is not available until langfuse is initialized
+    global AnthropicAssistant
+    from llm_client import AnthropicAssistant
 
 
-def java_assistant():
+    
+
+def create_java_assistant():
     system_prompt = """
     You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
 
@@ -35,13 +43,17 @@ def java_assistant():
         package_notes += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
     cached_prompt = reused_prompt_template.format(project_tree=pf.to_tree(), package_notes=package_notes)   
     
+    global AnthropicAssistant
+    if AnthropicAssistant is None:
+        raise RuntimeError("AnthropicAssistant is not initialized. Make sure setup_env fixture is run.")
+
     assistant = AnthropicAssistant(use_history=False)
     assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=cached_prompt)
     print("Assistant setup complete")
     return assistant
 
 def test_java_assistant():
-    java_assistant = java_assistant()
+    java_assistant = create_java_assistant()
     response = java_assistant.query("how does the project query database?")
     assert response is not None
     print(response[:300])
@@ -86,6 +98,27 @@ def test_cached_prompt():
     response = assistant.query("What is the value for Mile?")
     print(f"response is {response}")
     assert response is not None
+
+
+def test_history():
+    system_prompt = "You are a helpful AI assistant specialized in Java development."
+    
+    # Example with history
+    local_assistant = AnthropicAssistant(use_history=True)
+    local_assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    print("With history:")
+    response = local_assistant.query("Hello, what is your name? can you explain Java interfaces?")
+    print(response[:100])
+    response = local_assistant.query("How do they differ from abstract classes?")
+    print(response[:100])
+
+    # Example without history
+    local_assistant.set_use_history(False)
+    print("\nWithout history:")
+    response = local_assistant.query("Hello, can you explain Java interfaces?")
+    print(response[:100])
+    response = local_assistant.query("How do they differ from abstract classes?")
+    print(response[:100])
 
 
 if __name__ == "__main__":

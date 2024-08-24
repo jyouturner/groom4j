@@ -3,16 +3,17 @@ import os
 import sys
 import re
 import argparse
+import yaml
 from projectfiles import ProjectFiles
-from dotenv import load_dotenv
-load_dotenv(override=True)
 
-from llm_client import LLMQueryManager, ResponseManager
+
+    
+
 from typing import Union
 from functions import get_file, get_package, get_static_notes
 from functions import efficient_file_search, read_files, read_packages, read_all_packages, read_from_human
 from functions import process_file_request
-from llm_interaction import process_llm_response, initiate_llm_query_manager
+
 
 system_prompt = """
 You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
@@ -113,12 +114,21 @@ def ask_continue(query_manager, question, last_response, pf, past_additional_rea
         print("The LLM does not need any more information, so we can end the conversation")
         return last_response, None, True
     
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tell me about")
     parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
-    parser.add_argument("--max-rounds", type=int, default=8, required= False, help="default 8, maximam rounds of conversation with LLM before stopping the conversation")
+    parser.add_argument("--max-rounds", type=int, default=8, required=False, help="default 8, maximum rounds of conversation with LLM before stopping the conversation")
     args = parser.parse_args()
+    # the order of the following imports is important
+    # since the initialization of langfuse depends on the os environment variables
+    # which are loaded in the config_utils module
+    from config_utils import load_config_to_env
+    load_config_to_env()
+    from llm_client import LLMQueryManager, ResponseManager
+    from llm_interaction import process_llm_response, initiate_llm_query_manager
+
 
     # if args.project_root is relative path, then get the absolute path
     root_path = os.path.abspath(args.project_root)
@@ -143,6 +153,7 @@ if __name__ == "__main__":
     doneNow = False
     additional_reading = ""
     ResponseManager.reset_prompt_response()
+    
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
     while True and i < max_rounds:

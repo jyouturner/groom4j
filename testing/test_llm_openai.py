@@ -3,14 +3,25 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
-from dotenv import load_dotenv
+# Load configuration into environment variables
+from config_utils import load_config_to_env
+load_config_to_env(config_path="testing/application_test.yml")
 import llm_client.langfuse_setup as langfuse_setup
 from llm_client import OpenAIAssistant
 from projectfiles import ProjectFiles
 
+# Global variable to hold the AnthropicAssistant class
+OpenAIAssistant = None
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_env():
-    load_dotenv(override=True)
+    # Load configuration into environment variables
+    from config_utils import load_config_to_env
+    load_config_to_env(config_path="testing/application_test.yml")
+    # Import OpenAIAssistant after loading config, and after langfuse is initialized
+    # this is important because the OpenAIAssistant class is not available until langfuse is initialized
+    global OpenAIAssistant
+    from llm_client import OpenAIAssistant
 
 @pytest.fixture
 def assistant():
@@ -50,7 +61,44 @@ def test_java_assistant(assistant):
     print(response[:300])
 
 
+def test_history():
+    
+    system_prompt = "You are a helpful AI assistant specialized in Java development."
+    
+    # Example with history
+    assistant_with_history = OpenAIAssistant(use_history=True)
+    assistant_with_history.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    print("With history:")
+    response = assistant_with_history.query("Hello, can you explain Java interfaces?")
+    print(response[:100])
+    response = assistant_with_history.query("How do they differ from abstract classes?")
+    print(response[:100])
 
+    # Example without history
+    assistant_without_history = OpenAIAssistant(use_history=False)
+    assistant_without_history.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    print("\nWithout history:")
+    response = assistant_without_history.query("Hello, can you explain Java interfaces?")
+    print(response[:100])
+    response = assistant_without_history.query("How do they differ from abstract classes?")
+    print(response[:100])
+
+    # Save the session for later use
+    assistant_with_history.save_session_history("java_session_openai.txt")
+
+    # Later, you can load the session and continue
+    new_assistant = OpenAIAssistant(use_history=True)
+    new_assistant.set_system_prompts(system_prompt=system_prompt, cached_prompt=None)
+    new_assistant.load_session_history("java_session_openai.txt")
+    print("\nContinuing loaded session:")
+    response = new_assistant.query("Given what we discussed about interfaces and abstract classes, when should I use each?")
+    print(response[:100])
+
+    # Switching history mode
+    print("\nSwitching history mode:")
+    assistant_with_history.set_use_history(False)
+    response = assistant_with_history.query("What's the difference between public and private methods?")
+    print(response[:100])
 
 if __name__ == "__main__":
     pytest.main()

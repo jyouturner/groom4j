@@ -35,15 +35,20 @@ This project uses Python 3.11+ and Poetry to manage dependencies. You can run it
 You can choose to use OpenAI, Gemini or Anthropic LLMs
 
 ```sh
-cp .env.example .env
+cp application_example.yml application.yml
 ```
 
-The .env should looks like below if OpenAI is used
+Depends on the LLM provider, you need to set the corresponding API key in the application.yml file.
 
-```sh
-USE_LLM=openai
-OPENAI_API_KEY='sk-...'
+```yaml
+llm:
+  use: anthropic
+  
+anthropic:
+  api_key: ...
+  model: claude-3-5-sonnet-20240620
 ```
+
 
 ### Running with Poetry (for Python developers)
 
@@ -94,7 +99,14 @@ git clone https://github.com/langfuse/langfuse
 docker compose up -d
 ```
 
-Visit <http://localhost:3000> to find the tracing (usually under "generations").
+Visit <http://localhost:3000> to sign up, create a project, and create the API key. Then update the applicaiton.yml file with the API key.
+
+```yaml
+langfuse:
+  secret_key: ...
+  public_key: ...
+  host: http://localhost:3000
+```
 
 ## Java Project Source
 
@@ -165,15 +177,15 @@ In reality, developers often work on development stories from Jira. In this case
 
 Make sure to set the JIRA properties in the .env file first.
 
-```sh
-JIRA_SERVER="https://[domain].atlassian.net"
-JIRA_USERNAME="your email address"
-JIRA_API_TOKEN="your API token"
+```yaml
+jira:
+  server: https://[host].atlassian.net
+  username: email@domain.com
+  api_token: ...
 ```
 
 ```sh
 poetry run python grooming_task.py path/to/the/Java/Project/Repo --jira=[issue key]
-
 ```
 
 ## Examples

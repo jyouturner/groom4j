@@ -1,11 +1,9 @@
 import os
 import sys
-from dotenv import load_dotenv
+
 import argparse
 from projectfiles import ProjectFiles
 
-load_dotenv(override=True)
-from llm_client import LLMQueryManager
 
 system_prompt = """
 You are a world-class software architect and developer. You are analyzing a codebase that includes both Java code and configuration files. Your task is to write comprehensive notes about each package in the project.
@@ -36,9 +34,15 @@ Notes of Direct Child Files:
 Please provide a comprehensive summary of this package based on the information above.
 """
 
+# the order of the following imports is important
+# since the initialization of langfuse depends on the os environment variables
+# which are loaded in the config_utils module
+from config_utils import load_config_to_env
+load_config_to_env()
+from llm_client import LLMQueryManager, ResponseManager
+from llm_interaction import process_llm_response, initiate_llm_query_manager
 
-use_llm = os.environ.get("USE_LLM")
-query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=None)
+query_manager = initiate_llm_query_manager(pf=None, system_prompt=system_prompt, reused_prompt_template=None)
 
 def real_package_gisting(package, subpackage_notes, filenotes):
     print(f"\n\nAnalyzing package: {package}")
@@ -55,6 +59,8 @@ if __name__ == "__main__":
     parser.add_argument("project_root", type=str, help="Path to the project root")
     
     args = parser.parse_args()
+
+
 
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
@@ -77,7 +83,7 @@ if __name__ == "__main__":
     print("-" * 50)
 
 
-    pf.package_gisting = real_package_gisting
+    pf.package_gisting_func = real_package_gisting
 
     # Traverse the package structure to generate summaries
     pf.package_structure_traverse(

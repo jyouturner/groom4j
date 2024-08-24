@@ -1,0 +1,31 @@
+llm:
+  use: anthropic
+  
+anthropic:
+  api_key: ...
+  model: claude-3-5-sonnet-20240620
+
+openai:
+  api_key: ...
+  model: gpt-4o
+
+gcp:
+  project_id: ...
+  location: us-central1
+  model: gemini-1.5-pro
+
+#
+# uncomment the following lines if you want to groom Jira issues
+#
+#jira:
+#  server: https://[host].atlassian.net
+#  username: email@domain.com
+#  api_token: ...
+
+#
+# comment out the following lines if you want to use Langfuse
+#
+#langfuse:
+#  secret_key: ...
+#  public_key: ...
+  host: http://localhost:3000
