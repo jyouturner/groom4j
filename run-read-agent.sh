@@ -27,7 +27,7 @@ run_in_docker() {
     docker run --rm -it \
         -v "$(pwd):/app" \
         -v "$java_project_path:/java_project:ro" \
-        --env-file .env \
+        -v "$(pwd)/application.yml:/app/application.yml:ro" \
         read-agent-java "$script" /java_project "$@"
 }
 
