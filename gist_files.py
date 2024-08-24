@@ -6,7 +6,86 @@ import re
 
 
 system_prompt = """
-You are a world-class developer and configuration expert. When analyzing a file, provide a detailed summary focusing on the following aspects:
+You are a world-class developer, and you have been tasked with analyzing a Java project. Your goal is to understand the project structure, key functionalities, and important methods to help your team maintain and improve the codebase.
+"""
+
+instructions_java = """
+When analyzing the given file, provide a detailed summary focusing on the following aspects:
+
+- The overall purpose of the file/class
+- Key functionalities and their implementations
+- Important methods: their signatures, parameters, return types, and detailed description of what they do
+- Interactions with other parts of the system (e.g., database calls, API interactions)
+- Any complex algorithms or business logic including how data is processed
+- Use of important libraries or frameworks
+
+Only use below format to provide the summary:
+<File Name="{filename}" Package="{package}">
+
+<Dependencies>
+    <Dependency>...</Dependency>
+    <Dependency>...</Dependency>
+    ...
+</Dependencies>
+
+<Purpose>
+...
+</Purpose>
+
+<Functionalities>
+    <Function name="...">
+        ...
+    </Function>
+</Functionalities>
+</File>
+
+"""
+
+instructions_test = """
+For test files:
+- The class or functionality being tested
+- Key test scenarios covered
+- Any notable testing frameworks or techniques used
+- Mock objects or test data setup
+
+Only use below format to provide the summary:
+
+<File Name="{filename}"  Path="{path}">
+<TestScenarios>
+    <Scenario>...</Scenario>
+    <Scenario>...</Scenario>
+    ...
+</TestScenarios>
+</File>
+"""
+
+instructions_config = """
+For configuration files (properties, YAML, XML):
+- The overall purpose of the configuration file
+- Key configurations and their significance
+- Any environment-specific settings
+- Hierarchical structures and their importance
+- References to other configuration files or properties
+- Any sensitive information (noting its presence, not the actual values)
+
+Only use below format to provide the summary:
+<File Name="{filename}" Path="{path}">
+
+<Purpose>
+...
+</Purpose>
+
+<Configurations>
+    <Configuration name="..." significance="...">
+    <Configuration name="..." significance="...">
+    ...
+</Configurations>
+</File>
+"""
+
+instructions = """
+
+When analyzing the given file, provide a detailed summary focusing on the following aspects:
 
 For Java files:
 - The overall purpose of the file/class
@@ -18,6 +97,26 @@ For Java files:
 - Any complex algorithms or business logic
 - Use of important libraries or frameworks
 
+Only use below format to provide the summary:
+<File Name="{filename}" Package="{package}">
+
+<Dependencies>
+    <Dependency>...</Dependency>
+    <Dependency>...</Dependency>
+    ...
+</Dependencies>
+
+<Purpose>
+...
+</Purpose>
+
+<Functionalities>
+    <Function name="...">
+        ...
+    </Function>
+</Functionalities>
+</File>
+
 For configuration files (properties, YAML, XML):
 - The overall purpose of the configuration file
 - Key configurations and their significance
@@ -26,41 +125,48 @@ For configuration files (properties, YAML, XML):
 - References to other configuration files or properties
 - Any sensitive information (noting its presence, not the actual values)
 
+Only use below format to provide the summary:
+<File Name="{filename}" Path="{path}">
+
+<Purpose>
+...
+</Purpose>
+
+<Configurations>
+    <Configuration name="..." significance="...">
+    <Configuration name="..." significance="...">
+    ...
+</Configurations>
+</File>
+
 For test files:
 - The class or functionality being tested
 - Key test scenarios covered
 - Any notable testing frameworks or techniques used
 - Mock objects or test data setup
 
-For all files:
-- Any TODO comments or areas marked for improvement
-- Potential performance considerations
-- Security implications, if any
+Only use below format to provide the summary:
 
-Provide a concise yet comprehensive summary that captures these details. Focus on aspects that would be most helpful for a developer trying to understand and potentially modify this code.
+<File Name="{filename}"  Path="{path}">
+<TestScenarios>
+    <Scenario>...</Scenario>
+    <Scenario>...</Scenario>
+    ...
+</TestScenarios>
+</File>
+
 """
 
 user_prompt_template = """
-Provide a detailed summary of the following file:
 
-File Name: {filename}
-File Type: {filetype}
-Package/Location: {package}
-
-Imports:
-{imports}
-
-Functions/Methods:
-{functions}
-
-TODO Comments:
-{todo_comments}
-
-Full File Content:
+Given below full file content:
 
 {content}
 
-Please analyze this file based on the guidelines provided earlier, focusing on key functionalities, important methods, design patterns, and other crucial details.
+Please analyze this file based on the guidelines provided next, focusing on key functionalities, important methods, design patterns, and other crucial details.
+
+{instructions}
+
 """
 
 def get_file_type(filename):
@@ -69,51 +175,69 @@ def get_file_type(filename):
 
 def code_gisting(query_manager, project_root, code_file, verbose=True) -> str:
     full_path = os.path.join(project_root, code_file.path)
+    if not os.path.exists(full_path):
+        print(f"Error: {full_path} does not exist")
+        return ""
     with open(full_path, 'r') as file:
         content = file.read()
     
     file_type = get_file_type(code_file.filename)
     
     # Extract additional context
-    imports = extract_imports(content)
-    functions = extract_functions(content, file_type)
-    todo_comments = extract_todo_comments(content)
-    
+    #imports = extract_imports(content)
+    #functions = extract_functions(content, file_type)
+    #todo_comments = extract_todo_comments(content)
+    if file_type == '.java':
+        if code_file.path.startswith("src/main/java"):
+            instructions = instructions_java
+        elif code_file.path.startswith("src/test/java"):
+            instructions = instructions_test
+        else:
+            instructions = instructions
+    elif file_type in ['.properties', '.yaml', '.yml', '.xml']:
+            instructions = instructions_config
+    else:
+        instructions = instructions
+
     prompt = user_prompt_template.format(
         filename=code_file.filename,
         filetype=file_type,
         package=code_file.package,
+        path=code_file.path,
         content=content,
-        imports=imports,
-        functions=functions,
-        todo_comments=todo_comments
+        instructions=instructions,
+        #imports=imports,
+        #functions=functions,
+        #todo_comments=todo_comments
     )
     
     summary = query_manager.query(prompt)
     if verbose:
         print(f"Summary of the file {code_file.filename}: {summary}")
+    # only need the <file ...>...</file> part, including the tags
+    summary = re.search(r'<File.*?</File>', summary, re.DOTALL)
     return summary
 
-def extract_imports(content):
+#def extract_imports(content):
     # Simple regex to extract import statements
-    import_pattern = r'^import .*?;'
-    imports = re.findall(import_pattern, content, re.MULTILINE)
-    return "\n".join(imports)
+#    import_pattern = r'^import .*?;'
+#    imports = re.findall(import_pattern, content, re.MULTILINE)
+#    return "\n".join(imports)
 
-def extract_functions(content, file_type):
-    if file_type == '.java':
+#def extract_functions(content, file_type):
+#    if file_type == '.java':
         # Simple regex to extract method signatures (this can be improved)
-        function_pattern = r'(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])'
-        functions = re.findall(function_pattern, content)
-        return "\n".join([" ".join(func).strip() for func in functions])
+#        function_pattern = r'(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])'
+#        functions = re.findall(function_pattern, content)
+#        return "\n".join([" ".join(func).strip() for func in functions])
     # Add extractors for other file types as needed
-    return ""
+#    return ""
 
-def extract_todo_comments(content):
-    # Simple regex to extract TODO comments
-    todo_pattern = r'//\s*TODO:?.*'
-    todos = re.findall(todo_pattern, content)
-    return "\n".join(todos)
+#def extract_todo_comments(content):
+#    # Simple regex to extract TODO comments
+#    todo_pattern = r'//\s*TODO:?.*'
+#    todos = re.findall(todo_pattern, content)
+#    return "\n".join(todos)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gisting the code files using LLM")

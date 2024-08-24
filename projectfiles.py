@@ -8,17 +8,17 @@ class CodeFile:
         self.path = path
         self.package = package
         self.summary = ""
-        self.imports = ""
-        self.functions = ""
-        self.todo_comments = ""
+        #self.imports = ""
+        #self.functions = ""
+        #self.todo_comments = ""
         # a function to gist packages, only used in the package_structure_traverse
         self.package_gisting_func = None
 
-    def set_details(self, summary, imports, functions, todo_comments):
+    def set_details(self, summary):
         self.summary = summary
-        self.imports = imports
-        self.functions = functions
-        self.todo_comments = todo_comments
+        #self.imports = imports
+        #self.functions = functions
+        #self.todo_comments = todo_comments
 
     def set_summary(self, summary):
         self.summary = summary
@@ -33,7 +33,7 @@ class CodeFile:
     def from_json(json_str):
         data = json.loads(json_str)
         code_file = CodeFile(data['filename'], data['path'], data['package'])
-        code_file.set_details(data.get('summary', ''), data.get('imports', ''), data.get('functions', ''),data.get('todo_comments', ''))
+        code_file.set_details(data.get('summary', ''))
 
         return code_file
 
@@ -321,9 +321,9 @@ class ProjectFiles:
                 f.write(f"Path: {file.path}\n")
                 f.write(f"Package: {file.package}\n")
                 f.write(f"Summary: {file.summary}\n")
-                f.write(f"Imports: {file.imports}\n")
-                f.write(f"Functions: {file.functions}\n")
-                f.write(f"TODO Comments: {file.todo_comments}\n")
+                #f.write(f"Imports: {file.imports}\n")
+                #f.write(f"Functions: {file.functions}\n")
+                #f.write(f"TODO Comments: {file.todo_comments}\n")
                 f.write("\n")  # Empty line to separate file entries
         return gist_file_path
 
@@ -351,9 +351,9 @@ class ProjectFiles:
                         code_file = CodeFile(file_data['Filename'], file_data['Path'], file_data['Package'])
                         code_file.set_details(
                             file_data.get('Summary', ''),
-                            file_data.get('Imports', ''),
-                            file_data.get('Functions', ''),
-                            file_data.get('TODO Comments', '')
+                            #file_data.get('Imports', ''),
+                            #file_data.get('Functions', ''),
+                            #file_data.get('TODO Comments', '')
                         )
                         files.append(code_file)
 
