@@ -18,12 +18,3 @@ jira:
   server: ...
   username: ...
   api_token: ...
-
-#langfuse:
-#  secret_key: sk-lf-d7fc5994-8d2c-45db-845f-f2d101778a3e
-#  public_key: pk-lf-1ba043d0-41ef-41fd-a733-4871781c2317
-#  host: http://localhost:3000
-
-# langtrace:
-#   api_key: 2399ee0cbcda1f75edf5a6355e6a3f216c1563e11d17b88c5cf5b9809745cddb
-#   api_host: http://localhost:3000/api/trace
