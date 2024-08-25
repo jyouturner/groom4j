@@ -1,16 +1,16 @@
-# JavaGroom: LLM-Powered Task Planning for Java Projects
+# Groom4J: LLM-Powered Task Planning for Java Projects
 
 
 ## 🎯 Bridging the Gap in Enterprise Java Development
 
-JavaGroom is designed to address a critical challenge in enterprise Java development: helping new or entry-level developers navigate and understand complex, established codebases. Unlike general-purpose coding assistants, JavaGroom is tailored specifically for Java projects in enterprise environments, where the primary hurdles are often not in writing code, but in:
+Groom4J is designed to address a critical challenge in enterprise Java development: helping new or entry-level developers navigate and understand complex, established codebases. Unlike general-purpose coding assistants, JavaGroom is tailored specifically for Java projects in enterprise environments, where the primary hurdles are often not in writing code, but in:
 
 - **Understanding the big picture**: Grasping how different components of a large Java application interact.
 - **Connecting the dots**: Identifying relationships between various packages, classes, and services.
 - **Finding the starting point**: Determining where to begin when tackling a new task or bug fix.
 - **Navigating internal complexity**: Making sense of company-specific architectures, patterns, and legacy code.
 
-## What Sets JavaGroom Apart:
+## What Sets Groom4J Apart:
 
 1. **Java-Specific Intelligence**: Leverages deep understanding of Java language structures, common enterprise patterns, and best practices.
 2. **Enterprise Focus**: Tailored for the unique challenges of large-scale, complex Java projects common in enterprise settings.
