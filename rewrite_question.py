@@ -12,7 +12,7 @@ You are asked to help expand and refine questions about Java projects. Your task
 ## Context
 - The question is about a Java project that has been "gisted" (summarized) for quick reference.
 - The expanded question will be used to query a knowledge base of Java file summaries and project structure.
-- The goal is to help developers plan for maintenance tasks more effectively.
+- The goal is to be **as thorough as possible** to help developers plan for maintenance tasks more effectively.
 
 ## Instructions
 
