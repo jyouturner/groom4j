@@ -39,6 +39,10 @@ Only use below format to provide the summary:
 </Functionalities>
 </File>
 
+Now, please analyze the given Java file based on the guidelines provided above.
+
+<File Name="{filename}" Package="{package}">
+
 """
 
 instructions_test = """
@@ -57,6 +61,10 @@ Only use below format to provide the summary:
     ...
 </TestScenarios>
 </File>
+
+Now, please analyze the given test file based on the guidelines provided above.
+
+<File Name="{filename}"  Path="{path}">
 """
 
 instructions_config = """
@@ -81,6 +89,10 @@ Only use below format to provide the summary:
     ...
 </Configurations>
 </File>
+
+Now, please analyze the given configuration file based on the guidelines provided above.
+
+<File Name="{filename}" Path="{path}">
 """
 
 instructions = """
@@ -214,8 +226,16 @@ def code_gisting(query_manager, project_root, code_file, verbose=True) -> str:
     summary = query_manager.query(prompt)
     if verbose:
         print(f"Summary of the file {code_file.filename}: {summary}")
-    # only need the <file ...>...</file> part, including the tags
-    summary = re.search(r'<File.*?</File>', summary, re.DOTALL)
+
+    # Extract the content between <File> tags, if present
+    match = re.search(r'<File Name=".*?" Package=".*?">(.*?)</File>', summary, re.DOTALL)
+    if match:
+        summary = match.group(1)  # Extract the content inside the <File> tags
+    else:
+        # If no <File> tags are found, return the whole summary
+        summary = summary.split('</File>', 1)[0]  # Return content up to the first </File> tag if present
+    if verbose:
+        print(f"Extracted summary: {summary}")
     return summary
 
 #def extract_imports(content):

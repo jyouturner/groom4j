@@ -176,6 +176,8 @@ If you have a specific question to ask about the codebase, you can use below com
 poetry run python grooming_task.py path/to/the/Java/Project/Repo --question="..."
 ```
 
+More info can be found in [tell_me_about](docs/tell_me_about.md)
+
 ## Groom Coding Task
 
 Development tasks and stories are often bigger than one single Q/A, you can use below command for the "grooming" purpose.

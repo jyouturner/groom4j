@@ -1,7 +1,7 @@
 Filename: TravelBeApplication.java
 Path: src/main/java/com/iky/travel/TravelBeApplication.java
 Package: com.iky.travel
-Summary: <File Name="TravelBeApplication.java" Package="com.iky.travel">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.boot.SpringApplication</Dependency>
@@ -9,27 +9,29 @@ Summary: <File Name="TravelBeApplication.java" Package="com.iky.travel">
 </Dependencies>
 
 <Purpose>
-This file serves as the entry point for a Spring Boot application. It is the main class that bootstraps and launches the Spring application context, enabling the auto-configuration of the Spring Boot framework and starting the embedded web server.
+This file serves as the entry point for a Spring Boot application. It is the main class that bootstraps and launches the Spring application context. The class is annotated with @SpringBootApplication, which is a convenience annotation that adds all of the following:
+    - @Configuration: Tags the class as a source of bean definitions for the application context.
+    - @EnableAutoConfiguration: Tells Spring Boot to start adding beans based on classpath settings, other beans, and various property settings.
+    - @ComponentScan: Tells Spring to look for other components, configurations, and services in the com.iky.travel package, allowing it to find and register your beans.
 </Purpose>
 
 <Functionalities>
     <Function name="main">
-        This is the main method and the entry point of the application. It takes a String array of command-line arguments and uses SpringApplication.run() to start the Spring Boot application. The method signature is:
+        This is the main method that serves as the entry point for the Java application. It takes a String array of command-line arguments as its parameter and doesn't return anything (void).
         
-        public static void main(String[] args)
-        
-        It doesn't return anything (void) and its primary function is to delegate the application startup to Spring Boot's SpringApplication class.
+        The method uses SpringApplication.run() to launch the Spring application. It passes two arguments to this method:
+        1. TravelBeApplication.class: This is the primary source for the Spring context configuration.
+        2. args: The command-line arguments passed to the application.
+
+        When executed, this method will start the Spring application context, which will in turn start the embedded server, set up the default configuration, start component scanning, and launch the application.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: MongoConfig.java
 Path: src/main/java/com/iky/travel/config/MongoConfig.java
 Package: com.iky.travel.config
-Summary: <File Name="MongoConfig.java" Package="com.iky.travel.config">
+Summary: 
 
 <Dependencies>
     <Dependency>com.iky.travel.constant.common.MongoConstant</Dependency>
@@ -40,7 +42,7 @@ Summary: <File Name="MongoConfig.java" Package="com.iky.travel.config">
 </Dependencies>
 
 <Purpose>
-This file defines a configuration class for MongoDB in a Spring application. It sets up a MongoTemplate bean, which is a key component for interacting with MongoDB using Spring Data MongoDB.
+This file defines a configuration class for MongoDB in a Spring application. It sets up a MongoTemplate bean, which is a helper class in Spring Data MongoDB for performing database operations.
 </Purpose>
 
 <Functionalities>
@@ -48,18 +50,15 @@ This file defines a configuration class for MongoDB in a Spring application. It 
         This is the constructor for the MongoConfig class. It takes a MongoClient as a parameter and initializes it as a private final field. This suggests that the MongoClient is being injected, likely through Spring's dependency injection.
     </Function>
     <Function name="mongoTemplate()">
-        This method is annotated with @Bean, indicating that it produces a bean to be managed by the Spring container. It creates and returns a new MongoTemplate instance using the injected MongoClient and a database name constant (MONGO_DB_NAME). The MongoTemplate is a central class in Spring's MongoDB support, providing a rich set of MongoDB operations.
+        This method is annotated with @Bean, indicating that it produces a bean to be managed by the Spring container. It creates and returns a new MongoTemplate instance using the injected MongoClient and a constant MONGO_DB_NAME. The MongoTemplate is a key class in Spring Data MongoDB that simplifies database operations.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: RedisConfig.java
 Path: src/main/java/com/iky/travel/config/RedisConfig.java
 Package: com.iky.travel.config
-Summary: <File Name="RedisConfig.java" Package="com.iky.travel.config">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.context.annotation.Bean</Dependency>
@@ -71,37 +70,34 @@ Summary: <File Name="RedisConfig.java" Package="com.iky.travel.config">
 </Dependencies>
 
 <Purpose>
-This file defines a configuration class for Redis in a Spring application. It sets up a RedisTemplate bean with specific serialization strategies for keys and values, allowing the application to interact with Redis using String keys and JSON-serialized object values.
+This file defines a configuration class for Redis, a popular in-memory data structure store. It sets up a RedisTemplate bean, which is a central class of the Spring Data Redis module, providing a high-level abstraction for Redis operations.
 </Purpose>
 
 <Functionalities>
     <Function name="redisTemplate">
-        This method is annotated with @Bean, indicating it provides a bean definition to the Spring container. It creates and configures a RedisTemplate<String, Object> instance.
-        
-        Parameters:
-        - RedisConnectionFactory connectionFactory: Injected by Spring, used to establish connections to Redis.
-        
-        Return Type: RedisTemplate<String, Object>
-        
-        Description:
-        1. Creates a new RedisTemplate instance.
-        2. Sets the connection factory to the injected RedisConnectionFactory.
-        3. Configures the key serializer to use StringRedisSerializer, allowing Redis keys to be stored as strings.
-        4. Configures the value serializer to use GenericJackson2JsonRedisSerializer, enabling Redis values to be stored as JSON representations of Java objects.
-        5. Returns the configured RedisTemplate instance.
+        This method is annotated with @Bean, indicating that it produces a bean to be managed by the Spring container. It creates and configures a RedisTemplate<String, Object> instance.
 
-        This configuration allows the application to store and retrieve data from Redis using String keys and complex Java objects as values, with automatic JSON serialization/deserialization.
+        Parameters:
+        - RedisConnectionFactory connectionFactory: Injected by Spring, used to establish connections with Redis server.
+
+        Return Type: RedisTemplate<String, Object>
+
+        Functionality:
+        1. Creates a new RedisTemplate instance.
+        2. Sets the connection factory.
+        3. Configures key serializer as StringRedisSerializer for String keys.
+        4. Configures value serializer as GenericJackson2JsonRedisSerializer for Object values, allowing for JSON serialization of complex objects.
+        5. Returns the configured RedisTemplate.
+
+        This configuration allows for storing String keys and JSON-serialized Object values in Redis, providing a flexible way to interact with Redis from within the application.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: WebSecurityConfiguration.java
 Path: src/main/java/com/iky/travel/config/WebSecurityConfiguration.java
 Package: com.iky.travel.config
-Summary: <File Name="WebSecurityConfiguration.java" Package="com.iky.travel.config">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.security.config.annotation.web.builders.HttpSecurity</Dependency>
@@ -114,14 +110,14 @@ Summary: <File Name="WebSecurityConfiguration.java" Package="com.iky.travel.conf
 </Dependencies>
 
 <Purpose>
-This file defines the web security configuration for a Spring Boot application. It sets up security rules and filters for HTTP requests, configuring authentication and authorization mechanisms.
+This file defines the web security configuration for a Spring Boot application. It sets up security rules for HTTP requests, disables CSRF protection, configures stateless session management, and defines authorization rules for different endpoints.
 </Purpose>
 
 <Functionalities>
     <Function name="filterChain">
-        This is a @Bean method that configures and returns a SecurityFilterChain. It performs the following configurations:
+        This method configures and returns a SecurityFilterChain bean. It performs the following tasks:
         1. Disables CSRF protection
-        2. Sets the session creation policy to STATELESS
+        2. Sets session management to STATELESS
         3. Configures authorization rules:
            - Permits all requests to "/api/**" and "/actuator/**" endpoints
            - Requires authentication for all other requests
@@ -133,26 +129,24 @@ This file defines the web security configuration for a Spring Boot application. 
         Returns:
         - SecurityFilterChain: The configured security filter chain
         
-        This method is crucial for defining the security behavior of the application, controlling access to different endpoints and setting up authentication mechanisms.
+        This method is crucial for defining the security behavior of the application, controlling access to different endpoints, and setting up authentication mechanisms.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityController.java
 Path: src/main/java/com/iky/travel/controller/city/CityController.java
 Package: com.iky.travel.controller.city
-Summary: <File Name="CityController.java" Package="com.iky.travel.controller.city">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.web.bind.annotation.*</Dependency>
     <Dependency>org.springframework.http.ResponseEntity</Dependency>
-    <Dependency>jakarta.validation.Valid</Dependency>
     <Dependency>com.iky.travel.domain.dto.CityDTO</Dependency>
     <Dependency>com.iky.travel.domain.service.city.CityService</Dependency>
     <Dependency>com.iky.travel.exception.city.*</Dependency>
+    <Dependency>jakarta.validation.Valid</Dependency>
+    <Dependency>org.springframework.web.servlet.support.ServletUriComponentsBuilder</Dependency>
 </Dependencies>
 
 <Purpose>
@@ -162,45 +156,38 @@ This file defines a REST controller for managing city-related operations in a tr
 <Functionalities>
     <Function name="getCity">
         Handles GET requests to retrieve information about a specific city.
-        Path: /{city}
         Parameters: @PathVariable String city
-        Returns: ResponseEntity<CityDTO>
-        Description: Calls cityService.getCity(city) to fetch city data. If the city is not found, it throws a CityNotFoundException.
+        Return Type: ResponseEntity<CityDTO>
+        Description: Calls cityService.getCity(city) to fetch city data. If the city is not found, it throws a CityNotFoundException. Otherwise, it returns the city data with an OK status.
     </Function>
 
     <Function name="deleteCity">
         Handles DELETE requests to remove a city from the system.
-        Path: /{city}
         Parameters: @PathVariable String city
-        Returns: ResponseEntity<String>
-        Description: Calls cityService.deleteCity(city) to delete the specified city and returns a success message.
+        Return Type: ResponseEntity<String>
+        Description: Calls cityService.deleteCity(city) to delete the specified city. Returns a success message with an OK status.
     </Function>
 
     <Function name="addCity">
         Handles POST requests to add a new city to the system.
-        Path: /
         Parameters: @Valid @RequestBody CityDTO cityDTO
-        Returns: ResponseEntity<Object>
-        Description: Calls cityService.addCity(cityDTO) to add a new city. If successful, it returns a 201 Created status with the location of the new resource. If unsuccessful, it throws a CityAddException.
+        Return Type: ResponseEntity<Object>
+        Description: Calls cityService.addCity(cityDTO) to add a new city. If successful, it creates a URI for the new resource and returns a CREATED status. If unsuccessful, it throws a CityAddException.
     </Function>
 
     <Function name="updateCity">
         Handles PUT requests to update an existing city's information.
-        Path: /
         Parameters: @Valid @RequestBody CityDTO cityDTO
-        Returns: ResponseEntity<Object>
-        Description: Calls cityService.updateCity(cityDTO) to update city information. If successful, it returns a 201 Created status with the location of the updated resource. If unsuccessful, it throws a CityUpdateException.
+        Return Type: ResponseEntity<Object>
+        Description: Calls cityService.updateCity(cityDTO) to update the city information. If successful, it creates a URI for the updated resource and returns a CREATED status. If unsuccessful, it throws a CityUpdateException.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: TravelController.java
 Path: src/main/java/com/iky/travel/controller/travel/TravelController.java
 Package: com.iky.travel.controller.travel
-Summary: <File Name="TravelController.java" Package="com.iky.travel.controller.travel">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.web.bind.annotation.*</Dependency>
@@ -212,7 +199,7 @@ Summary: <File Name="TravelController.java" Package="com.iky.travel.controller.t
 </Dependencies>
 
 <Purpose>
-This file defines a REST controller for handling travel-related HTTP requests. It serves as an API endpoint for retrieving popular destinations, clearing popular destinations, and getting all destinations. The controller interacts with a TravelService to perform these operations.
+This file defines a REST controller for handling travel-related HTTP requests. It provides endpoints for retrieving popular destinations, clearing popular destinations, and getting all destinations. The controller interacts with a TravelService to perform these operations.
 </Purpose>
 
 <Functionalities>
@@ -235,102 +222,95 @@ This file defines a REST controller for handling travel-related HTTP requests. I
         Utilizes the TravelService to retrieve this information.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: ApiPathConstants.java
 Path: src/main/java/com/iky/travel/constant/common/ApiPathConstants.java
 Package: com.iky.travel.constant.common
-Summary: <File Name="ApiPathConstants.java" Package="com.iky.travel.constant.common">
+Summary: 
 
 <Dependencies>
     <!-- No external dependencies are used in this file -->
 </Dependencies>
 
 <Purpose>
-This file defines a utility class named ApiPathConstants that contains constant string values representing API path prefixes and endpoints. It serves as a centralized location for managing API path constants, which can be used throughout the application to maintain consistency in API routing and reduce the likelihood of errors from hardcoded string values.
+This file defines a set of constant API path prefixes used for routing in a travel-related application. It provides a centralized location for managing API endpoint paths, which can be easily referenced throughout the application to maintain consistency and facilitate easier updates to API versioning or path structures.
 </Purpose>
 
 <Functionalities>
-    <Function name="Constants">
+    <Function name="API Path Constants">
         The class defines several public static final String constants:
-        - API_V1_PREFIX: Represents the base prefix for version 1 of the API ("/api/v1/")
-        - TRAVEL_API_PREFIX: Represents the prefix for travel-related endpoints ("travel")
-        - CITY_API_PREFIX: Represents the prefix for city-related endpoints ("city")
-        - API_V1_TRAVEL: Combines API_V1_PREFIX and TRAVEL_API_PREFIX to form the complete prefix for travel API endpoints
-        - API_V1_CITY: Combines API_V1_PREFIX and CITY_API_PREFIX to form the complete prefix for city API endpoints
+        - API_V1_PREFIX: Represents the base path for version 1 of the API ("/api/v1/")
+        - TRAVEL_API_PREFIX: Represents the path segment for travel-related endpoints ("travel")
+        - CITY_API_PREFIX: Represents the path segment for city-related endpoints ("city")
+        - API_V1_TRAVEL: Combines API_V1_PREFIX and TRAVEL_API_PREFIX to form the complete path for travel API endpoints
+        - API_V1_CITY: Combines API_V1_PREFIX and CITY_API_PREFIX to form the complete path for city API endpoints
 
-        These constants can be used in other parts of the application, such as in controller classes or route configurations, to ensure consistent API path construction.
+        These constants can be used throughout the application to construct full API paths, ensuring consistency and ease of maintenance.
     </Function>
 
     <Function name="Private Constructor">
-        The class includes a private constructor to prevent instantiation, as it is designed to be a utility class with only static members. This follows the utility class pattern and ensures that the class cannot be instantiated.
+        The class includes a private constructor to prevent instantiation, as it is designed to be a utility class containing only static constants.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: MongoConstant.java
 Path: src/main/java/com/iky/travel/constant/common/MongoConstant.java
 Package: com.iky.travel.constant.common
-Summary: <File Name="MongoConstant.java" Package="com.iky.travel.constant.common">
+Summary: 
 
 <Dependencies>
+    <!-- No external dependencies are imported in this file -->
 </Dependencies>
 
 <Purpose>
-This file defines a utility class named MongoConstant that contains a constant value for the MongoDB database name used in a travel-related application. It serves as a centralized location for storing MongoDB-related constants, which can be easily accessed and used throughout the project.
+This file defines a utility class named MongoConstant that contains a constant value for the MongoDB database name used in the travel application. It serves as a centralized location for storing MongoDB-related constants, which can be easily accessed and used throughout the project.
 </Purpose>
 
 <Functionalities>
     <Function name="MONGO_DB_NAME">
-        This is a public static final String constant that holds the value "travel". It represents the name of the MongoDB database used in the application. This constant can be accessed from other parts of the codebase to ensure consistency in database naming.
+        This is a public static final String constant that holds the value "travel". It represents the name of the MongoDB database used in the application. This constant can be accessed from other parts of the codebase to ensure consistency in referencing the database name.
     </Function>
+    
     <Function name="MongoConstant()">
-        This is a private constructor for the MongoConstant class. Its purpose is to prevent instantiation of this utility class, as it only contains static members and doesn't need to be instantiated.
+        This is a private constructor for the MongoConstant class. Its purpose is to prevent instantiation of this utility class, as it only contains static members and doesn't need to be instantiated. This is a common practice for utility classes in Java.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: RedisConstant.java
 Path: src/main/java/com/iky/travel/constant/common/RedisConstant.java
 Package: com.iky.travel.constant.common
-Summary: <File Name="RedisConstant.java" Package="com.iky.travel.constant.common">
+Summary: 
 
 <Dependencies>
+    <!-- No external dependencies are imported in this file -->
 </Dependencies>
 
 <Purpose>
-This file defines a utility class named RedisConstant that contains constant values related to Redis keys. It is designed to centralize and standardize the key names used for Redis operations within the travel application, specifically for storing city and popular destination data.
+This file defines a utility class named RedisConstant that contains constant values related to Redis keys. It is likely used across the application to maintain consistency in Redis key naming conventions for city and popular destination data.
 </Purpose>
 
 <Functionalities>
     <Function name="CITY_KEY">
-        A public static final String constant with the value "cities". This key is likely used to store or retrieve city-related data in Redis.
+        A public static final String constant with the value "cities". This is likely used as a key in Redis to store or retrieve city-related data.
     </Function>
+    
     <Function name="POPULAR_DESTINATIONS_KEY">
-        A public static final String constant with the value "popularDestinations". This key is likely used to store or retrieve data about popular travel destinations in Redis.
+        A public static final String constant with the value "popularDestinations". This is likely used as a key in Redis to store or retrieve data related to popular travel destinations.
     </Function>
+    
     <Function name="RedisConstant()">
-        A private constructor to prevent instantiation of this utility class, enforcing its use as a static constant container only.
+        A private constructor to prevent instantiation of this utility class. This follows the utility class pattern, ensuring that the class cannot be instantiated and is used solely for its static members.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityDTO.java
 Path: src/main/java/com/iky/travel/domain/dto/CityDTO.java
 Package: com.iky.travel.domain.dto
-Summary: <File Name="CityDTO.java" Package="com.iky.travel.domain.dto">
+Summary: 
 
 <Dependencies>
     <Dependency>jakarta.validation.constraints</Dependency>
@@ -340,13 +320,14 @@ Summary: <File Name="CityDTO.java" Package="com.iky.travel.domain.dto">
 </Dependencies>
 
 <Purpose>
-This file defines a Data Transfer Object (DTO) for representing city information. It is designed to transfer city data between different layers of the application, such as from the service layer to the presentation layer or for API responses. The class includes validation annotations to ensure data integrity and uses Lombok to reduce boilerplate code.
+This file defines a Data Transfer Object (DTO) for representing city information. It is designed to transfer city data between different layers of the application, likely between the service layer and the presentation layer or API endpoints. The class includes validation annotations to ensure data integrity and uses Lombok to reduce boilerplate code.
 </Purpose>
 
 <Functionalities>
     <Function name="Data Storage">
         The CityDTO class stores various attributes of a city, including id, plateNo, name, population, country, and topActivities. Each field is annotated with appropriate validation constraints to ensure data validity.
     </Function>
+    
     <Function name="Data Validation">
         The class uses Jakarta Bean Validation annotations to enforce data integrity:
         - @NotNull: Ensures plateNo and population are not null
@@ -354,28 +335,27 @@ This file defines a Data Transfer Object (DTO) for representing city information
         - @NotBlank: Ensures name and country are not blank
         - @Size: Ensures topActivities array has at least one item
     </Function>
+    
     <Function name="Serialization">
         The class implements Serializable, allowing instances to be easily converted to a byte stream for storage or transmission. It includes a serialVersionUID for version control during deserialization.
     </Function>
+    
     <Function name="Getter and Setter Methods">
         Lombok's @Getter and @Setter annotations automatically generate getter and setter methods for all fields, reducing boilerplate code and improving maintainability.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityRepository.java
 Path: src/main/java/com/iky/travel/domain/repository/city/CityRepository.java
 Package: com.iky.travel.domain.repository.city
-Summary: <File Name="CityRepository.java" Package="com.iky.travel.domain.repository.city">
+Summary: 
 
 <Dependencies>
-    <Dependency>org.springframework.data.mongodb.repository.MongoRepository</Dependency>
-    <Dependency>org.springframework.stereotype.Repository</Dependency>
     <Dependency>com.iky.travel.domain.model.City</Dependency>
     <Dependency>java.util.Optional</Dependency>
+    <Dependency>org.springframework.data.mongodb.repository.MongoRepository</Dependency>
+    <Dependency>org.springframework.stereotype.Repository</Dependency>
 </Dependencies>
 
 <Purpose>
@@ -396,15 +376,12 @@ This file defines a repository interface for managing City entities in a MongoDB
         Description: This method deletes a City entity from the database based on its name. It returns true if the deletion was successful, false otherwise.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityMapper.java
 Path: src/main/java/com/iky/travel/domain/mapper/CityMapper.java
 Package: com.iky.travel.domain.mapper
-Summary: <File Name="CityMapper.java" Package="com.iky.travel.domain.mapper">
+Summary: 
 
 <Dependencies>
     <Dependency>com.iky.travel.domain.dto.CityDTO</Dependency>
@@ -414,12 +391,12 @@ Summary: <File Name="CityMapper.java" Package="com.iky.travel.domain.mapper">
 </Dependencies>
 
 <Purpose>
-This file defines an interface for mapping between City domain objects and CityDTO data transfer objects. It uses MapStruct, a code generation library, to automatically generate the implementation of the mapping methods.
+This file defines an interface for mapping between City domain objects and CityDTO data transfer objects. It uses MapStruct, a code generation tool that simplifies the implementation of mappings between Java bean types.
 </Purpose>
 
 <Functionalities>
     <Function name="INSTANCE">
-        This is a static field of type CityMapper, initialized using Mappers.getMapper(CityMapper.class). It provides a singleton instance of the CityMapper implementation, which can be used throughout the application for consistent mapping operations.
+        This is a static field that provides a singleton instance of the CityMapper interface. It uses MapStruct's Mappers factory to create an implementation of the interface.
     </Function>
     <Function name="dtoToCity">
         Signature: City dtoToCity(CityDTO cityDTO)
@@ -430,15 +407,12 @@ This file defines an interface for mapping between City domain objects and CityD
         This method is responsible for converting a City domain object to a CityDTO object. The actual implementation will be generated by MapStruct.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: City.java
 Path: src/main/java/com/iky/travel/domain/model/City.java
 Package: com.iky.travel.domain.model
-Summary: <File Name="City.java" Package="com.iky.travel.domain.model">
+Summary: 
 
 <Dependencies>
     <Dependency>lombok.Data</Dependency>
@@ -454,29 +428,32 @@ This file defines a City model class that represents a city entity in a travel-r
 <Functionalities>
     <Function name="Data Model">
         The City class serves as a data model with the following fields:
-        - id: String (MongoDB document ID)
-        - name: String (name of the city)
-        - plateNo: int (license plate number of the city)
-        - population: Long (population of the city)
-        - country: String (country where the city is located)
-        - topActivities: String[] (array of top activities in the city)
-
-        The class uses Lombok's @Data annotation to automatically generate getters, setters, toString, equals, and hashCode methods.
-
-        The @Document annotation maps this class to the "cities" collection in MongoDB.
-
+        - id (String): Unique identifier for the city, annotated with @Id
+        - name (String): Name of the city
+        - plateNo (int): License plate number of the city, mapped to "plate_no" in MongoDB
+        - population (Long): Population of the city
+        - country (String): Country where the city is located
+        - topActivities (String[]): Array of top activities in the city, mapped to "top_activities" in MongoDB
+    </Function>
+    
+    <Function name="MongoDB Integration">
+        The class is annotated with @Document(collection = "cities"), indicating that it maps to a MongoDB collection named "cities".
+    </Function>
+    
+    <Function name="Lombok Integration">
+        The @Data annotation from Lombok automatically generates boilerplate code such as getters, setters, toString(), equals(), and hashCode() methods.
+    </Function>
+    
+    <Function name="Custom Field Mapping">
         The @Field annotation is used to map Java field names to different MongoDB document field names for "plate_no" and "top_activities".
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityService.java
 Path: src/main/java/com/iky/travel/domain/service/city/CityService.java
 Package: com.iky.travel.domain.service.city
-Summary: <File Name="CityService.java" Package="com.iky.travel.domain.service.city">
+Summary: 
 
 <Dependencies>
     <Dependency>com.iky.travel.domain.dto.CityDTO</Dependency>
@@ -523,15 +500,12 @@ This file defines an interface for managing city-related operations in a travel 
         Returns: A boolean indicating whether the deletion was successful.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityServiceImpl.java
 Path: src/main/java/com/iky/travel/domain/service/city/impl/CityServiceImpl.java
 Package: com.iky.travel.domain.service.city.impl
-Summary: <File Name="CityServiceImpl.java" Package="com.iky.travel.domain.service.city.impl">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.data.redis.core.RedisTemplate</Dependency>
@@ -543,43 +517,52 @@ Summary: <File Name="CityServiceImpl.java" Package="com.iky.travel.domain.servic
 </Dependencies>
 
 <Purpose>
-This class implements the CityService interface and provides functionality for managing city data. It uses both a database (through CityRepository) and Redis cache for efficient data storage and retrieval. The class handles operations such as adding, updating, retrieving, and deleting city information, while maintaining data consistency between the database and cache.
+This class implements the CityService interface and provides functionality for managing city data. It uses both a database (through CityRepository) and Redis cache to store and retrieve city information efficiently.
 </Purpose>
 
 <Functionalities>
     <Function name="addCity">
-        Adds a new city to the system. It checks if the city already exists, saves it to the database, and caches it in Redis. Throws CityAlreadyExistsException if the city already exists.
+        Adds a new city to the system. It checks if the city already exists, saves it to the database, and caches it in Redis.
+        Parameters: CityDTO cityDTO
+        Return: boolean
     </Function>
-    
+
     <Function name="updateCity">
-        Updates an existing city's information. It checks if the city exists, updates the database, and refreshes the cache. Throws CityNotFoundException if the city doesn't exist.
+        Updates an existing city's information. It checks if the city exists, updates it in the database, and updates the cache in Redis.
+        Parameters: CityDTO updatedCity
+        Return: boolean
     </Function>
-    
+
     <Function name="cityExists">
-        Checks if a city exists by name. It first checks the Redis cache, and if not found, queries the database.
+        Checks if a city exists by name. It first checks the Redis cache, then the database if not found in cache.
+        Parameters: String cityName
+        Return: boolean
     </Function>
-    
+
     <Function name="getCity">
-        Retrieves city information by name. It first checks the Redis cache, and if not found, queries the database and caches the result. It also increments a query count for the city.
+        Retrieves city information by name. It first checks the Redis cache, then the database if not found in cache. It also increments the query count for the city.
+        Parameters: String cityName
+        Return: Optional<CityDTO>
     </Function>
-    
+
     <Function name="deleteCity">
-        Deletes a city from both the database and Redis cache. Throws CityDeleteException if there's an error during deletion.
+        Deletes a city from both the Redis cache and the database.
+        Parameters: String cityName
+        Return: boolean
     </Function>
-    
+
     <Function name="incrementCityQueryCount">
-        Increments a counter in Redis to track popular destinations based on query frequency.
+        Increments the query count for a city in Redis, used for tracking popular destinations.
+        Parameters: String cityName
+        Return: void
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: TravelService.java
 Path: src/main/java/com/iky/travel/domain/service/travel/TravelService.java
 Package: com.iky.travel.domain.service.travel
-Summary: <File Name="TravelService.java" Package="com.iky.travel.domain.service.travel">
+Summary: 
 
 <Dependencies>
     <Dependency>java.util.Set</Dependency>
@@ -594,14 +577,14 @@ This file defines an interface named TravelService, which appears to be part of 
         Signature: Set<Object> getMostQueriedCities(int topN)
         Parameters: int topN - likely represents the number of top cities to retrieve
         Return Type: Set<Object>
-        Description: This method is designed to return a set of the most queried cities. The 'topN' parameter suggests it returns a limited number of cities, probably sorted by their query frequency. The return type being Set<Object> implies that the city representations might be complex objects rather than simple strings.
+        Description: This method is designed to retrieve a set of the most queried cities. The 'topN' parameter suggests it returns a limited number of cities, probably sorted by their query frequency. The return type being Set<Object> implies that the city representations might be complex objects rather than simple strings.
     </Function>
 
     <Function name="getAllCities">
         Signature: Set<Object> getAllCities()
         Parameters: None
         Return Type: Set<Object>
-        Description: This method is intended to retrieve all cities available in the system. Like getMostQueriedCities, it returns a Set<Object>, suggesting that city data is represented as complex objects.
+        Description: This method is intended to retrieve all cities available in the system. Like getMostQueriedCities, it returns a Set<Object>, suggesting that cities are represented as complex objects.
     </Function>
 
     <Function name="clearPopularDestinations">
@@ -611,15 +594,12 @@ This file defines an interface named TravelService, which appears to be part of 
         Description: This method likely resets or clears the list of popular destinations. The boolean return type suggests it returns true if the operation was successful, and false otherwise.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: TravelServiceImpl.java
 Path: src/main/java/com/iky/travel/domain/service/travel/impl/TravelServiceImpl.java
 Package: com.iky.travel.domain.service.travel.impl
-Summary: <File Name="TravelServiceImpl.java" Package="com.iky.travel.domain.service.travel.impl">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.data.redis.core.RedisTemplate</Dependency>
@@ -635,7 +615,7 @@ This file implements the TravelService interface, providing functionality relate
 <Functionalities>
     <Function name="getMostQueriedCities">
         Retrieves the top N most queried cities from Redis.
-        Parameters: int topN - the number of top cities to retrieve
+        Parameters: int topN
         Return Type: Set<Object>
         Implementation: Uses Redis ZSet (Sorted Set) to get the reverse range of popular destinations.
     </Function>
@@ -657,15 +637,12 @@ This file implements the TravelService interface, providing functionality relate
         Implementation: Deletes the POPULAR_DESTINATIONS_KEY from Redis and returns true if successful.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: ApiErrorResponse.java
 Path: src/main/java/com/iky/travel/exception/ApiErrorResponse.java
 Package: com.iky.travel.exception
-Summary: <File Name="ApiErrorResponse.java" Package="com.iky.travel.exception">
+Summary: 
 
 <Dependencies>
     <Dependency>java.time.LocalDateTime</Dependency>
@@ -682,30 +659,28 @@ This file defines a class named ApiErrorResponse which is designed to represent 
 <Functionalities>
     <Function name="Data Structure">
         The ApiErrorResponse class serves as a data structure to hold error information. It contains five fields:
-        - timestamp (LocalDateTime): Represents the time when the error occurred
-        - status (int): Likely represents the HTTP status code of the error
-        - error (String): A brief description of the error
-        - message (String): A more detailed message about the error
-        - requestPath (String): The path of the request that resulted in the error
+        1. timestamp (LocalDateTime): Represents the time when the error occurred.
+        2. status (int): Represents the HTTP status code of the error.
+        3. error (String): Describes the type or category of the error.
+        4. message (String): Provides a detailed message about the error.
+        5. requestPath (String): Indicates the API endpoint path where the error occurred.
     </Function>
     
     <Function name="Lombok Annotations">
         The class uses Lombok annotations to automatically generate boilerplate code:
-        - @Getter: Generates getter methods for all fields
-        - @Setter: Generates setter methods for all fields
-        - @ToString: Generates a toString() method that includes all fields
-        - @AllArgsConstructor: Generates a constructor with parameters for all fields
+        - @Getter: Generates getter methods for all fields.
+        - @Setter: Generates setter methods for all fields.
+        - @ToString: Generates a toString() method that includes all fields.
+        - @AllArgsConstructor: Generates a constructor with parameters for all fields.
+        These annotations reduce the amount of manual code needed and improve maintainability.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: BaseErrorResponse.java
 Path: src/main/java/com/iky/travel/exception/BaseErrorResponse.java
 Package: com.iky.travel.exception
-Summary: <File Name="BaseErrorResponse.java" Package="com.iky.travel.exception">
+Summary: 
 
 <Dependencies>
     <Dependency>java.time.LocalDateTime</Dependency>
@@ -713,30 +688,27 @@ Summary: <File Name="BaseErrorResponse.java" Package="com.iky.travel.exception">
 </Dependencies>
 
 <Purpose>
-This file defines a record class named BaseErrorResponse, which is designed to encapsulate error response information for exception handling in a Spring-based application. It provides a structured way to represent error details, including timestamp, error message, HTTP status code, HTTP status message, and the request path where the error occurred.
+This file defines a record class named BaseErrorResponse, which is designed to encapsulate error response information in a standardized format. It is likely used for consistent error handling and reporting across the application, particularly in the context of HTTP responses.
 </Purpose>
 
 <Functionalities>
     <Function name="BaseErrorResponse">
         This is an implicitly defined constructor for the record class. It takes five parameters:
-        - timestamp (LocalDateTime): The date and time when the error occurred
-        - errorMessage (String): A descriptive message about the error
-        - httpStatusCode (int): The numeric HTTP status code associated with the error
-        - httpStatusMessage (HttpStatusCode): The HTTP status code object, likely containing additional status information
-        - requestPath (String): The path of the request that resulted in the error
+        - timestamp (LocalDateTime): Represents the time when the error occurred
+        - errorMessage (String): Contains a description of the error
+        - httpStatusCode (int): Represents the HTTP status code associated with the error
+        - httpStatusMessage (HttpStatusCode): Provides more detailed HTTP status information
+        - requestPath (String): Indicates the path of the request that resulted in the error
 
-        The record automatically generates accessor methods for each of these fields, allowing easy retrieval of error information.
+        The record automatically generates accessor methods for each of these fields.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: ValidationErrorResponse.java
 Path: src/main/java/com/iky/travel/exception/ValidationErrorResponse.java
 Package: com.iky.travel.exception
-Summary: <File Name="ValidationErrorResponse.java" Package="com.iky.travel.exception">
+Summary: 
 
 <Dependencies>
     <Dependency>java.time.LocalDateTime</Dependency>
@@ -747,27 +719,26 @@ Summary: <File Name="ValidationErrorResponse.java" Package="com.iky.travel.excep
 </Dependencies>
 
 <Purpose>
-This file defines a class named ValidationErrorResponse which is designed to encapsulate and structure error information related to validation failures in the application. It provides a standardized format for reporting validation errors, including timestamp, HTTP status code, error message, and specific field errors.
+This file defines a class named ValidationErrorResponse which is designed to represent and encapsulate validation error information in a structured format. It is likely used as part of an exception handling mechanism in the travel application to provide detailed error responses when validation failures occur.
 </Purpose>
 
 <Functionalities>
-    <Function name="ValidationErrorResponse">
-        This is not an explicit method but rather the structure of the class itself. The class is annotated with Lombok's @Getter, @Setter, and @AllArgsConstructor, which automatically generate getter and setter methods for all fields, as well as a constructor that takes all fields as parameters. The class contains four fields:
+    <Function name="Class Structure">
+        The ValidationErrorResponse class is a data structure with four fields:
         1. timestamp (LocalDateTime): Represents the time when the validation error occurred.
         2. httpStatusCode (int): Stores the HTTP status code associated with the validation error.
-        3. errorMessage (String): Holds a general error message describing the validation failure.
-        4. fieldErrors (HashMap<String, String>): A map to store specific field-level errors, where the key is likely the field name and the value is the error message for that field.
+        3. errorMessage (String): Contains a general error message describing the validation failure.
+        4. fieldErrors (HashMap<String, String>): A map to store specific field-level validation errors, where the key is likely the field name and the value is the error message for that field.
+
+        The class uses Lombok annotations (@Getter, @Setter, @AllArgsConstructor) to automatically generate getter and setter methods for all fields, as well as a constructor that takes all fields as parameters. This reduces boilerplate code and enhances maintainability.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: GlobalExceptionHandler.java
 Path: src/main/java/com/iky/travel/exception/GlobalExceptionHandler.java
 Package: com.iky.travel.exception
-Summary: <File Name="GlobalExceptionHandler.java" Package="com.iky.travel.exception">
+Summary: 
 
 <Dependencies>
     <Dependency>java.time.LocalDateTime</Dependency>
@@ -789,36 +760,24 @@ This file defines a global exception handler for a Spring Boot application. It c
 <Functionalities>
     <Function name="handleValidationExceptions">
         Handles MethodArgumentNotValidException, which occurs when request validation fails.
-        It collects all validation errors, creates a ValidationErrorResponse object, and returns it with a BAD_REQUEST status.
-        
-        Parameters:
-        - MethodArgumentNotValidException ex: The exception thrown due to validation errors
-        
-        Returns:
-        - ResponseEntity<Object>: Contains ValidationErrorResponse with error details
+        Parameters: MethodArgumentNotValidException ex
+        Return Type: ResponseEntity<Object>
+        Description: This method extracts validation errors from the exception, creates a map of field names and error messages, and returns a ResponseEntity with a ValidationErrorResponse object containing detailed error information.
     </Function>
 
     <Function name="handleAllOtherExceptions">
-        Catches all other unhandled exceptions in the application.
-        It logs the exception details, creates a BaseErrorResponse object, and returns it with a BAD_REQUEST status.
-        
-        Parameters:
-        - Exception ex: The caught exception
-        - WebRequest request: The web request during which the exception occurred
-        
-        Returns:
-        - ResponseEntity<Object>: Contains BaseErrorResponse with error details
+        Handles all other uncaught exceptions in the application.
+        Parameters: Exception ex, WebRequest request
+        Return Type: ResponseEntity<Object>
+        Description: This method logs the unhandled exception, creates a BaseErrorResponse object with error details, and returns a ResponseEntity with HTTP status BAD_REQUEST. It provides a catch-all mechanism for exceptions not handled by other specific exception handlers.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: ApiExceptionHandler.java
 Path: src/main/java/com/iky/travel/exception/ApiExceptionHandler.java
 Package: com.iky.travel.exception
-Summary: <File Name="ApiExceptionHandler.java" Package="com.iky.travel.exception">
+Summary: 
 
 <Dependencies>
     <Dependency>org.springframework.http.HttpStatus</Dependency>
@@ -855,15 +814,12 @@ This file defines a global exception handler for a Spring-based application. It'
         Handles RedisException. It creates an ApiErrorResponse with BAD_REQUEST status and returns it wrapped in a ResponseEntity.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityDeleteException.java
 Path: src/main/java/com/iky/travel/exception/city/CityDeleteException.java
 Package: com.iky.travel.exception.city
-Summary: <File Name="CityDeleteException.java" Package="com.iky.travel.exception.city">
+Summary: 
 
 <Dependencies>
     <Dependency>java.lang.RuntimeException</Dependency>
@@ -876,44 +832,38 @@ This file defines a custom exception class named CityDeleteException. It is desi
 <Functionalities>
     <Function name="CityDeleteException(String message, Throwable throwable)">
         This is the constructor for the CityDeleteException class. It takes two parameters:
-        1. message: A String describing the exception
-        2. throwable: The original exception that caused this exception to be thrown
-        
-        The constructor calls the superclass constructor (RuntimeException) with these parameters, allowing for both a custom error message and the original cause of the exception to be preserved.
+        1. message: A String that describes the exception
+        2. throwable: The original exception that caused this CityDeleteException
+
+        The constructor calls the superclass (RuntimeException) constructor using 'super(message, throwable)', which allows both the error message and the original cause to be passed up the exception chain. This is useful for maintaining the full context of the error when it's caught and handled elsewhere in the application.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityAddException.java
 Path: src/main/java/com/iky/travel/exception/city/CityAddException.java
 Package: com.iky.travel.exception.city
-Summary: <File Name="CityAddException.java" Package="com.iky.travel.exception.city">
+Summary: 
 
 <Dependencies>
     <Dependency>java.lang.RuntimeException</Dependency>
 </Dependencies>
 
 <Purpose>
-This file defines a custom exception class named CityAddException. It is designed to be thrown when there are issues related to adding a city in the travel application. By extending RuntimeException, it is an unchecked exception, meaning it doesn't need to be explicitly caught or declared in method signatures.
+This file defines a custom exception class named CityAddException. It is designed to be thrown when there's an error or exceptional condition related to adding a city in the travel application. By extending RuntimeException, it is an unchecked exception, meaning it doesn't need to be explicitly caught or declared in method signatures.
 </Purpose>
 
 <Functionalities>
     <Function name="CityAddException(String message)">
-        This is the constructor for the CityAddException class. It takes a String parameter 'message' which is passed to the superclass (RuntimeException) constructor. This allows for custom error messages to be associated with this exception when it's thrown, providing more context about the specific issue that occurred while attempting to add a city.
+        This is the constructor for the CityAddException class. It takes a String parameter 'message' which describes the specific error or condition that led to this exception being thrown. The constructor calls the superclass (RuntimeException) constructor with this message, allowing it to be accessed later via the getMessage() method inherited from Throwable.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityUpdateException.java
 Path: src/main/java/com/iky/travel/exception/city/CityUpdateException.java
 Package: com.iky.travel.exception.city
-Summary: <File Name="CityUpdateException.java" Package="com.iky.travel.exception.city">
+Summary: 
 
 <Dependencies>
     <Dependency>java.lang.RuntimeException</Dependency>
@@ -925,41 +875,35 @@ This file defines a custom exception class named CityUpdateException. It is desi
 
 <Functionalities>
     <Function name="CityUpdateException(String message)">
-        This is the constructor for the CityUpdateException class. It takes a String parameter 'message' which describes the specific error or issue that occurred during the city update process. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry and display the error message when caught and handled elsewhere in the application.
+        This is the constructor for the CityUpdateException class. It takes a String parameter 'message' which describes the specific error or issue that occurred during a city update operation. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry and display the error message when caught or logged.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityAlreadyExistsException.java
 Path: src/main/java/com/iky/travel/exception/city/CityAlreadyExistsException.java
 Package: com.iky.travel.exception.city
-Summary: <File Name="CityAlreadyExistsException.java" Package="com.iky.travel.exception.city">
+Summary: 
 
 <Dependencies>
     <Dependency>java.lang.RuntimeException</Dependency>
 </Dependencies>
 
 <Purpose>
-This file defines a custom exception class named CityAlreadyExistsException. It is designed to be thrown when an attempt is made to create or add a city that already exists in the system. This exception extends RuntimeException, making it an unchecked exception that doesn't require explicit handling.
+This file defines a custom exception class named CityAlreadyExistsException. It is designed to be thrown when an attempt is made to create or add a city that already exists in the system. This exception helps in handling and communicating specific error scenarios related to city data management in the travel application.
 </Purpose>
 
 <Functionalities>
     <Function name="CityAlreadyExistsException(String message)">
-        This is the constructor for the CityAlreadyExistsException class. It takes a String parameter 'message' which is passed to the superclass (RuntimeException) constructor. This allows for a custom error message to be associated with the exception when it's thrown, providing more context about the specific city that already exists.
+        This is the constructor for the CityAlreadyExistsException class. It takes a String parameter 'message' which describes the specific error condition. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry and propagate the error information.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: CityNotFoundException.java
 Path: src/main/java/com/iky/travel/exception/city/CityNotFoundException.java
 Package: com.iky.travel.exception.city
-Summary: <File Name="CityNotFoundException.java" Package="com.iky.travel.exception.city">
+Summary: 
 
 <Dependencies>
     <Dependency>java.lang.RuntimeException</Dependency>
@@ -971,18 +915,15 @@ This file defines a custom exception class named CityNotFoundException. It is de
 
 <Functionalities>
     <Function name="CityNotFoundException(String message)">
-        This is the constructor for the CityNotFoundException class. It takes a String parameter 'message' and passes it to the superclass (RuntimeException) constructor. This allows for a custom error message to be associated with the exception when it's thrown, providing more context about the specific city that was not found or the circumstances of the failure.
+        This is the constructor for the CityNotFoundException class. It takes a String parameter 'message' and passes it to the superclass (RuntimeException) constructor. This allows for a custom error message to be associated with the exception when it's thrown.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: RedisException.java
 Path: src/main/java/com/iky/travel/exception/common/RedisException.java
 Package: com.iky.travel.exception.common
-Summary: <File Name="RedisException.java" Package="com.iky.travel.exception.common">
+Summary: 
 
 <Dependencies>
     <Dependency>java.lang.RuntimeException</Dependency>
@@ -997,52 +938,45 @@ This file defines a custom exception class named RedisException. It is designed 
         This is the constructor for the RedisException class. It takes a String parameter 'message' which describes the specific Redis-related error that occurred. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry meaningful error information when it's thrown and caught elsewhere in the application.
     </Function>
 </Functionalities>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: logback-spring.xml
 Path: src/main/resources/logback-spring.xml
 Package: resources
-Summary: <File Name="logback.xml" Path="[Not specified in the given content]">
+Summary: <File Name="logback.xml" Path="[Not specified, likely in src/main/resources]">
 
 <Purpose>
-This is a Logback configuration file for a Java application. It sets up logging behavior, including console and file output, with color-coded console logs and rolling file logs.
+This is a Logback configuration file for a Java application, likely a Spring Boot project. It sets up logging behavior, including console and file output, with color-coded console logs and rolling file logs.
 </Purpose>
 
 <Configurations>
+    <Configuration name="scan" significance="Enables automatic reloading of the configuration file every 30 seconds">
     <Configuration name="LOG_FILE" significance="Defines the log file path and name">
-    <Configuration name="CONSOLE Appender" significance="Configures colored console logging with a specific pattern">
-    <Configuration name="FILE Appender" significance="Sets up file logging with rolling policy">
-    <Configuration name="Rolling Policy" significance="Configures log file rotation based on time and size">
-    <Configuration name="Root Logger" significance="Sets the root log level to 'info' and attaches both console and file appenders">
-    <Configuration name="Conversion Rules" significance="Defines custom conversion rules for log formatting, including color and whitespace handling">
+    <Configuration name="ConversionRules" significance="Sets up color coding and special formatting for console output">
+    <Configuration name="CONSOLE Appender" significance="Configures logging output to the console with color-coded formatting">
+    <Configuration name="FILE Appender" significance="Configures logging output to a file with rolling policy">
+    <Configuration name="Rolling Policy" significance="Sets up log file rotation based on time and size, keeping logs for 30 days and limiting file size to 10MB">
+    <Configuration name="Root Logger" significance="Sets the default log level to INFO and attaches both console and file appenders">
 </Configurations>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 
 Filename: application.yaml
 Path: src/main/resources/application.yaml
 Package: resources
-Summary: <File Name="application.yml" Path="src/main/resources/application.yml">
+Summary: <File Name="application.yml" Path="/src/main/resources/application.yml">
 
 <Purpose>
-This YAML file is a Spring Boot application configuration file. It sets up various Spring Cloud, data source, and management configurations for a travel-related application.
+This YAML configuration file is used to set up various Spring Boot application properties, including database connections, health monitoring, and Spring Cloud Config settings. It configures Redis and MongoDB connections, as well as management endpoints for health checks.
 </Purpose>
 
 <Configurations>
-    <Configuration name="spring.cloud.config.enabled" significance="Disables Spring Cloud Config, indicating that the application will use local configurations instead of fetching from a central config server">
-    <Configuration name="spring.data.redis" significance="Configures Redis connection settings, suggesting that the application uses Redis for caching or as a data store">
-    <Configuration name="spring.data.mongodb.uri" significance="Sets up the MongoDB connection, indicating that MongoDB is used as the primary database for the travel application">
-    <Configuration name="management.endpoint.health" significance="Configures the health endpoint to always show detailed health information, useful for monitoring and diagnostics">
-    <Configuration name="management.health.mongo.enabled" significance="Enables MongoDB health checks, allowing the application to monitor the database connection status">
-    <Configuration name="management.health.redis.enabled" significance="Enables Redis health checks, allowing the application to monitor the Redis connection status">
+    <Configuration name="spring.cloud.config.enabled" significance="Disables Spring Cloud Config, likely for local development or testing">
+    <Configuration name="spring.data.redis.host" significance="Specifies the Redis server host">
+    <Configuration name="spring.data.redis.port" significance="Specifies the Redis server port">
+    <Configuration name="spring.data.mongodb.uri" significance="Configures the MongoDB connection URI, including sensitive credentials">
+    <Configuration name="management.endpoint.health.show-details" significance="Enables detailed health information in actuator endpoints">
+    <Configuration name="management.health.mongo.enabled" significance="Enables MongoDB health checks">
+    <Configuration name="management.health.redis.enabled" significance="Enables Redis health checks">
 </Configurations>
-</File>
-Imports: 
-Functions: 
-TODO Comments: 
+
 

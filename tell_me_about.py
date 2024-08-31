@@ -142,11 +142,17 @@ if __name__ == "__main__":
     question = args.question
     # one of task or jira should be provided
     if not question:
-        print("Please provide either question or jira")
+        print("Please provide either question")
         sys.exit(1)
    
+    # first let's rewrite the question to be more detailed
+    from rewrite_question import expand_question
+    from rewrite_question import system_prompt_rewrite_question
+    query_manager = initiate_llm_query_manager(pf=None, system_prompt=system_prompt_rewrite_question, reused_prompt_template=None)
+    expanded_question = expand_question(query_manager, question)
+    
     max_rounds = args.max_rounds
-    print(f"question: {question} max_rounds: {max_rounds}")
+    print(f"question: {expanded_question} max_rounds: {max_rounds}")
     # looping until the user is confident of the steps and instructions, or 8 rounds of conversation
     i = 0
     past_additional_reading = ""
@@ -158,7 +164,7 @@ if __name__ == "__main__":
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
     while True and i < max_rounds:
         last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(query_manager, question, last_response, pf, past_additional_reading=past_additional_reading)
+        response, additional_reading, doneNow = ask_continue(query_manager, expanded_question, last_response, pf, past_additional_reading=past_additional_reading)
         #print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
