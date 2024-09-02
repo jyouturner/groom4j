@@ -8,6 +8,7 @@ from projectfiles import ProjectFiles
 from typing import Union
 from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
 from functions import read_files, read_packages, read_all_packages, read_from_human
+from llm_interaction import process_llm_response, initiate_llm_query_manager, search_results_to_prompt
 
 
 system_prompt = """
@@ -42,38 +43,9 @@ Follow this structured approach:
     ...]
 
 2. Research the codebase:
- - If you need to examine specific files, request them in this specific format only:
-    [I need access files: <file>file1 name</file>,<file>file2 name</file>,<file>file3 name</file>]
-    Then I will provide the files that contain the keywords, in format:
-    <search><keyword>keyword</keyword>
-    <files><file>file1.java</file>, <file>file2.java</file></files>
-    </search>
- 
- - If you need information about packages, ask in this specific format only:
-    [I need info about packages: <package>package name</package>,<package>package2 name</package>]
-    Then I will provide summary of the package next with format:
-    <package name="package name">
-        <notes>summary of package</notes>
-        <sub_packages>sub packages</sub_packages>
-        <files>files in the package</files>
-    </package>
-
- - If you need to search for specific information within the project, use below format only:
-    [I need to search <keyword>keyword</keyword> in the project]
-    Then I will provide the files that contain the keywords, in format:
-        <search><keyword>keyword</keyword>
-        <files><file>file1.java</file>, <file>file2.java</file></files>
-        </search>
-
-    Answer to your requests including search results, file contents and package summaries will be found within 
-    <Additional Materials>
-    ...
-    <Additional Materials> tags.
-
-    During our conversations, your previous notes will be found within
-    <Previous research notes> 
-    ...
-    </Previous research notes>tags.
+    - Review relevant files, classes, and methods
+    - Identify any existing code that relates to the task
+    - Feel free to ask for specific file contents, package summaries, or code snippets if needed
 
 3. Plan the implementation:
  - Break down the task into logical steps
@@ -103,6 +75,59 @@ Remember:
 </instructions>
 """
 
+function_prompt = """
+If you need more information, use the following formats to request it:
+
+1. To search for keywords, request them in this specific format only:
+   [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
+   Then I will provide the files that contain the keywords, in format:
+   ```text
+    You requested to search for : [keyword]
+    Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
+   ``` 
+    or if no files are found, I will let you know as well. Therefore you should check the additional notes to avoid requesting again:
+    ```text
+    No matching files found with [keyword]
+    ```
+
+2. To request file contents, request them in this specific format only:
+   [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
+   Then I will provide summary and content of the file next with format:
+    <file name="file name">
+        <summary>summary of file</summary>
+        <content> file content </content>
+    </file>
+    or if the file is not found and you should not request again.
+
+3. To get information about packages, request them in this specific format only:
+   [I need info about packages:: <package>com.example.package1</package>, <package>com.example.package2</package>]
+    Then I will provide summary of the package next with format:
+    <package name="package name">
+        <notes>summary of package</notes>
+        <sub_packages>sub packages</sub_packages>
+        <files>files in the package</files>
+    </package>
+
+Ask for additional information at end of the response, with the following format:
+
+```text
+**Next Steps**
+[your request to search for keywords]
+[your request to read files]
+[your request to read packages]
+...
+```
+
+After receiving information, analyze it and relate it back to the original question. 
+
+Answer to your requests including search results, file contents and package summaries will be found within 
+<Additional Materials>
+...
+<Additional Materials> tags.
+
+```
+"""
+
 reused_prompt_template = """
 
 Below is the Java project structure for your reference:
@@ -114,11 +139,15 @@ and summaries of the packages in the project:
 
 user_prompt_template = """
 The task to be groomed is:
-"{task}"
+"{question}"
 
 <Previous research notes>
 {notes}
 </Previous research notes>
+
+<Previous search results>
+{search_results}
+</Previous search results>
 
 <Additional Materials>
 {additional_reading}
@@ -126,19 +155,34 @@ The task to be groomed is:
 
 Please perform a Task Analysis following the structured approach outlined in the instructions, then proceed with analyzing this task and providing a detailed plan.
 {instructions}
+
+{function_prompt}
 """
 
 
 
-def ask_continue(query_manager, task, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
-    additional_reading, processed_requests = process_llm_response(last_response, pf)
+def ask_continue(query_manager, question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+    # capture the DO-NOT_SEARCH Error and update prompt
+    updated_last_response = last_response
+    stop_function_prompt = False
+    try:
+        additional_reading, processed_requests, updated_last_response = process_llm_response(last_response, pf)
+    except Exception as e:
+        if "DO NOT SEARCH" in str(e):
+            # the conversation is going in a loop, so we need to stop it, by removing the function prompt
+            print("The LLM is stuck in a loop, so we need to stop it")
+            stop_function_prompt = True
+        else:
+            raise e
     
     if last_response == "" or additional_reading:
         user_prompt = user_prompt_template.format(
-            task=task,
-            notes=last_response,
-            additional_reading="Below is the additional reading you asked for:\n" + past_additional_reading + "\n\n" + additional_reading,
-            instructions=instructions
+            question=question,
+            notes=updated_last_response,
+            search_results=search_results_to_prompt(),
+            additional_reading="Below are the additional info that you should read before answering questions:\n" + str(past_additional_reading) + "\n\n" + str(additional_reading) if not stop_function_prompt else "",
+            instructions=instructions,
+            function_prompt=function_prompt if not stop_function_prompt else "",
         )
         response = query_manager.query(user_prompt)
         return response, additional_reading, False
@@ -146,57 +190,6 @@ def ask_continue(query_manager, task, last_response, pf, past_additional_reading
         print("The LLM does not need any more information, so we can end the conversation")
         return last_response, None, True
 
-def extract_task_analysis(response):
-    # Extract Task Analysis results from the LLM's response
-    # This is a simple implementation; you might want to use regex for more robust extraction
-    task_analysis = {
-        'summary': '',
-        'metrics_issues': [],
-        'investigation_points': [],
-        'assumptions': []
-    }
-    
-    lines = response.split('\n')
-    current_section = None
-    
-    for line in lines:
-        if line.startswith('[Task Summary:'):
-            current_section = 'summary'
-            task_analysis['summary'] = line.split(':', 1)[1].strip()
-        elif line.startswith('[Key Metrics/Issues:'):
-            current_section = 'metrics_issues'
-        elif line.startswith('[Investigation Points:'):
-            current_section = 'investigation_points'
-        elif line.startswith('[Assumptions/Potential Misunderstandings:'):
-            current_section = 'assumptions'
-        elif line.strip().startswith('-') or line.strip().startswith('1.'):
-            if current_section in ['metrics_issues', 'investigation_points', 'assumptions']:
-                task_analysis[current_section].append(line.strip()[2:].strip())
-    
-    return task_analysis
-
-def perform_guided_research(task_analysis, pf):
-    additional_reading = ""
-    file_extensions = ['.java', '.yml', '.properties']  # Add or modify as needed
-    # Use investigation points to guide research
-    for point in task_analysis['investigation_points']:
-        # Search for keywords related to the investigation point
-        keywords = extract_keywords(point)
-        for keyword in keywords:
-            # search for files with the keyword within the project
-            matching_files = efficient_file_search(pf.root_path, keyword, file_extensions=file_extensions)
-            if matching_files:
-                files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
-                additional_reading += f"<search><keyword>{keyword}</keyword>\n    <files>{files_str}</files>\n</search>\n"
-            else:
-                additional_reading += f"<search><keyword>{keyword}</keyword>\n    <files>No matching files found</files>\n</search>\n"
-    
-    # Add any other guided research based on the task analysis
-    return additional_reading
-
-def extract_keywords(text):
-    # Simple keyword extraction (you might want to use NLP techniques for better results)
-    return [word.lower() for word in text.split() if len(word) > 3]
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Grooming development task")
@@ -247,9 +240,10 @@ if __name__ == "__main__":
     ResponseManager.reset_prompt_response()
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
+    last_response = ""
     while True and i < max_rounds:
-        last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(query_manager, task, last_response, pf, past_additional_reading=past_additional_reading)
+        #last_response = ResponseManager.load_last_response()
+        response, additional_reading, doneNow = ask_continue(query_manager=query_manager, question=task, last_response=last_response, pf=pf, past_additional_reading=past_additional_reading)
         #print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
@@ -257,5 +251,6 @@ if __name__ == "__main__":
             break
         else:
             past_additional_reading += ("\n" + additional_reading)
+            last_response = response
             i += 1
     print("Conversation with LLM ended")

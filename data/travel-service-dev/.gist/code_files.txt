@@ -1,4 +1,4 @@
-Filename: TravelBeApplication.java
+|Filename: TravelBeApplication.java
 Path: src/main/java/com/iky/travel/TravelBeApplication.java
 Package: com.iky.travel
 Summary: 
@@ -28,7 +28,7 @@ This file serves as the entry point for a Spring Boot application. It is the mai
 </Functionalities>
 
 
-Filename: MongoConfig.java
+|Filename: MongoConfig.java
 Path: src/main/java/com/iky/travel/config/MongoConfig.java
 Package: com.iky.travel.config
 Summary: 
@@ -55,7 +55,7 @@ This file defines a configuration class for MongoDB in a Spring application. It 
 </Functionalities>
 
 
-Filename: RedisConfig.java
+|Filename: RedisConfig.java
 Path: src/main/java/com/iky/travel/config/RedisConfig.java
 Package: com.iky.travel.config
 Summary: 
@@ -94,7 +94,7 @@ This file defines a configuration class for Redis, a popular in-memory data stru
 </Functionalities>
 
 
-Filename: WebSecurityConfiguration.java
+|Filename: WebSecurityConfiguration.java
 Path: src/main/java/com/iky/travel/config/WebSecurityConfiguration.java
 Package: com.iky.travel.config
 Summary: 
@@ -134,7 +134,7 @@ This file defines the web security configuration for a Spring Boot application. 
 </Functionalities>
 
 
-Filename: CityController.java
+|Filename: CityController.java
 Path: src/main/java/com/iky/travel/controller/city/CityController.java
 Package: com.iky.travel.controller.city
 Summary: 
@@ -184,7 +184,7 @@ This file defines a REST controller for managing city-related operations in a tr
 </Functionalities>
 
 
-Filename: TravelController.java
+|Filename: TravelController.java
 Path: src/main/java/com/iky/travel/controller/travel/TravelController.java
 Package: com.iky.travel.controller.travel
 Summary: 
@@ -224,7 +224,7 @@ This file defines a REST controller for handling travel-related HTTP requests. I
 </Functionalities>
 
 
-Filename: ApiPathConstants.java
+|Filename: ApiPathConstants.java
 Path: src/main/java/com/iky/travel/constant/common/ApiPathConstants.java
 Package: com.iky.travel.constant.common
 Summary: 
@@ -255,7 +255,7 @@ This file defines a set of constant API path prefixes used for routing in a trav
 </Functionalities>
 
 
-Filename: MongoConstant.java
+|Filename: MongoConstant.java
 Path: src/main/java/com/iky/travel/constant/common/MongoConstant.java
 Package: com.iky.travel.constant.common
 Summary: 
@@ -279,7 +279,7 @@ This file defines a utility class named MongoConstant that contains a constant v
 </Functionalities>
 
 
-Filename: RedisConstant.java
+|Filename: RedisConstant.java
 Path: src/main/java/com/iky/travel/constant/common/RedisConstant.java
 Package: com.iky.travel.constant.common
 Summary: 
@@ -307,7 +307,7 @@ This file defines a utility class named RedisConstant that contains constant val
 </Functionalities>
 
 
-Filename: CityDTO.java
+|Filename: CityDTO.java
 Path: src/main/java/com/iky/travel/domain/dto/CityDTO.java
 Package: com.iky.travel.domain.dto
 Summary: 
@@ -346,7 +346,7 @@ This file defines a Data Transfer Object (DTO) for representing city information
 </Functionalities>
 
 
-Filename: CityRepository.java
+|Filename: CityRepository.java
 Path: src/main/java/com/iky/travel/domain/repository/city/CityRepository.java
 Package: com.iky.travel.domain.repository.city
 Summary: 
@@ -378,7 +378,7 @@ This file defines a repository interface for managing City entities in a MongoDB
 </Functionalities>
 
 
-Filename: CityMapper.java
+|Filename: CityMapper.java
 Path: src/main/java/com/iky/travel/domain/mapper/CityMapper.java
 Package: com.iky.travel.domain.mapper
 Summary: 
@@ -409,7 +409,7 @@ This file defines an interface for mapping between City domain objects and CityD
 </Functionalities>
 
 
-Filename: City.java
+|Filename: City.java
 Path: src/main/java/com/iky/travel/domain/model/City.java
 Package: com.iky.travel.domain.model
 Summary: 
@@ -450,7 +450,7 @@ This file defines a City model class that represents a city entity in a travel-r
 </Functionalities>
 
 
-Filename: CityService.java
+|Filename: CityService.java
 Path: src/main/java/com/iky/travel/domain/service/city/CityService.java
 Package: com.iky.travel.domain.service.city
 Summary: 
@@ -502,7 +502,7 @@ This file defines an interface for managing city-related operations in a travel 
 </Functionalities>
 
 
-Filename: CityServiceImpl.java
+|Filename: CityServiceImpl.java
 Path: src/main/java/com/iky/travel/domain/service/city/impl/CityServiceImpl.java
 Package: com.iky.travel.domain.service.city.impl
 Summary: 
@@ -559,7 +559,7 @@ This class implements the CityService interface and provides functionality for m
 </Functionalities>
 
 
-Filename: TravelService.java
+|Filename: TravelService.java
 Path: src/main/java/com/iky/travel/domain/service/travel/TravelService.java
 Package: com.iky.travel.domain.service.travel
 Summary: 
@@ -596,7 +596,7 @@ This file defines an interface named TravelService, which appears to be part of 
 </Functionalities>
 
 
-Filename: TravelServiceImpl.java
+|Filename: TravelServiceImpl.java
 Path: src/main/java/com/iky/travel/domain/service/travel/impl/TravelServiceImpl.java
 Package: com.iky.travel.domain.service.travel.impl
 Summary: 
@@ -639,7 +639,7 @@ This file implements the TravelService interface, providing functionality relate
 </Functionalities>
 
 
-Filename: ApiErrorResponse.java
+|Filename: ApiErrorResponse.java
 Path: src/main/java/com/iky/travel/exception/ApiErrorResponse.java
 Package: com.iky.travel.exception
 Summary: 
@@ -677,7 +677,7 @@ This file defines a class named ApiErrorResponse which is designed to represent 
 </Functionalities>
 
 
-Filename: BaseErrorResponse.java
+|Filename: BaseErrorResponse.java
 Path: src/main/java/com/iky/travel/exception/BaseErrorResponse.java
 Package: com.iky.travel.exception
 Summary: 
@@ -705,7 +705,7 @@ This file defines a record class named BaseErrorResponse, which is designed to e
 </Functionalities>
 
 
-Filename: ValidationErrorResponse.java
+|Filename: ValidationErrorResponse.java
 Path: src/main/java/com/iky/travel/exception/ValidationErrorResponse.java
 Package: com.iky.travel.exception
 Summary: 
@@ -735,7 +735,7 @@ This file defines a class named ValidationErrorResponse which is designed to rep
 </Functionalities>
 
 
-Filename: GlobalExceptionHandler.java
+|Filename: GlobalExceptionHandler.java
 Path: src/main/java/com/iky/travel/exception/GlobalExceptionHandler.java
 Package: com.iky.travel.exception
 Summary: 
@@ -774,7 +774,7 @@ This file defines a global exception handler for a Spring Boot application. It c
 </Functionalities>
 
 
-Filename: ApiExceptionHandler.java
+|Filename: ApiExceptionHandler.java
 Path: src/main/java/com/iky/travel/exception/ApiExceptionHandler.java
 Package: com.iky.travel.exception
 Summary: 
@@ -816,7 +816,7 @@ This file defines a global exception handler for a Spring-based application. It'
 </Functionalities>
 
 
-Filename: CityDeleteException.java
+|Filename: CityDeleteException.java
 Path: src/main/java/com/iky/travel/exception/city/CityDeleteException.java
 Package: com.iky.travel.exception.city
 Summary: 
@@ -840,7 +840,7 @@ This file defines a custom exception class named CityDeleteException. It is desi
 </Functionalities>
 
 
-Filename: CityAddException.java
+|Filename: CityAddException.java
 Path: src/main/java/com/iky/travel/exception/city/CityAddException.java
 Package: com.iky.travel.exception.city
 Summary: 
@@ -860,7 +860,7 @@ This file defines a custom exception class named CityAddException. It is designe
 </Functionalities>
 
 
-Filename: CityUpdateException.java
+|Filename: CityUpdateException.java
 Path: src/main/java/com/iky/travel/exception/city/CityUpdateException.java
 Package: com.iky.travel.exception.city
 Summary: 
@@ -880,7 +880,7 @@ This file defines a custom exception class named CityUpdateException. It is desi
 </Functionalities>
 
 
-Filename: CityAlreadyExistsException.java
+|Filename: CityAlreadyExistsException.java
 Path: src/main/java/com/iky/travel/exception/city/CityAlreadyExistsException.java
 Package: com.iky.travel.exception.city
 Summary: 
@@ -900,7 +900,7 @@ This file defines a custom exception class named CityAlreadyExistsException. It 
 </Functionalities>
 
 
-Filename: CityNotFoundException.java
+|Filename: CityNotFoundException.java
 Path: src/main/java/com/iky/travel/exception/city/CityNotFoundException.java
 Package: com.iky.travel.exception.city
 Summary: 
@@ -920,7 +920,7 @@ This file defines a custom exception class named CityNotFoundException. It is de
 </Functionalities>
 
 
-Filename: RedisException.java
+|Filename: RedisException.java
 Path: src/main/java/com/iky/travel/exception/common/RedisException.java
 Package: com.iky.travel.exception.common
 Summary: 
@@ -940,7 +940,7 @@ This file defines a custom exception class named RedisException. It is designed 
 </Functionalities>
 
 
-Filename: logback-spring.xml
+|Filename: logback-spring.xml
 Path: src/main/resources/logback-spring.xml
 Package: resources
 Summary: <File Name="logback.xml" Path="[Not specified, likely in src/main/resources]">
@@ -960,7 +960,7 @@ This is a Logback configuration file for a Java application, likely a Spring Boo
 </Configurations>
 
 
-Filename: application.yaml
+|Filename: application.yaml
 Path: src/main/resources/application.yaml
 Package: resources
 Summary: <File Name="application.yml" Path="/src/main/resources/application.yml">

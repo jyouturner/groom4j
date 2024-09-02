@@ -8,19 +8,36 @@ from projectfiles import ProjectFiles
 from typing import Union
 from functions import get_file, get_package, efficient_file_search, process_file_request, get_static_notes
 from functions import read_files, read_packages, read_all_packages, read_from_human
+from llm_interaction import process_llm_response, initiate_llm_query_manager, search_results_to_prompt
 
 
 system_prompt = """
 You are an AI assistant designed to help Java developers understand existing Java projects.
-You will be given a specific question to investigate the Java codebase.
-If you need more information to complete any section, ask for it using the following format:
+"""
+
+instructions = """
+If you encounter unclear or complex code, state your assumptions and any potential alternative interpretations. Always err on the side of providing more detail, especially when it comes to data flow analysis.
+
+Prioritize thoroughness over speed. If the project is large, focus on the most important or frequently used endpoints first, but ensure that the data flow analysis for each endpoint is as complete as possible.
+
+You must follow exactly the above specified format for requests and structure your response using markdown.
+
+"""
+
+function_prompt = """
+If you need more information, use the following formats to request it:
 
 1. To search for keywords, request them in this specific format only:
    [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
    Then I will provide the files that contain the keywords, in format:
-    <search><keyword>keyword</keyword>
-    <files><file>file1.java</file>, <file>file2.java</file></files>
-    </search>
+   ```text
+    You requested to search for : [keyword]
+    Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
+   ``` 
+    or if no files are found, I will let you know as well. Therefore you should check the additional notes to avoid requesting again:
+    ```text
+    No matching files found with [keyword]
+    ```
 
 2. To request file contents, request them in this specific format only:
    [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
@@ -29,6 +46,7 @@ If you need more information to complete any section, ask for it using the follo
         <summary>summary of file</summary>
         <content> file content </content>
     </file>
+    or if the file is not found and you should not request again.
 
 3. To get information about packages, request them in this specific format only:
    [I need info about packages:: <package>com.example.package1</package>, <package>com.example.package2</package>]
@@ -39,20 +57,24 @@ If you need more information to complete any section, ask for it using the follo
         <files>files in the package</files>
     </package>
 
-Always use these exact formats for requests. After receiving information, analyze it and relate it back to the original question. If you need clarification on any information received, ask for it specifically.
+Ask for additional information at end of the response, with the following format:
 
-During our conversations, your previous notes will be found
-<Previous research notes> previous research notes </Previous research notes>tags, 
-and any answer to your requests including search results, file contents and package summaries will be found within 
+```text
+**Next Steps**
+[your request to search for keywords]
+[your request to read files]
+[your request to read packages]
+...
+```
+
+After receiving information, analyze it and relate it back to the original question. 
+
+Answer to your requests including search results, file contents and package summaries will be found within 
 <Additional Materials>
 ...
 <Additional Materials> tags.
 
-If you encounter unclear or complex code, state your assumptions and any potential alternative interpretations. Always err on the side of providing more detail, especially when it comes to data flow analysis.
-
-Prioritize thoroughness over speed. If the project is large, focus on the most important or frequently used endpoints first, but ensure that the data flow analysis for each endpoint is as complete as possible.
-
-You must follow exactly the above specified format for requests and structure your response using markdown.
+```
 """
 
 reused_prompt_template = """
@@ -77,8 +99,15 @@ user_prompt_template = """
 <Additional Materials>
 {additional_reading}
 </Additional Materials>
+
+{search_results}
+
+{instructions}
+
+{function_prompt}
 """
 
+# very specific to this script
 question = """
 Your task is to analyze the project structure, identify API endpoints, and provide detailed notes on their implementation, with a strong focus on data flow analysis.
 
@@ -125,20 +154,34 @@ Provide code snippets and file locations where relevant.
 """
 
 
-def ask_continue(query_manager, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
-    additional_reading, processed_requests = process_llm_response(last_response, pf)
+def ask_continue(query_manager, question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
+    # capture the DO-NOT_SEARCH Error and update prompt
+    updated_last_response = last_response
+    stop_function_prompt = False
+    additional_reading = ""
+    try:
+        additional_reading, processed_requests, updated_last_response = process_llm_response(last_response, pf)
+    except Exception as e:
+        if "DO NOT SEARCH" in str(e):
+            # the conversation is going in a loop, so we need to stop it, by removing the function prompt
+            print("The LLM is stuck in a loop, so we need to stop it")
+            stop_function_prompt = True
+        else:
+            raise e
     
     if last_response == "" or additional_reading:
-        # either the first time or the last conversation needs more information
         user_prompt = user_prompt_template.format(
-            question=question, 
-            notes=last_response if last_response else "this is the beginning of my research, I need to work hard", 
-            additional_reading=past_additional_reading + "\n\n" + additional_reading
+            question=question,
+            notes=updated_last_response,
+            search_results=search_results_to_prompt(),
+            additional_reading="Below are the additional info that you should read before answering questions:\n" + str(past_additional_reading) + "\n\n" + str(additional_reading) if not stop_function_prompt else "",
+            instructions=instructions,
+            function_prompt=function_prompt if not stop_function_prompt else "",
         )
         response = query_manager.query(user_prompt)
         return response, additional_reading, False
     else:
-        print("the LLM does not need any more information, so we can end the conversation")
+        print("The LLM does not need any more information, so we can end the conversation")
         return last_response, None, True
     
 if __name__ == "__main__":
@@ -175,16 +218,18 @@ if __name__ == "__main__":
     ResponseManager.reset_prompt_response()
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
+    last_response = ""
     while True and i < max_rounds:
-        last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(query_manager, last_response, pf, past_additional_reading=past_additional_reading)
-        #print(response)
+        
+        response, additional_reading, doneNow = ask_continue(query_manager, question=question, last_response=last_response, pf=pf, past_additional_reading=past_additional_reading)
+        print(response)
         # check if the user is confident of the steps and instructions
         if doneNow:
             print(response)
             break
         else:
             past_additional_reading += ("\n" + additional_reading)
+            last_response = response
             i += 1
     # save to a gist file
     default_api_notes_file = "api_notes.md"

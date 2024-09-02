@@ -50,6 +50,7 @@ class ProjectFiles:
     default_codefile_gist_file = "code_files.txt"
     default_package_notes_file = "package_notes.txt"
     default_gist_foler = ".gist"
+    default_seporator = "|"
 
     def __init__(self, repo_root_path, prefix_list = None, suffix_list = None, resource_suffix_list=None):
         self.root_path = repo_root_path
@@ -283,6 +284,7 @@ class ProjectFiles:
             os.makedirs(gist_folder_path)
         with open(file_path, "w") as f:
             for package, notes in self.package_notes.items():
+                f.write(self.default_seporator)
                 f.write(f"Package: {package}\nNotes: {notes}\n\n")
         return file_path
 
@@ -292,19 +294,26 @@ class ProjectFiles:
         package_notes = defaultdict(str)
         print(f"Loading package notes from {file_path}")
         with open(file_path, "r") as f:
-            lines = f.readlines()
-            i = 0
-            while i < len(lines):
-                if lines[i].startswith("Package:"):
-                    package = lines[i].split(":")[1].strip()
-                    notes = ""
-                    i += 1
-                    while i < len(lines) and not lines[i].startswith("Package:"):
-                        notes += lines[i]
-                        i += 1
-                    package_notes[package] = notes
-                else:
-                    i += 1
+            content = f.read()
+            package_blocks = content.split(self.default_seporator)  # Splitting by separator
+            for block in package_blocks:
+                if block.strip():  # Ensure the block is not empty
+                    lines = block.split("\n")
+                    package_notes = {}
+                    current_package = None
+                    notes = []
+
+                    for line in lines:
+                        if line.startswith("Package:"):
+                            if current_package:
+                                package_notes[current_package] = "\n".join(notes)
+                            current_package = line.split(":", 1)[1].strip()
+                            notes = []
+                        else:
+                            notes.append(line)
+
+                    if current_package:
+                        package_notes[current_package] = "\n".join(notes)
         return package_notes
 
     def persist_code_files(self, files=None, gist_file_path=None):
@@ -317,6 +326,7 @@ class ProjectFiles:
             os.makedirs(gist_folder_path)
         with open(gist_file_path, "w") as f:
             for file in files:
+                f.write(self.default_seporator) # separator of file entries
                 f.write(f"Filename: {file.filename}\n")
                 f.write(f"Path: {file.path}\n")
                 f.write(f"Package: {file.package}\n")
@@ -333,7 +343,7 @@ class ProjectFiles:
         files = []
         with open(gist_file_path, "r") as f:
             content = f.read()
-            file_blocks = content.split("\n\n")  # Splitting by double newline to separate file entries
+            file_blocks = content.split(self.default_seporator)  # Splitting by separator
             for block in file_blocks:
                 if block.strip():  # Ensure the block is not empty
                     lines = block.split("\n")
