@@ -1,7 +1,12 @@
 import argparse
 import sys
 from typing import List, Tuple
-
+# the order of the following imports is important
+# since the initialization of langfuse depends on the os environment variables
+# which are loaded in the config_utils module
+from config_utils import load_config_to_env
+load_config_to_env()
+from llm_client import LLMQueryManager, langfuse_context, observe
 
 system_prompt_rewrite_question = """
 You are an AI assistant designed to help expand and refine questions about Java projects. 
@@ -76,7 +81,7 @@ Now, please decompose the given question about the Java project into a series of
 """
 
 
-
+@observe(name="decompose_question", capture_input=True, capture_output=True)
 def decompose_question(query_manager, original_question: str) -> Tuple[List[str], str]:
 
     full_prompt = f"{instructions_rewrite_question}\n\nOriginal Question: {original_question}"
@@ -99,17 +104,11 @@ if __name__ == "__main__":
     question = args.question
     # one of task or jira should be provided
     if not question:
-        print("Please provide either question or jira")
+        print("Please provide either question")
         sys.exit(1)
-    # the order of the following imports is important
-    # since the initialization of langfuse depends on the os environment variables
-    # which are loaded in the config_utils module
-    from config_utils import load_config_to_env
-    load_config_to_env()
-    from llm_client import LLMQueryManager, ResponseManager
-    from llm_interaction import process_llm_response, initiate_llm_query_manager
+
     
-    query_manager = initiate_llm_query_manager(pf=None, system_prompt=system_prompt_rewrite_question, reused_prompt_template=None)
+    query_manager = LLMQueryManager(use_llm="anthropic", system_prompt=system_prompt_rewrite_question)
 
     decomposed_questions_list, refined_question = decompose_question(query_manager, question)
     print("\ndecomposed_questions_list:", decomposed_questions_list)

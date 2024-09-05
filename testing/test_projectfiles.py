@@ -286,8 +286,25 @@ def test_find_package_notes():
     print("project path", project_path)
     pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     pf.from_project()
+    # test packages
+    package_notes = pf.package_notes
+    assert len(package_notes) > 0
+    # print the package names from the package notes
+    for package in package_notes:
+        print(package)
 
     # find the package notes
     notes = pf.find_notes_of_package("com.iky.travel.config")
     print(notes)
-    assert notes != ""
+    assert notes is not None
+
+def test_find_codefile_by_name_resources():
+    # test to find application.yaml
+    root_path = os.path.join(os.path.dirname(__file__), '..')
+    project_path = os.path.join(root_path, "data/travel-service-dev")
+    pf = ProjectFiles(project_path)
+    pf.from_project()
+    # find the codefile by name
+    codefile = pf.find_codefile_by_name("application.yaml")
+    print(codefile)
+    assert codefile is not None

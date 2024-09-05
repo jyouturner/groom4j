@@ -4,18 +4,22 @@ import sys
 import re
 import argparse
 from projectfiles import ProjectFiles
-from typing import Union
-
-def read_files(pf, file_names) -> str:
+from typing import Union, List, Tuple
+import time
+def read_files(pf, file_names) -> Tuple[str, List[str], List[str]]:
     additional_reading = ""
+    files_found = []
+    files_not_found = []
     for file_name in file_names:
         file_name = file_name.strip()
+        print("need to read file:", file_name)
         # check whether it is a single file name or a file name with path
         if "/" in file_name:
             # if it starts with '/', that is unexpected, since we don't read from absolute path
             if file_name.startswith("/"):
                 print(f"!!!File {file_name} does not meet expectations we are looking for relative path!")
-                additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+                additional_reading += f"\nFile name=\"{file_name}\"\n"
+                additional_reading += f"Expected file name with relative path, starting with src/main/java or src/test/java, but got {file_name}\n"
                 continue
             # it is a file name with path, it could be src/main/java/com/iky/travel/config/TravelBeApplication.java ...
             file_path, file_name = os.path.split(file_name)
@@ -24,44 +28,60 @@ def read_files(pf, file_names) -> str:
                 file_path = file_path.replace("src/main/java/", "")
             elif "src/test/java" in file_path:
                 file_path = file_path.replace("src/test/java/", "")
+            elif "src/main/resources" in file_path:
+                # FIXME: we need to handle the resources folder differently, since it is not a java file
+                print("resources file:", file_path)
+                file_path = file_path.replace("src/main/resources", "")
             else:
                 print(f"!!!File {file_name} does not meet expectations we are looking for src/main/java or src/test/java in the path!")
-                additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
+                additional_reading += f"\nFile name=\"{file_name}\"\n"
+                additional_reading += f"Expected file name with relative path, starting with src/main/java or src/test/java, but got {file_name}\n"
                 continue
             package = file_path.replace("/", ".")
+            # if package is empty, then use None
+            if package == "":
+                package = None
             filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=package)
         else:
             # it is a single file name, then we look up in the code_files to find the path and summary, then read the file
             filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=None)
        
         if filename:
-            additional_reading += f"<file name=\"{filename}\">\n"
-            additional_reading += f"<summary>{filesummary}</summary>\n"
-            additional_reading += f"<content>{filecontent}</content></file>\n"
+            additional_reading += f"\nFile name=\"{filename}\" path=\"{filepath}\"\n"
+            additional_reading += f"Summary:{filesummary}\n"
+            additional_reading += f"Source Code:\n{filecontent}\n"
+            files_found.append(filename)
         else:
             print(f"!!!File {file_name} does not exist!")
-            additional_reading += f"!!!File {file_name} does not exist! Please ask for the correct file or packages! I am very disappointed!\n"
-    return additional_reading
+            additional_reading += f"\nFile name=\"{file_name}\"\n"
+            additional_reading += f"!!!File {file_name} does not exist!\n"
+            files_not_found.append(file_name)
+    return additional_reading, files_found, files_not_found
 
 
-def read_packages(pf, package_names) -> str:
+def read_packages(pf, package_names) -> Tuple[str, List[str], List[str]]:
     additional_reading = ""
+    packages_found = []
+    packages_not_found = []
     for package_name in package_names:
         # clean it
         package_name = package_name.strip()
         packagename, packagenotes, subpackages, filenames = get_package(pf, package_name)
         if packagename:
-            additional_reading += f"<package name=\"{packagename}\">\n"
-            additional_reading += f"<notes>{packagenotes}</notes>\n"
-            additional_reading += f"<sub_packages>{subpackages}</sub_package>\n"
-            additional_reading += f"<files>{filenames}</files>\n"
-            additional_reading += f"</package>\n"
-    return additional_reading
+            additional_reading += f"\npackage name=\"{packagename}\"\n"
+            additional_reading += f"Summary:{packagenotes}</notes>\n"
+            additional_reading += f"sub_packages:{subpackages}\n"
+            additional_reading += f"Files:{filenames}\n"
+            additional_reading += f"\n"
+            packages_found.append(packagename)
+        else:
+            packages_not_found.append(package_name)
+    return additional_reading, packages_found, packages_not_found
 
 def read_all_packages(pf) -> str:
     additional_reading = ""
     for package in pf.package_notes:
-        additional_reading += f"<package name=\"{package}\"><notes>{pf.package_notes[package]}</notes></package>\n"
+        additional_reading += f"\npackage name=\"{package}\"\nSummary:{pf.package_notes[package]}\n"
     return additional_reading
 
 def read_from_human(line) -> str:
@@ -223,3 +243,21 @@ def get_static_notes(pf):
         with open(api_notes_file, "r") as f:
             notes_str += f"\n\n{f.read()}"
     return notes_str
+
+def save_response_to_markdown(question: str, response: str, root_path: str) -> str:
+    """
+    Save the response to a markdown file.
+
+    Args:
+        question (str): The question string used to generate the filename.
+        response (str): The response content to be saved in the file.
+        root_path (str): The root directory where the file will be saved.
+
+    Returns:
+        str: The path to the saved markdown file.
+    """
+    result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower()) + "_" + str(int(time.time())) + ".md"
+    result_file = os.path.join(root_path, result_file)
+    with open(result_file, "w") as f:
+        f.write(response)
+    return result_file

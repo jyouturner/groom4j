@@ -136,7 +136,7 @@ poetry run python tell_me_about.py ./data/travel-service-dev/ --question="how da
 or just use a dedicated script to find info in the API projects, which will generate a markdown file (api_note.md) under ".gist" folder
 
 ```sh
-poetry run python gist_api.py ./data/travel-service-dev
+poetry run python summarize_api.py ./data/travel-service-dev
 ```
 
 ## Use on Your Project

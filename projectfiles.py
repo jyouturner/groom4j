@@ -54,8 +54,16 @@ class ProjectFiles:
 
     def __init__(self, repo_root_path, prefix_list = None, suffix_list = None, resource_suffix_list=None):
         self.root_path = repo_root_path
+        # default prefix list should be ["src/main/java", "src/main/resources", "src/test/java", "src/test/resources"]
+        if prefix_list is None:
+            prefix_list = ["src/main/java", "src/main/resources", "src/test/java", "src/test/resources"]
+        
         self.prefix_list = prefix_list
+        # default suffix list should be [".java", ".xml", ".yml", ".yaml", ".properties", ".sql", ".json"]
+        if suffix_list is None:
+            suffix_list = [".java", ".xml", ".yml", ".yaml", ".properties", ".sql", ".json"]
         self.suffix_list = suffix_list
+        #FIXME, the suffix list and resource_suffix_list are conflicting, need to fix it
         self.resource_suffix_list = resource_suffix_list or ['.properties', '.yaml', ".yml", ".json", '.xml']
         self.package_notes = defaultdict(str)
         self.files = []
@@ -299,19 +307,15 @@ class ProjectFiles:
             for block in package_blocks:
                 if block.strip():  # Ensure the block is not empty
                     lines = block.split("\n")
-                    package_notes = {}
                     current_package = None
                     notes = []
-
                     for line in lines:
                         if line.startswith("Package:"):
-                            if current_package:
-                                package_notes[current_package] = "\n".join(notes)
                             current_package = line.split(":", 1)[1].strip()
-                            notes = []
-                        else:
-                            notes.append(line)
-
+                        elif line.startswith("Notes:"):
+                            notes.append(line.split(":", 1)[1].strip())
+                        elif line.strip():
+                            notes.append(line.strip())
                     if current_package:
                         package_notes[current_package] = "\n".join(notes)
         return package_notes
@@ -369,6 +373,12 @@ class ProjectFiles:
 
         return files
 
+    def get_file_notes(self):
+        file_notes = ""
+        for file in self.files:
+            file_notes += f"File: {file.filename} : {file.summary}\n\n"
+        return file_notes
+
 def print_tree(packages, prefix=''):
     result = ""
     for package, contents in packages.items():
@@ -379,3 +389,5 @@ def print_tree(packages, prefix=''):
         if 'sub_packages' in contents:
             result += print_tree(contents['sub_packages'], prefix=prefix + '    ')
     return result
+
+

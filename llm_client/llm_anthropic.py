@@ -5,6 +5,10 @@ import os
 from typing import List, Dict
 from time import sleep
 
+# Claude 3 Sonnet
+SONNET_INPUT_COST = 0.00000300  # $0.003 per 1000 tokens
+SONNET_OUTPUT_COST = 0.00001500  # $0.015 per 1000 tokens
+
 class AnthropicAssistant:
     def __init__(self, use_history: bool = True):
         self.anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
@@ -31,7 +35,7 @@ class AnthropicAssistant:
     def is_support_cached_prompt(self):
         return True
 
-    @observe(as_type="generation", capture_input=False, capture_output=False)
+    @observe(as_type="generation", name="query", capture_input=False, capture_output=False)
     def query(self, user_prompt: str) -> str:
         if not self.use_history:
             self.reset_messages()
@@ -79,6 +83,7 @@ class AnthropicAssistant:
                 "output": response.usage.output_tokens
             }
         )
+
         assistant_message = response.content[0].text
 
         if self.use_history:
@@ -86,8 +91,10 @@ class AnthropicAssistant:
         else:
             self.reset_messages()
         
-        langfuse_context.flush()
-
+        try:
+            print(f"\ncost: {self.get_cost()}\n")
+        except Exception as e:
+            print(e)
         return assistant_message
 
     def get_session_history(self) -> List[Dict[str, str]]:
@@ -139,6 +146,12 @@ class AnthropicAssistant:
         if not use_history:
             self.reset_messages()
 
+    def get_cost(self) -> float:
+        #usage = langfuse_context.current_observation.get("usage")
+        #input_cost = usage.get("input") * SONNET_INPUT_COST
+        #output_cost = usage.get("output") * SONNET_OUTPUT_COST
+        #return input_cost + output_cost
+        return 0.0
 
 
 

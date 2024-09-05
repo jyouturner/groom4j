@@ -6,11 +6,28 @@ import argparse
 import yaml
 from projectfiles import ProjectFiles
 import time
-from typing import Union, Optional
+from typing import Union, Optional, List
 from functions import get_file, get_package, get_static_notes
 from functions import efficient_file_search, read_files, read_packages, read_all_packages, read_from_human
 from functions import process_file_request
+from functions import save_response_to_markdown
+
+import logging
+
+# the order of the following imports is important
+# since the initialization of langfuse depends on the os environment variables
+# which are loaded in the config_utils module
+from config_utils import load_config_to_env
+load_config_to_env()
+
 from rewrite_question import decompose_question, system_prompt_rewrite_question
+
+from llm_client import LLMQueryManager, langfuse_context, observe
+from conversation_reviewer import ConversationReviewer
+from llm_interaction import initiate_llm_query_manager, query_llm
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 system_prompt = """
 You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
@@ -18,70 +35,36 @@ You are an AI assistant designed to help Java developers understand and analyze 
 """
 
 instructions = """
-Begin your analysis with: "Let's inspect the Java project to answer the question: [restate the question]"
-
-<guidelines>
 1. Start with a high-level overview of relevant components.
-2. Dive deeper into specific areas as needed, leveraging the project structure, codebase.
+2. Dive deeper into specific areas as needed, leveraging the project structure and codebase.
 3. Provide clear, concise explanations.
 4. If you're unsure about something, state it clearly.
-5. The goal is to be **as thorough as possible** to help developers plan for maintenance tasks more effectively.
-</guidelines>
+5. The goal is to be as thorough as possible to help developers plan for maintenance tasks more effectively.
+
+6. Synthesize information as you go:
+   - After each round, summarize what you've learned so far.
+   - Connect new information with previous findings.
+   - Highlight any changes to your understanding based on new information.
+
+7. Provide partial answers or hypotheses:
+   - Even with incomplete information, offer your best current understanding.
+   - Clearly label any hypotheses or assumptions you're making.
+   - Update or revise your partial answers as you gather more information.
+
+8. Assess information sufficiency:
+   - At the end of each response, evaluate whether you have enough information to fully answer the question.
+   - If you believe you have sufficient information, state so explicitly and provide your final answer.
+   - If you need more information, clearly state what specific information you need and why.
+
+9. Avoid repetitive requests:
+   - Before requesting information, check if it's already been provided in previous rounds.
+   - If you're unsure about previously provided information, ask for clarification rather than requesting the same information again.
+
+Remember, the goal is to provide the most comprehensive and accurate answer possible. It's okay to revise your understanding as you gather more information, and it's better to provide a well-reasoned partial answer than to continue requesting information indefinitely.
 
 """
 
-function_prompt = """
-If you need more information, use the following formats to request it:
 
-1. To search for keywords, request them in this specific format only:
-   [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
-   Then I will provide the files that contain the keywords, in format:
-   ```text
-    You requested to search for : [keyword]
-    Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
-   ``` 
-    or if no files are found, I will let you know as well. Therefore you should check the additional notes to avoid requesting again:
-    ```text
-    No matching files found with [keyword]
-    ```
-
-2. To request file contents, request them in this specific format only:
-   [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
-   Then I will provide summary and content of the file next with format:
-    <file name="file name">
-        <summary>summary of file</summary>
-        <content> file content </content>
-    </file>
-    or if the file is not found and you should not request again.
-
-3. To get information about packages, request them in this specific format only:
-   [I need info about packages:: <package>com.example.package1</package>, <package>com.example.package2</package>]
-    Then I will provide summary of the package next with format:
-    <package name="package name">
-        <notes>summary of package</notes>
-        <sub_packages>sub packages</sub_packages>
-        <files>files in the package</files>
-    </package>
-
-Ask for additional information at end of the response, with the following format:
-
-```text
-**Next Steps**
-[your request to search for keywords]
-[your request to read files]
-[your request to read packages]
-...
-```
-
-After receiving information, analyze it and relate it back to the original question. 
-
-Answer to your requests including search results, file contents and package summaries will be found within 
-<Additional Materials>
-...
-<Additional Materials> tags.
-
-```
-"""
 
 reused_prompt_template = """
 
@@ -90,105 +73,86 @@ Below is the Java project structure for your reference:
 
 and summaries of the packages in the project:
 {package_notes}
+
+and notes of the files in the project:
+{file_notes}
 """
 
 user_prompt_template = """
 
-Task: <question>{question}</question>
+===CONVERSATION_CONTEXT===
+Iteration: {iteration_number}
 
-<Previous research notes>
-{notes}
-</Previous research notes>
+===QUESTION===
+{question}
 
-<Previous search results>
-{search_results}
-</Previous search results>
+===PREVIOUS_ANALYSIS===
+{previous_llm_response}
 
-<Additional Materials>
-{additional_reading}
-</Additional Materials>
 
-{instructions}
+===NEW_INFORMATION===
 
+{new_information}
+
+
+===INSTRUCTIONS_FOR_ADDITIONAL_REQUESTS===
 {function_prompt}
+
+===DO_NOT_SEARCH===
+{do_not}
+
+===GUIDELINES_FOR_ANALYSIS===
+{instructions}
 
 """
 
-def ask_continue(query_manager, question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
-    # capture the DO-NOT_SEARCH Error and update prompt
-    updated_last_response = last_response
-    stop_function_prompt = False
-    try:
-        additional_reading, processed_requests, updated_last_response = process_llm_response(last_response, pf)
-    except Exception as e:
-        if "DO NOT SEARCH" in str(e):
-            # the conversation is going in a loop, so we need to stop it, by removing the function prompt
-            print("The LLM is stuck in a loop, so we need to stop it")
-            stop_function_prompt = True
-        else:
-            raise e
-    
-    if updated_last_response == "" or additional_reading:
-        user_prompt = user_prompt_template.format(
-            question=question,
-            notes=updated_last_response,
-            search_results=search_results_to_prompt(),
-            additional_reading="Below are the additional info that you should read before answering questions:\n" + str(past_additional_reading) + "\n\n" + str(additional_reading) if not stop_function_prompt else "",
-            instructions=instructions,
-            function_prompt=function_prompt if not stop_function_prompt else "",
-        )
-        response = query_manager.query(user_prompt)
-        return response, additional_reading, False
-    else:
-        print("The LLM does not need any more information, so we can end the conversation")
-        return updated_last_response, None, True
 
-def answer_question(pf: Optional[ProjectFiles] , question, past_additional_reading = "", max_rounds=8):
+
+
+
+@observe(name="answer_question", capture_input=True, capture_output=True)
+def answer_question(pf: Optional[ProjectFiles], question, max_rounds=8):
     """
     Given a question, answer it by interacting with the LLM.
-
     Args:
-        pf: The ProjectFiles object.
-        question (str): The question to be answered.
-        past_additional_reading (str): The additional reading from previous questions.
-        max_rounds (int): The maximum number of rounds of conversation with LLM before stopping the conversation. 
-
+    pf: The ProjectFiles object.
+    question (str): The question to be answered.
+    max_rounds (int): The maximum number of rounds of conversation with LLM before stopping the conversation.
     """
+    logger.info(f"Answer question: {question}")
+    logger.info(f"Max rounds: {max_rounds}")
     i = 0
-    doneNow = False
-    additional_reading = ""
-    ResponseManager.reset_prompt_response()
-    
+    last_response = ""
+    new_information = ""
+    stop_function_prompt = False
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
-    while True and i < max_rounds:
-        last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(query_manager, question, last_response, pf, past_additional_reading=past_additional_reading)
-        #print(response)
-        # check if the user is confident of the steps and instructions
-        if doneNow:
-            return response
-        else:
-            past_additional_reading += ("\n" + additional_reading)
-            i += 1
+    reviewer = ConversationReviewer(query_manager=query_manager)
+    while i < max_rounds:
+        logger.info(f"--------- Round {i} ---------")
+        try:
+            new_information, last_response, stop_function_prompt = query_llm(
+                query_manager, question=question, user_prompt_template=user_prompt_template,
+                instruction_prompt=instructions, last_response=last_response,
+                pf=pf, 
+                iteration_number=str(i),
+                new_information=new_information,
+                stop_function_prompt=stop_function_prompt,
+                reviewer=reviewer
+            )
+        except Exception as e:
+            logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
+            break
 
-def save_response_to_markdown(question: str, response: str, root_path: str) -> str:
-    """
-    Save the response to a markdown file.
+        if new_information is None or new_information == "":
+            logger.info("The conversation has ended or no new information was found")
+            break
 
-    Args:
-        question (str): The question string used to generate the filename.
-        response (str): The response content to be saved in the file.
-        root_path (str): The root directory where the file will be saved.
+        i += 1
+    logger.info(f"Total rounds: {i}")
+    return last_response
 
-    Returns:
-        str: The path to the saved markdown file.
-    """
-    result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower()) + "_" + str(int(time.time())) + ".md"
-    result_file = os.path.join(root_path, result_file)
-    with open(result_file, "w") as f:
-        f.write(response)
-    return result_file
+
 
 def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: str, max_rounds=10) -> None:
     """
@@ -206,49 +170,56 @@ def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: 
     # Record the answers to the decomposed questions
     research_notes = ""
     for q in decompose_questions:
-        print(f"Question: {q}")
-        response = answer_question(pf, q, past_additional_reading="", max_rounds=max_rounds)
-        print(response)
+        logger.info(f"Question: {q}")
+        response = answer_question(pf, q, max_rounds=max_rounds)
+        logger.info(response)
         research_notes += f"\n\nQuestion: {q}\n\n{response}"
         # Write to a markdown file
         result_file = save_response_to_markdown(q, response, root_path)
-        print(f"Response saved to {result_file}")
+        logger.info(f"Response saved to {result_file}")
 
     # Now let's answer the original question
-    response = answer_question(pf, refined_question, past_additional_reading=research_notes, max_rounds=args.max_rounds)
+    response = answer_question(pf, refined_question, max_rounds=args.max_rounds)
     # Save to markdown file
     result_file = save_response_to_markdown(question, response, root_path)
-    print(f"Response saved to {result_file}")
+    logger.info(f"Response saved to {result_file}")
+    return response
+
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tell me about")
     parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
     parser.add_argument("--max-rounds", type=int, default=20, required=False, help="default 8, maximum rounds of conversation with LLM before stopping the conversation")
+    parser.add_argument("--breakdown", type=bool, default=False, required=False, help="bool indicator whether to break down the question into smaller questions")
     args = parser.parse_args()
-    # the order of the following imports is important
-    # since the initialization of langfuse depends on the os environment variables
-    # which are loaded in the config_utils module
-    from config_utils import load_config_to_env
-    load_config_to_env()
-    from llm_client import LLMQueryManager, ResponseManager
-    from llm_interaction import process_llm_response, initiate_llm_query_manager, search_results_to_prompt
+
 
 
     # if args.project_root is relative path, then get the absolute path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
-        print(f"Error: {root_path} does not exist")
+        logger.error(f"Error: {root_path} does not exist")
         sys.exit(1)
-    pf = ProjectFiles(repo_root_path=root_path, prefix_list=["src/main/java"], suffix_list=[".java"])
+    pf = ProjectFiles(repo_root_path=root_path)
     # load the files and package gists from persistence.
     pf.from_gist_files()
 
     question = args.question
     # one of task or jira should be provided
     if not question:
-        print("Please provide either question")
+        logger.error("Please provide a question")
         sys.exit(1)
-   
-    break_down_and_answer(question, pf, root_path, max_rounds=args.max_rounds)
-    print("Conversation with LLM ended")
+    if bool(args.breakdown):
+        logger.info("Breaking down the question into smaller questions ...")
+        res = break_down_and_answer(question, pf, root_path, max_rounds=args.max_rounds)
+        logger.info(res)
+    else:
+        res = answer_question(pf, question, max_rounds=args.max_rounds)
+        logger.info(res)
+        # Write to a markdown file
+        result_file = save_response_to_markdown(question, res, root_path)
+        logger.info(f"Response saved to {result_file}")
+    logger.info("Conversation with LLM ended")

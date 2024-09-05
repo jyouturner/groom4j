@@ -2,6 +2,33 @@
 
 If you have a specific question (as opposed to a more general or long development task), you can use the "tell_me_about.py" to ask the system. This can be useful to create a knowledge base or used to write documents of the specific aspect of the project.
 
+## Approach
+
+Yes, that's exactly the right approach. This method allows for a more structured and thorough analysis of complex Java projects. Here's how the process would work:
+
+1. Start with the original, complex question about the Java project.
+
+2. Use the revised prompt to decompose this question into a series of smaller, more focused questions.
+
+3. For each decomposed question:
+   a. Present it to the LLM for analysis.
+   b. Provide relevant code snippets, file contents, or project structure information as needed.
+   c. Get a focused answer for that specific sub-question.
+   d. Store this answer for later synthesis.
+
+4. After all decomposed questions have been answered:
+   a. Present all the gathered information to the AI.
+   b. Ask for a synthesis that addresses the original, complex question.
+   c. This synthesis should draw upon all the detailed answers to create a comprehensive response.
+
+This approach has several advantages:
+
+1. It maintains focus on specific aspects of the project, reducing the chance of overlooking important details.
+2. It allows for deeper dives into particular areas of the codebase when necessary.
+3. It helps manage the context size for each interaction, potentially improving the quality of AI responses.
+4. The final synthesis step ensures that all aspects of the original question are addressed in a cohesive manner.
+
+
 ## **Expand Question**
 
 The system will first rewrite the given question, to expand it, before sending to LLM.

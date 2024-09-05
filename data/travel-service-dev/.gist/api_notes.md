@@ -1,4 +1,4 @@
-Based on the provided information, I'll analyze the API endpoints for the City operations in the travel application. Let's break down each endpoint according to the requested format:
+Based on the project structure and the information provided, I'll analyze the API endpoints and provide detailed notes on their implementation, focusing on data flow analysis. Let's start with the endpoints related to city operations, as they seem to be a central part of the application.
 
 ## Get City
 
@@ -152,6 +152,4 @@ Based on the provided information, I'll analyze the API endpoints for the City o
 6. **Data Processing**: 
    - Validation is performed on the incoming CityDTO (details of validation are not visible here, likely defined in the DTO class).
    - Data transformation occurs when converting CityDTO to City entity.
-   - The updated city data is stored in both the database and Redis cache.
-
-7. **Key Classes/Methods**:
+   - The updated city

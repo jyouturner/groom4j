@@ -5,18 +5,30 @@ import re
 import argparse
 from projectfiles import ProjectFiles
 
-from typing import Union
+from typing import Union, Optional
 from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
 from functions import read_files, read_packages, read_all_packages, read_from_human
-from llm_interaction import process_llm_response, initiate_llm_query_manager, search_results_to_prompt
 
+import logging
+
+# the order of the following imports is important
+# since the initialization of langfuse depends on the os environment variables
+# which are loaded in the config_utils module
+from config_utils import load_config_to_env
+load_config_to_env()
+
+from llm_client import LLMQueryManager, langfuse_context, observe
+from conversation_reviewer import ConversationReviewer
+from llm_interaction import initiate_llm_query_manager, query_llm
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 system_prompt = """
 You are a world-class Java developer tasked with grooming development tasks in Java projects. Your goal is to write clear, concise, and specific steps to accomplish tasks, focusing only on development aspects (not testing, deployment, or other tasks).
 """
 
 instructions = """
-<instructions>
 
 Follow this structured approach:
 
@@ -72,61 +84,9 @@ Remember:
 - Explain your reasoning when requesting additional information
 - Begin your analysis with the Task Analysis section, then proceed with "Let's break down the task and plan our approach."
 
-</instructions>
 """
 
-function_prompt = """
-If you need more information, use the following formats to request it:
 
-1. To search for keywords, request them in this specific format only:
-   [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
-   Then I will provide the files that contain the keywords, in format:
-   ```text
-    You requested to search for : [keyword]
-    Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
-   ``` 
-    or if no files are found, I will let you know as well. Therefore you should check the additional notes to avoid requesting again:
-    ```text
-    No matching files found with [keyword]
-    ```
-
-2. To request file contents, request them in this specific format only:
-   [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
-   Then I will provide summary and content of the file next with format:
-    <file name="file name">
-        <summary>summary of file</summary>
-        <content> file content </content>
-    </file>
-    or if the file is not found and you should not request again.
-
-3. To get information about packages, request them in this specific format only:
-   [I need info about packages:: <package>com.example.package1</package>, <package>com.example.package2</package>]
-    Then I will provide summary of the package next with format:
-    <package name="package name">
-        <notes>summary of package</notes>
-        <sub_packages>sub packages</sub_packages>
-        <files>files in the package</files>
-    </package>
-
-Ask for additional information at end of the response, with the following format:
-
-```text
-**Next Steps**
-[your request to search for keywords]
-[your request to read files]
-[your request to read packages]
-...
-```
-
-After receiving information, analyze it and relate it back to the original question. 
-
-Answer to your requests including search results, file contents and package summaries will be found within 
-<Additional Materials>
-...
-<Additional Materials> tags.
-
-```
-"""
 
 reused_prompt_template = """
 
@@ -135,60 +95,81 @@ Below is the Java project structure for your reference:
 
 and summaries of the packages in the project:
 {package_notes}
+
+and notes of the files in the project:
+{file_notes}
 """
 
 user_prompt_template = """
-The task to be groomed is:
-"{question}"
+===CONVERSATION_CONTEXT===
+Iteration: {iteration_number}
 
-<Previous research notes>
-{notes}
-</Previous research notes>
+===MAIN TASK===
+{question}
 
-<Previous search results>
-{search_results}
-</Previous search results>
+===PREVIOUS_ANALYSIS===
+{previous_llm_response}
 
-<Additional Materials>
-{additional_reading}
-</Additional Materials>
 
-Please perform a Task Analysis following the structured approach outlined in the instructions, then proceed with analyzing this task and providing a detailed plan.
+===NEW_INFORMATION===
+
+{new_information}
+
+
+===INSTRUCTIONS_FOR_ADDITIONAL_REQUESTS===
+{function_prompt}
+
+===DO_NOT_SEARCH===
+{do_not}
+
+===GUIDELINES_FOR_ANALYSIS===
 {instructions}
 
-{function_prompt}
 """
 
 
-
-def ask_continue(query_manager, question, last_response, pf, past_additional_reading) -> Tuple[str, str, bool]:
-    # capture the DO-NOT_SEARCH Error and update prompt
-    updated_last_response = last_response
+@observe(name="grooming_task", capture_input=True, capture_output=True)
+def grooming_task(pf: Optional[ProjectFiles], task, max_rounds=8):
+    """
+    Given a task, groom it by interacting with the LLM.
+    Args:
+    pf: The ProjectFiles object.
+    task (str): The task to be groomed.
+    max_rounds (int): The maximum number of rounds of conversation with LLM before stopping the conversation.
+    """
+    logger.info(f"Task: {task}")
+    logger.info(f"Max rounds: {max_rounds}")
+    i = 0
+    last_response = ""
+    new_information = ""
     stop_function_prompt = False
-    try:
-        additional_reading, processed_requests, updated_last_response = process_llm_response(last_response, pf)
-    except Exception as e:
-        if "DO NOT SEARCH" in str(e):
-            # the conversation is going in a loop, so we need to stop it, by removing the function prompt
-            print("The LLM is stuck in a loop, so we need to stop it")
-            stop_function_prompt = True
-        else:
-            raise e
-    
-    if last_response == "" or additional_reading:
-        user_prompt = user_prompt_template.format(
-            question=question,
-            notes=updated_last_response,
-            search_results=search_results_to_prompt(),
-            additional_reading="Below are the additional info that you should read before answering questions:\n" + str(past_additional_reading) + "\n\n" + str(additional_reading) if not stop_function_prompt else "",
-            instructions=instructions,
-            function_prompt=function_prompt if not stop_function_prompt else "",
-        )
-        response = query_manager.query(user_prompt)
-        return response, additional_reading, False
-    else:
-        print("The LLM does not need any more information, so we can end the conversation")
-        return last_response, None, True
+    # initiate the LLM query manager
+    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
+    reviewer = ConversationReviewer(query_manager=query_manager)
+    while i < max_rounds:
+        logger.info(f"--------- Round {i} ---------")
+        try:
+            new_information, last_response, stop_function_prompt = query_llm(
+                query_manager, question=task, user_prompt_template=user_prompt_template,
+                instruction_prompt=instructions, last_response=last_response,
+                pf=pf, 
+                iteration_number=str(i),
+                new_information=new_information,
+                stop_function_prompt=stop_function_prompt,
+                reviewer=reviewer
+            )
+        except Exception as e:
+            logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
+            break
+
+        if new_information is None or new_information == "":
+            logger.info("The conversation has ended or no new information was found")
+            break
+
+        i += 1
+    logger.info(f"Total rounds: {i}")
+    return last_response
+
 
         
 if __name__ == "__main__":
@@ -200,14 +181,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
-    # the order of the following imports is important
-    # since the initialization of langfuse depends on the os environment variables
-    # which are loaded in the config_utils module
-    from config_utils import load_config_to_env
-    load_config_to_env()
-    from llm_client import LLMQueryManager, ResponseManager
-    from llm_interaction import process_llm_response, initiate_llm_query_manager
-    
+        
     # Convert to absolute path if it's a relative path
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
@@ -232,25 +206,6 @@ if __name__ == "__main__":
         task = issue.fields.description
     max_rounds = args.max_rounds
     print(f"Task: {task} max_rounds: {max_rounds}")
-    # looping until the user is confident of the steps and instructions, or 8 rounds of conversation
-    i = 0
-    past_additional_reading = ""
-    doneNow = False
-    additional_reading = ""
-    ResponseManager.reset_prompt_response()
-    # initiate the LLM query manager
-    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
-    last_response = ""
-    while True and i < max_rounds:
-        #last_response = ResponseManager.load_last_response()
-        response, additional_reading, doneNow = ask_continue(query_manager=query_manager, question=task, last_response=last_response, pf=pf, past_additional_reading=past_additional_reading)
-        #print(response)
-        # check if the user is confident of the steps and instructions
-        if doneNow:
-            print(response)
-            break
-        else:
-            past_additional_reading += ("\n" + additional_reading)
-            last_response = response
-            i += 1
+    res = grooming_task(pf, task, max_rounds=args.max_rounds)
+    logger.info(res)
     print("Conversation with LLM ended")

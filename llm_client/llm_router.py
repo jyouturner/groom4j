@@ -2,7 +2,7 @@ import os
 from typing import Callable, Optional
 from abc import ABC, abstractmethod
 # set up tracing, use relative import to avoid import errors since they are in the same path
-from .langfuse_setup import observe, langfuse_context
+#from .langfuse_setup import observe, langfuse_context
 
 
 DEFAULT_RESPONSE_FILE = "response.txt"
@@ -44,7 +44,7 @@ class OpenAILLM(LLMInterface):
         assistant_without_history.set_system_prompts(system_prompt = system_prompt, cached_prompt=cached_prompt)
         self.assistant = assistant_without_history
 
-    @observe(as_type="generation", capture_input=True, capture_output=True)
+    #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.assistant.query(user_prompt)
         while callable(response):
@@ -68,7 +68,7 @@ class VertexAILLM(LLMInterface):
             use_history=False
         )
 
-    @observe(as_type="generation", capture_input=True, capture_output=True)
+    #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
 
@@ -78,7 +78,7 @@ class AnthropicLLM(LLMInterface):
         self.assistant = AnthropicAssistant(use_history=False)
         self.assistant.set_system_prompts(system_prompt = system_prompt, cached_prompt=cached_prompt)
 
-    @observe(as_type="generation", capture_input=True, capture_output=True)
+    #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
 
@@ -107,7 +107,7 @@ class LLMQueryManager:
         # only turn on prompt caching with Anthropic
         return self.llm.is_support_cached_prompt()
 
-    @observe(as_type="generation", capture_input=True, capture_output=True)
+    #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.llm.query(user_prompt)
         self.response_manager.save_response(response)
@@ -136,5 +136,5 @@ if __name__ == "__main__":
     response = assistant.query(user_prompt)
     print(response[:100])
 
-    langfuse_context.flush()
+    #langfuse_context.flush()
 

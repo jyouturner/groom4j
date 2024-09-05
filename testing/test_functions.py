@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from projectfiles import ProjectFiles
 import os
-from functions import get_file, get_package
+from functions import get_file, get_package, read_files
 
 def test_get_package():
     # find the local path to the test_project folder
@@ -35,3 +35,16 @@ def test_ask_file():
     assert filename == "CityController.java"
     assert path!= ""
    
+
+def test_read_files():
+    # find the local path to the test_project folder
+    root_path = os.path.join(os.path.dirname(__file__), '..')
+    project_path = os.path.join(root_path, "data/travel-service-dev")
+    print("project path", project_path)
+    pf = ProjectFiles(project_path)
+    pf.from_project()
+
+    file_names = ["src/main/resources/application.yaml"]
+    content = read_files(pf, file_names)
+    print(content)
+    assert content != ""
