@@ -308,3 +308,21 @@ def test_find_codefile_by_name_resources():
     codefile = pf.find_codefile_by_name("application.yaml")
     print(codefile)
     assert codefile is not None
+
+#def test_update_and_get_file_summary():
+#    root_path = os.path.join(os.path.dirname(__file__), '..')
+#    project_path = os.path.join(root_path, "data/travel-service-dev")
+#    pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
+#    pf.from_project()
+
+#    test_file_path = "src/main/java/com/iky/travel/controller/TravelController.java"
+#    test_summary = "This is a test summary for TravelController.java"
+
+    # Update the summary
+#    pf.update_file_summary(test_file_path, test_summary)
+
+    # Get the summary and verify
+#    retrieved_summary = pf.get_file_summary(test_file_path)
+#    assert retrieved_summary is not None
+#   assert retrieved_summary['summary'] == test_summary
+#   assert retrieved_summary['filename'] == "TravelController.java"

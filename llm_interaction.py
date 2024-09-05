@@ -85,7 +85,13 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
         package_notes=package_notes, file_notes=file_notes)
     else:
         cached_prompt = None
-    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt)
+    #FIXME: need to add the max_calls, period, max_tokens_per_min, max_tokens_per_day, encoding_name to application.yml
+    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt,
+                                    max_calls=1000,
+                                    period=60,
+                                    max_tokens_per_min=80000,
+                                    max_tokens_per_day=2500000,
+                                    encoding_name="cl100k_base")
     
     return query_manager
 
