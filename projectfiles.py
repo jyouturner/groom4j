@@ -364,7 +364,7 @@ class ProjectFiles:
                     if 'Filename' in file_data and 'Path' in file_data and 'Package' in file_data:
                         code_file = CodeFile(file_data['Filename'], file_data['Path'], file_data['Package'])
                         code_file.set_details(
-                            file_data.get('Summary', ''),
+                            file_data.get('Summary', '').strip(),
                             #file_data.get('Imports', ''),
                             #file_data.get('Functions', ''),
                             #file_data.get('TODO Comments', '')

@@ -17,13 +17,13 @@ This file serves as the entry point for a Spring Boot application. It is the mai
 
 <Functionalities>
     <Function name="main">
-        This is the main method that serves as the entry point for the Java application. It takes a String array of command-line arguments as its parameter and doesn't return anything (void).
+        This is the main method that serves as the entry point for the Java application. It takes a String array of command-line arguments as a parameter and doesn't return anything (void).
         
         The method uses SpringApplication.run() to launch the Spring application. It passes two arguments to this method:
         1. TravelBeApplication.class: This is the primary source for the Spring context configuration.
         2. args: The command-line arguments passed to the application.
 
-        When executed, this method will start the Spring application context, which will in turn start the embedded server, set up the default configuration, start component scanning, and launch the application.
+        When executed, this method will start the Spring application, create the application context, and run any CommandLineRunner beans found in the context.
     </Function>
 </Functionalities>
 
@@ -42,15 +42,15 @@ Summary:
 </Dependencies>
 
 <Purpose>
-This file defines a configuration class for MongoDB in a Spring application. It sets up a MongoTemplate bean, which is a helper class in Spring Data MongoDB for performing database operations.
+This file defines a configuration class for MongoDB in a Spring application. It sets up a MongoTemplate bean, which is a central component for interacting with MongoDB databases in Spring Data MongoDB applications.
 </Purpose>
 
 <Functionalities>
     <Function name="MongoConfig(MongoClient mongoClient)">
-        This is the constructor for the MongoConfig class. It takes a MongoClient as a parameter and initializes it as a private final field. This suggests that the MongoClient is being injected, likely through Spring's dependency injection.
+        This is the constructor for the MongoConfig class. It takes a MongoClient as a parameter and initializes the mongoClient field. This suggests that the MongoClient is being injected, likely through Spring's dependency injection.
     </Function>
     <Function name="mongoTemplate()">
-        This method is annotated with @Bean, indicating that it produces a bean to be managed by the Spring container. It creates and returns a new MongoTemplate instance using the injected MongoClient and a constant MONGO_DB_NAME. The MongoTemplate is a key class in Spring Data MongoDB that simplifies database operations.
+        This method is annotated with @Bean, indicating that it produces a bean to be managed by the Spring container. It creates and returns a new MongoTemplate instance using the injected MongoClient and a database name constant (MONGO_DB_NAME). The MongoTemplate is a key component in Spring Data MongoDB, providing a rich set of MongoDB operations.
     </Function>
 </Functionalities>
 
@@ -206,20 +206,21 @@ This file defines a REST controller for handling travel-related HTTP requests. I
     <Function name="getPopularDestinations">
         Endpoint: GET /popularDestinations
         Returns a ResponseEntity containing a Set of Object representing the top 3 most queried cities.
-        Utilizes the TravelService to retrieve this information.
+        Interacts with TravelService to retrieve this data.
     </Function>
 
     <Function name="clearPopularDestinations">
         Endpoint: GET /clearPopularDestinations
-        Attempts to clear popular destinations from Redis using the TravelService.
+        Attempts to clear popular destinations from Redis.
         Returns a success message if the operation is successful.
         Throws a RedisException if the operation fails.
+        Interacts with TravelService to perform the clearing operation.
     </Function>
 
     <Function name="getAllDestinations">
         Endpoint: GET /allDestinations
         Returns a ResponseEntity containing a Set of Object representing all cities.
-        Utilizes the TravelService to retrieve this information.
+        Interacts with TravelService to retrieve this data.
     </Function>
 </Functionalities>
 
@@ -246,7 +247,7 @@ This file defines a set of constant API path prefixes used for routing in a trav
         - API_V1_TRAVEL: Combines API_V1_PREFIX and TRAVEL_API_PREFIX to form the complete path for travel API endpoints
         - API_V1_CITY: Combines API_V1_PREFIX and CITY_API_PREFIX to form the complete path for city API endpoints
 
-        These constants can be used throughout the application to construct full API paths, ensuring consistency and ease of maintenance.
+        These constants can be used throughout the application to construct full API paths, ensuring consistency and easier management of API routing.
     </Function>
 
     <Function name="Private Constructor">
@@ -270,10 +271,10 @@ This file defines a utility class named MongoConstant that contains a constant v
 
 <Functionalities>
     <Function name="MONGO_DB_NAME">
-        This is a public static final String constant that holds the value "travel". It represents the name of the MongoDB database used in the application. This constant can be accessed from other parts of the codebase to ensure consistency in referencing the database name.
+        This is a public static final String constant that holds the value "travel". It represents the name of the MongoDB database used in the application. This constant can be accessed from other parts of the codebase to ensure consistency in database name references.
     </Function>
     
-    <Function name="MongoConstant()">
+    <Function name="MongoConstant() (private constructor)">
         This is a private constructor for the MongoConstant class. Its purpose is to prevent instantiation of this utility class, as it only contains static members and doesn't need to be instantiated. This is a common practice for utility classes in Java.
     </Function>
 </Functionalities>
@@ -469,35 +470,35 @@ This file defines an interface for managing city-related operations in a travel 
         Signature: boolean addCity(CityDTO city)
         Purpose: Adds a new city to the system.
         Parameters: CityDTO object containing city information.
-        Returns: A boolean indicating whether the operation was successful.
+        Returns: Boolean indicating success or failure of the operation.
     </Function>
 
     <Function name="updateCity">
         Signature: boolean updateCity(CityDTO updatedCity)
         Purpose: Updates an existing city's information.
         Parameters: CityDTO object containing updated city information.
-        Returns: A boolean indicating whether the update was successful.
+        Returns: Boolean indicating success or failure of the operation.
     </Function>
 
     <Function name="cityExists">
         Signature: boolean cityExists(String cityName)
         Purpose: Checks if a city with the given name exists in the system.
         Parameters: String representing the city name.
-        Returns: A boolean indicating whether the city exists.
+        Returns: Boolean indicating whether the city exists or not.
     </Function>
 
     <Function name="getCity">
         Signature: Optional<CityDTO> getCity(String cityName)
         Purpose: Retrieves information about a specific city.
         Parameters: String representing the city name.
-        Returns: An Optional containing a CityDTO if found, or an empty Optional if not found.
+        Returns: Optional<CityDTO> containing city information if found, or empty if not found.
     </Function>
 
     <Function name="deleteCity">
         Signature: boolean deleteCity(String cityName)
         Purpose: Removes a city from the system.
         Parameters: String representing the city name to be deleted.
-        Returns: A boolean indicating whether the deletion was successful.
+        Returns: Boolean indicating success or failure of the deletion operation.
     </Function>
 </Functionalities>
 
@@ -528,7 +529,7 @@ This class implements the CityService interface and provides functionality for m
     </Function>
 
     <Function name="updateCity">
-        Updates an existing city's information. It checks if the city exists, updates it in the database, and updates the cache in Redis.
+        Updates an existing city's information. It checks if the city exists, updates the database, and refreshes the Redis cache.
         Parameters: CityDTO updatedCity
         Return: boolean
     </Function>
@@ -653,17 +654,17 @@ Summary:
 </Dependencies>
 
 <Purpose>
-This file defines a class named ApiErrorResponse which is designed to represent a standardized error response format for API calls. It encapsulates common error information such as timestamp, HTTP status code, error description, error message, and the request path that caused the error. The class is likely used across the application to provide consistent error responses to API clients.
+This file defines a class named ApiErrorResponse which is designed to represent a standardized error response for API calls. It encapsulates common error information such as timestamp, HTTP status code, error description, error message, and the request path that caused the error. The class is likely used across the application to provide consistent error responses to API clients.
 </Purpose>
 
 <Functionalities>
     <Function name="Data Structure">
         The ApiErrorResponse class serves as a data structure to hold error information. It contains five fields:
         1. timestamp (LocalDateTime): Represents the time when the error occurred.
-        2. status (int): Represents the HTTP status code of the error.
-        3. error (String): Describes the type or category of the error.
-        4. message (String): Provides a detailed message about the error.
-        5. requestPath (String): Indicates the API endpoint path where the error occurred.
+        2. status (int): Likely represents the HTTP status code of the error.
+        3. error (String): A brief description of the error.
+        4. message (String): A more detailed message about the error.
+        5. requestPath (String): The path of the request that resulted in the error.
     </Function>
     
     <Function name="Lombok Annotations">
@@ -672,7 +673,6 @@ This file defines a class named ApiErrorResponse which is designed to represent 
         - @Setter: Generates setter methods for all fields.
         - @ToString: Generates a toString() method that includes all fields.
         - @AllArgsConstructor: Generates a constructor with parameters for all fields.
-        These annotations reduce the amount of manual code needed and improve maintainability.
     </Function>
 </Functionalities>
 
@@ -723,14 +723,20 @@ This file defines a class named ValidationErrorResponse which is designed to rep
 </Purpose>
 
 <Functionalities>
-    <Function name="Class Structure">
-        The ValidationErrorResponse class is a data structure with four fields:
-        1. timestamp (LocalDateTime): Represents the time when the validation error occurred.
-        2. httpStatusCode (int): Stores the HTTP status code associated with the validation error.
-        3. errorMessage (String): Contains a general error message describing the validation failure.
-        4. fieldErrors (HashMap<String, String>): A map to store specific field-level validation errors, where the key is likely the field name and the value is the error message for that field.
-
-        The class uses Lombok annotations (@Getter, @Setter, @AllArgsConstructor) to automatically generate getter and setter methods for all fields, as well as a constructor that takes all fields as parameters. This reduces boilerplate code and enhances maintainability.
+    <Function name="Data Structure">
+        The class serves as a data structure to hold validation error details including:
+        - timestamp: The date and time when the error occurred
+        - httpStatusCode: The HTTP status code associated with the error
+        - errorMessage: A general error message describing the validation failure
+        - fieldErrors: A HashMap containing field-specific error messages, where the key is likely the field name and the value is the error message for that field
+    </Function>
+    
+    <Function name="Lombok Annotations">
+        The class uses Lombok annotations to automatically generate getter and setter methods for all fields (@Getter, @Setter) and a constructor that takes all fields as parameters (@AllArgsConstructor). This reduces boilerplate code and improves maintainability.
+    </Function>
+    
+    <Function name="Error Representation">
+        While not explicitly implementing any methods, the class structure allows for easy creation and manipulation of validation error responses. It can be instantiated with all necessary error details and then used to send structured error information back to the client or for logging purposes.
     </Function>
 </Functionalities>
 
@@ -769,7 +775,7 @@ This file defines a global exception handler for a Spring Boot application. It c
         Handles all other uncaught exceptions in the application.
         Parameters: Exception ex, WebRequest request
         Return Type: ResponseEntity<Object>
-        Description: This method logs the unhandled exception, creates a BaseErrorResponse object with error details, and returns a ResponseEntity with HTTP status BAD_REQUEST. It provides a catch-all mechanism for exceptions not handled by other specific exception handlers.
+        Description: This method logs the unhandled exception, creates a BaseErrorResponse object with error details, and returns a ResponseEntity with the error response. It's designed to catch any exception not handled by other more specific exception handlers.
     </Function>
 </Functionalities>
 
@@ -791,27 +797,32 @@ Summary:
 </Dependencies>
 
 <Purpose>
-This file defines a global exception handler for a Spring-based application. It's responsible for catching and handling various exceptions related to city operations and Redis, providing a consistent error response format across the application.
+This file defines a global exception handler for a Spring Boot application. It's responsible for catching and handling various exceptions related to city operations and Redis, providing a consistent error response format across the application.
 </Purpose>
 
 <Functionalities>
     <Function name="cityNotFoundHandler">
-        Handles CityNotFoundException. It creates an ApiErrorResponse with NOT_FOUND status and returns it wrapped in a ResponseEntity.
+        Handles CityNotFoundException. Returns a ResponseEntity with ApiErrorResponse containing details about the error, including timestamp, HTTP status (404 Not Found), error message, and request URI.
     </Function>
+    
     <Function name="cityAlreadyExistHandler">
-        Handles CityAlreadyExistsException. It creates an ApiErrorResponse with BAD_REQUEST status and returns it wrapped in a ResponseEntity.
+        Handles CityAlreadyExistsException. Returns a ResponseEntity with ApiErrorResponse containing details about the error, including timestamp, HTTP status (400 Bad Request), error message, and request URI.
     </Function>
+    
     <Function name="cityAddExceptionHandler">
-        Handles CityAddException. It creates an ApiErrorResponse with BAD_REQUEST status and returns it wrapped in a ResponseEntity.
+        Handles CityAddException. Returns a ResponseEntity with ApiErrorResponse containing details about the error, including timestamp, HTTP status (400 Bad Request), error message, and request URI.
     </Function>
+    
     <Function name="cityUpdateExceptionHandler">
-        Handles CityUpdateException. It creates an ApiErrorResponse with BAD_REQUEST status and returns it wrapped in a ResponseEntity.
+        Handles CityUpdateException. Returns a ResponseEntity with ApiErrorResponse containing details about the error, including timestamp, HTTP status (400 Bad Request), error message, and request URI.
     </Function>
+    
     <Function name="cityDeleteExceptionHandler">
-        Handles CityDeleteException. It creates an ApiErrorResponse with BAD_REQUEST status and returns it wrapped in a ResponseEntity.
+        Handles CityDeleteException. Returns a ResponseEntity with ApiErrorResponse containing details about the error, including timestamp, HTTP status (400 Bad Request), error message, and request URI.
     </Function>
+    
     <Function name="cityUpdateExceptionHandler (RedisException)">
-        Handles RedisException. It creates an ApiErrorResponse with BAD_REQUEST status and returns it wrapped in a ResponseEntity.
+        Handles RedisException. Returns a ResponseEntity with ApiErrorResponse containing details about the error, including timestamp, HTTP status (400 Bad Request), error message, and request URI.
     </Function>
 </Functionalities>
 
@@ -835,7 +846,7 @@ This file defines a custom exception class named CityDeleteException. It is desi
         1. message: A String that describes the exception
         2. throwable: The original exception that caused this CityDeleteException
 
-        The constructor calls the superclass (RuntimeException) constructor using 'super(message, throwable)', which allows both the error message and the original cause to be passed up the exception chain. This is useful for maintaining the full context of the error when it's caught and handled elsewhere in the application.
+        The constructor calls the superclass (RuntimeException) constructor using 'super(message, throwable)', which allows for both a custom error message and the original cause of the exception to be preserved. This is useful for debugging and logging purposes, as it maintains the full exception chain.
     </Function>
 </Functionalities>
 
@@ -850,12 +861,12 @@ Summary:
 </Dependencies>
 
 <Purpose>
-This file defines a custom exception class named CityAddException. It is designed to be thrown when there's an error or exceptional condition related to adding a city in the travel application. By extending RuntimeException, it is an unchecked exception, meaning it doesn't need to be explicitly caught or declared in method signatures.
+This file defines a custom exception class named CityAddException. It is designed to be thrown when there are issues related to adding a city in the travel application. By extending RuntimeException, it is an unchecked exception, meaning it doesn't need to be explicitly caught or declared in method signatures.
 </Purpose>
 
 <Functionalities>
     <Function name="CityAddException(String message)">
-        This is the constructor for the CityAddException class. It takes a String parameter 'message' which describes the specific error or condition that led to this exception being thrown. The constructor calls the superclass (RuntimeException) constructor with this message, allowing it to be accessed later via the getMessage() method inherited from Throwable.
+        This is the constructor for the CityAddException class. It takes a String parameter 'message' which describes the specific error that occurred while attempting to add a city. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry meaningful error information when it's thrown and caught elsewhere in the application.
     </Function>
 </Functionalities>
 
@@ -895,7 +906,7 @@ This file defines a custom exception class named CityAlreadyExistsException. It 
 
 <Functionalities>
     <Function name="CityAlreadyExistsException(String message)">
-        This is the constructor for the CityAlreadyExistsException class. It takes a String parameter 'message' which describes the specific error condition. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry and propagate the error information.
+        This is the constructor for the CityAlreadyExistsException class. It takes a String parameter 'message' which describes the specific error condition. The constructor calls the superclass (RuntimeException) constructor with this message, allowing the exception to carry meaningful error information when it's thrown and caught.
     </Function>
 </Functionalities>
 
@@ -930,7 +941,7 @@ Summary:
 </Dependencies>
 
 <Purpose>
-This file defines a custom exception class named RedisException. It is designed to be thrown when Redis-related errors occur in the application. By extending RuntimeException, it creates an unchecked exception that doesn't require explicit handling in method signatures.
+This file defines a custom exception class named RedisException. It is designed to be thrown when Redis-related errors occur in the application. By extending RuntimeException, it creates an unchecked exception that doesn't require explicit handling or declaration in method signatures.
 </Purpose>
 
 <Functionalities>
@@ -970,13 +981,13 @@ This YAML configuration file is used to set up various Spring Boot application p
 </Purpose>
 
 <Configurations>
-    <Configuration name="spring.cloud.config.enabled" significance="Disables Spring Cloud Config, likely for local development or testing">
-    <Configuration name="spring.data.redis.host" significance="Specifies the Redis server host">
-    <Configuration name="spring.data.redis.port" significance="Specifies the Redis server port">
-    <Configuration name="spring.data.mongodb.uri" significance="Configures the MongoDB connection URI, including sensitive credentials">
+    <Configuration name="spring.cloud.config.enabled" significance="Disables Spring Cloud Config client">
+    <Configuration name="spring.data.redis.host" significance="Sets Redis server host">
+    <Configuration name="spring.data.redis.port" significance="Sets Redis server port">
+    <Configuration name="spring.data.mongodb.uri" significance="Configures MongoDB connection URI">
     <Configuration name="management.endpoint.health.show-details" significance="Enables detailed health information in actuator endpoints">
-    <Configuration name="management.health.mongo.enabled" significance="Enables MongoDB health checks">
-    <Configuration name="management.health.redis.enabled" significance="Enables Redis health checks">
+    <Configuration name="management.health.mongo.enabled" significance="Enables MongoDB health check">
+    <Configuration name="management.health.redis.enabled" significance="Enables Redis health check">
 </Configurations>
 
 

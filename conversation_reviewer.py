@@ -20,6 +20,8 @@ Below is a summary of the conversation so far:
 
 {conversation_summary}
 
+===
+
 Please analyze this conversation and answer the following questions:
 
 1. Is the conversation making progress towards answering the main question? Why or why not?
@@ -31,21 +33,17 @@ Please analyze this conversation and answer the following questions:
 4. What action do you recommend for the next step? Choose one of the following and explain why:
    a) Continue the conversation as is
    b) Push for a conclusion by removing the option to request more information
-   c) Redirect the conversation by suggesting specific areas to investigate
-   d) Summarize the findings so far and restart with a more focused approach
 
-5. If you chose option c or d, please provide specific suggestions for the next steps.
+
 
 Your analysis will be used to guide the conversation and ensure it reaches a productive conclusion. Be concise but thorough in your responses.
 
 After your analysis, please provide a final recommendation in the following format:
 
-RECOMMENDATION: [CONTINUE|CONCLUDE|REDIRECT|RESTART]
+RECOMMENDATION: [CONTINUE|CONCLUDE]
 REASON: [Brief explanation for the recommendation]
 EFFICIENCY_SCORE: [1-10]
 
-If your recommendation is CONTINUE or REDIRECT, please also provide:
-NEXT_STEPS: [Comma-separated list of 2-3 specific suggestions or areas to focus on]
 
 If your recommendation is CONCLUDE, please provide:
 FINAL_ANSWER_PROMPT: [A concise prompt to give the main LLM to formulate its final answer]
@@ -53,8 +51,6 @@ FINAL_ANSWER_PROMPT: [A concise prompt to give the main LLM to formulate its fin
 Explanation of recommendations:
 - CONTINUE: The conversation is progressing well and should continue as is.
 - CONCLUDE: There's sufficient information to answer the question. The main LLM should provide a final answer.
-- REDIRECT: The conversation needs to be steered in a new direction to be more effective.
-- RESTART: The conversation has gotten off track and needs to be reset with a new approach.
 
 Please ensure your recommendation is followed by the appropriate additional information as specified above.
 """
