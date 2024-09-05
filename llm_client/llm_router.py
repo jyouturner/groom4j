@@ -5,32 +5,6 @@ from abc import ABC, abstractmethod
 #from .langfuse_setup import observe, langfuse_context
 
 
-DEFAULT_RESPONSE_FILE = "response.txt"
-
-class ResponseManager:
-    @staticmethod
-    def save_response(response: str, response_file: str = DEFAULT_RESPONSE_FILE) -> None:
-        with open(response_file, "a") as f:
-            f.write("=====================================\n")
-            f.write(response + "\n")
-
-    @staticmethod
-    def load_last_response(response_file: str = DEFAULT_RESPONSE_FILE) -> str:
-        try:
-            with open(response_file, "r") as f:
-                responses = f.read().split("=====================================\n")
-                return responses[-1].strip() if responses else ""
-        except FileNotFoundError:
-            return ""
-
-    @staticmethod
-    def reset_file(file: str) -> None:
-        open(file, "w").close()
-
-    @classmethod
-    def reset_prompt_response(cls) -> None:
-        cls.reset_file(DEFAULT_RESPONSE_FILE)
-
 class LLMInterface(ABC):
     @abstractmethod
     def query(self, user_prompt: str) -> str:
@@ -101,7 +75,6 @@ class LLMQueryManager:
             raise ValueError("Please set the environment variable USE_LLM to either openai, gemini, or anthropic")
         
         self.llm = LLMFactory.get_llm(use_llm= use_llm, system_prompt = system_prompt, cached_prompt = cached_prompt)
-        self.response_manager = ResponseManager()
 
     def support_cached_prompt(self) -> bool:
         # only turn on prompt caching with Anthropic
@@ -110,8 +83,11 @@ class LLMQueryManager:
     #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         response = self.llm.query(user_prompt)
-        self.response_manager.save_response(response)
         return response
+    
+    def get_total_tokens(self) -> int:
+        # should we track or leverage the observability like langfuse_context?
+        return 0
 
 # Usage
 if __name__ == "__main__":

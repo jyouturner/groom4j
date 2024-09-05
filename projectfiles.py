@@ -379,15 +379,35 @@ class ProjectFiles:
             file_notes += f"File: {file.filename} : {file.summary}\n\n"
         return file_notes
 
-def print_tree(packages, prefix=''):
+def print_tree(packages, prefix='', is_last=True):
     result = ""
-    for package, contents in packages.items():
-        result += f"{prefix}{package}/\n"
+    for i, (package, contents) in enumerate(packages.items()):
+        is_last_item = i == len(packages) - 1
+        
+        # Determine the appropriate prefix for this level
+        if is_last:
+            current_prefix = prefix + "└── "
+            next_prefix = prefix + "    "
+        else:
+            current_prefix = prefix + "├── "
+            next_prefix = prefix + "│   "
+
+        result += f"{current_prefix}{package}/\n"
+
         if 'files' in contents and contents['files']:
-            for file in contents['files']:
-                result += f"{prefix}    {file}\n"
+            for j, file in enumerate(contents['files']):
+                is_last_file = j == len(contents['files']) - 1 and 'sub_packages' not in contents
+                file_prefix = next_prefix + ("└── " if is_last_file else "├── ")
+                result += f"{file_prefix}{file}\n"
+
         if 'sub_packages' in contents:
-            result += print_tree(contents['sub_packages'], prefix=prefix + '    ')
+            result += print_tree(contents['sub_packages'], next_prefix, is_last_item)
+
     return result
 
 
+if __name__ == "__main__":
+    pf = ProjectFiles(repo_root_path="data/travel-service-dev")
+    pf.from_project()
+    tree = print(pf.to_tree())
+    print(tree)

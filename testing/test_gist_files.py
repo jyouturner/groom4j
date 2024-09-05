@@ -19,7 +19,7 @@ def setup_env():
     from config_utils import load_config_to_env
     load_config_to_env(config_path="application.yml")
     global LLMQueryManager
-    from llm_client import LLMQueryManager, ResponseManager
+    from llm_client import LLMQueryManager
     
 
 @pytest.fixture

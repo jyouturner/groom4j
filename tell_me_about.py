@@ -150,6 +150,9 @@ def answer_question(pf: Optional[ProjectFiles], question, max_rounds=8):
 
         i += 1
     logger.info(f"Total rounds: {i}")
+    # get the total tokens from langfuse
+    total_tokens = query_manager.get_total_tokens()
+    logger.info(f"Total tokens: {total_tokens}")
     return last_response
 
 
