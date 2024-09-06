@@ -10,7 +10,7 @@ def get_observe():
         return observe
     else:
         print("using fake langfuse decorators")
-        def fake_observe(as_type: Optional[str] = None, capture_input: bool = False, capture_output: bool = False) -> Callable:
+        def fake_observe(as_type: Optional[str] = None, name: Optional[str] = None, capture_input: bool = False, capture_output: bool = False) -> Callable:
             def decorator(func):
                 return func
             return decorator

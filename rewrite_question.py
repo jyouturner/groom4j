@@ -108,7 +108,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     
-    query_manager = LLMQueryManager(use_llm="anthropic", system_prompt=system_prompt_rewrite_question)
+    query_manager = LLMQueryManager(use_llm="anthropic", tier="tier2", system_prompt=system_prompt_rewrite_question)
 
     decomposed_questions_list, refined_question = decompose_question(query_manager, question)
     print("\ndecomposed_questions_list:", decomposed_questions_list)

@@ -199,7 +199,7 @@ class ConversationReviewer:
 
 if __name__ == "__main__":
     # test the conversation reviewer in a simple way but real way
-    reviewer = ConversationReviewer(query_manager=LLMQueryManager(use_llm="anthropic", system_prompt="You are an AI assistant to review the conversation between a human and an AI about a Java project analysis."))
+    reviewer = ConversationReviewer(query_manager=LLMQueryManager(use_llm="anthropic", tier="tier2", system_prompt="You are an AI assistant to review the conversation between a human and an AI about a Java project analysis."))
     reviewer.add_conversation("What is the main purpose of this project?", "The main purpose of this project is to analyze Java projects.")
     reviewer.add_conversation("", "The main purpose of this project is to analyze Java projects.")
     reviewer.add_conversation("", "The main purpose of this project is to analyze Java projects.")

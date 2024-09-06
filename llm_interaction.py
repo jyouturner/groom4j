@@ -69,7 +69,7 @@ def not_found_terms(search_results: dict = None) -> str:
             result_str += f"\n{keyword}"
     return result_str
 
-def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused_prompt_template):
+def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused_prompt_template, tier="tier1"):
     use_llm = os.environ.get("LLM_USE")
     # prompts can be reused and cached in the LLM if it is supported
     if pf is not None:
@@ -86,7 +86,7 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
     else:
         cached_prompt = None
     #FIXME: need to add the max_calls, period, max_tokens_per_min, max_tokens_per_day, encoding_name to application.yml
-    query_manager = LLMQueryManager(use_llm=use_llm, system_prompt=system_prompt, cached_prompt=cached_prompt,
+    query_manager = LLMQueryManager(use_llm=use_llm, tier=tier, system_prompt=system_prompt, cached_prompt=cached_prompt,
                                     max_calls=1000,
                                     period=60,
                                     max_tokens_per_min=80000,

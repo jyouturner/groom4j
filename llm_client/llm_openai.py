@@ -5,15 +5,16 @@ from datetime import datetime
 import time
 import os
 from typing import List, Dict
+from .config import LLMConfig
 
 class OpenAIAssistant:
-    def __init__(self, model: str = 'gpt-4o', temperature: float = 0.0, max_tokens: int = 2048, use_history: bool = True):
+    def __init__(self, config: LLMConfig, use_history: bool = True):
         self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        self.model = model
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.system_prompt = None
-        self.cached_prompt = None
+        self.model = config.model_name
+        self.temperature = config.temperature
+        self.max_tokens = config.max_tokens
+        self.system_prompt = config.system_prompt
+        self.cached_prompt = config.cached_prompt
         self.use_history = use_history
         self.reset_conversation()
 
@@ -70,7 +71,11 @@ class OpenAIAssistant:
             
             except RateLimitError as e:
                 print(f'{datetime.now()}: query_gpt_model: RateLimitError {e.message}: {e}')
-                time.sleep(60)
+                # do not retry if 'code': 'insufficient_quota'
+                if e.code != 'insufficient_quota':
+                    time.sleep(60)
+                else:
+                    raise e
             except APIError as e:
                 print("self.messages:", self.messages)
                 print(f'{datetime.now()}: query_gpt_model: APIError {e.message}: {e}')
@@ -123,3 +128,10 @@ class OpenAIAssistant:
         self.use_history = use_history
         if not use_history:
             self.reset_conversation()
+
+if __name__ == "__main__":
+    from config_utils import load_config_to_env
+    load_config_to_env()
+    config = LLMConfig(api_key=os.environ.get("OPENAI_API_KEY"), model_name=os.environ.get("OPENAI_MODEL_TIER2_NAME"))
+    assistant = OpenAIAssistant(config)
+    print(assistant.query("Hello, how are you?"))

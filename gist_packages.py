@@ -42,7 +42,7 @@ load_config_to_env()
 from llm_client import LLMQueryManager
 from llm_interaction import process_llm_response, initiate_llm_query_manager
 
-query_manager = initiate_llm_query_manager(pf=None, system_prompt=system_prompt, reused_prompt_template=None)
+query_manager = initiate_llm_query_manager(pf=None, system_prompt=system_prompt, reused_prompt_template=None, tier="tier2")
 
 def real_package_gisting(package, subpackage_notes, filenotes):
     print(f"\n\nAnalyzing package: {package}")

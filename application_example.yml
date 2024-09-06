@@ -3,16 +3,36 @@ llm:
   
 anthropic:
   api_key: ...
-  model: claude-3-5-sonnet-20240620
+  model: 
+    # Internally, we use different models for different use cases. Tier1
+    # is for the answer questions. Tier2 is for gisting files and review conversations.
+    tier1: 
+      name: claude-3-5-sonnet-20240620
+      description: "best quality, most powerful, most expensive"
+    tier2: 
+      name: claude-3-haiku-20240307
+      description: "good quality, less powerful, cheaper"
 
 openai:
   api_key: ...
-  model: gpt-4o
+  model: 
+    tier1: 
+      name: gpt-4o
+      description: "best quality, most powerful, most expensive"
+    tier2: 
+      name: gpt-3.5-turbo
+      description: "good quality, less powerful, cheaper"
 
 gcp:
   project_id: ...
   location: us-central1
-  model: gemini-1.5-pro
+  model: 
+    tier1: 
+      name: gemini-1.5-pro
+      description: "best quality, most powerful, most expensive"
+    tier2: 
+      name: gemini-1.0-pro
+      description: "good quality, less powerful, cheaper"
 
 #
 # uncomment the following lines if you want to groom Jira issues
@@ -28,4 +48,4 @@ gcp:
 #langfuse:
 #  secret_key: ...
 #  public_key: ...
-  host: http://localhost:3000
+#  host: http://localhost:3000

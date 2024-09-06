@@ -4,26 +4,31 @@ from anthropic import Anthropic, RateLimitError
 import os
 from typing import List, Dict
 from time import sleep
+from .config import LLMConfig
 
 # Claude 3 Sonnet
 SONNET_INPUT_COST = 0.00000300  # $0.003 per 1000 tokens
 SONNET_OUTPUT_COST = 0.00001500  # $0.015 per 1000 tokens
 
 class AnthropicAssistant:
-    def __init__(self, use_history: bool = True):
-        self.anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        self.model = os.environ.get("ANTHROPIC_MODEL", "claude-3-opus-20240229")
-        self.system_prompt = None
-        self.cached_prompt = None
+    def __init__(self, config: LLMConfig, use_history: bool = True):
+        self.anthropic = Anthropic(api_key=config.api_key)
+        self.model = config.model_name
+        self.system_prompt = config.system_prompt
+        self.temperature = config.temperature
+        self.max_tokens = config.max_tokens
+        self.cached_prompt = config.cached_prompt
         self.use_history = use_history
         self.reset_messages()
         self.max_retries = 3
         self.base_delay = 20  # 5 seconds
+        print(f"Anthropic model: {self.model}, temperature: {self.temperature}, max_tokens: {self.max_tokens}")
+        print(f"Anthropic system prompt: {self.system_prompt}")
 
     def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
         self.system_prompt = system_prompt
         if cached_prompt is not None:
-            if self.is_support_cached_prompt():
+            if self.is_support_cached_prompt() and self.cached_prompt is not None:
                 self.cached_prompt = cached_prompt
             else:
                 print("Cached prompt is not supported by this assistant. Will append it to the system prompt.")
@@ -56,10 +61,12 @@ class AnthropicAssistant:
 
         for attempt in range(self.max_retries):
             try:
+                print(self.messages)
                 response = self.anthropic.messages.create(
                     model=self.model,
-                    max_tokens=2048,
-                    temperature=0.0,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    #FIXME: remove this after anthropic support prompt caching
                     extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
                     system=system_prompt,
                     messages=self.messages
@@ -153,7 +160,9 @@ class AnthropicAssistant:
         #return input_cost + output_cost
         return 0.0
 
-
-
-
-
+if __name__ == "__main__":
+    from config_utils import load_config_to_env
+    load_config_to_env()
+    config = LLMConfig(api_key=os.environ.get("ANTHROPIC_API_KEY"), model_name=os.environ.get("ANTHROPIC_MODEL_TIER2_NAME"))
+    assistant = AnthropicAssistant(config, use_history=False)
+    print(assistant.query("Hello, how are you?"))

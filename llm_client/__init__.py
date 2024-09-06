@@ -6,7 +6,7 @@ from .langfuse_setup import initialize_langfuse
 # since the initialization of langfuse depends on the os environment variables
 #
 observe, langfuse_context = initialize_langfuse()
-
+from .config import LLMConfig
 from .llm_openai import OpenAIAssistant
 from .llm_google_vertexai import VertexAssistant
 from .llm_anthropic import AnthropicAssistant

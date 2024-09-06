@@ -125,8 +125,9 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", max_
     new_information = ""
     stop_function_prompt = False
     # initiate the LLM query manager
-    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
-    reviewer = ConversationReviewer(query_manager=query_manager)
+    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
+    query_manager_tier2 = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier2")
+    reviewer = ConversationReviewer(query_manager=query_manager_tier2)
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:

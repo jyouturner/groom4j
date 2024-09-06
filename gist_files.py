@@ -308,7 +308,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     input(f"Press Enter to start gisting {len(all_files)} files...")
-    query_manager = initiate_llm_query_manager(pf=pf, system_prompt=system_prompt, reused_prompt_template=None)
+    query_manager = initiate_llm_query_manager(pf=pf, system_prompt=system_prompt, reused_prompt_template=None, tier="tier2")
     for index, file in enumerate(all_files, start=1):
         print(f"Processing file {index}/{total_files}: {file.filename} ({file.package})")
         notes = code_gisting(query_manager=query_manager, project_root=root_path, code_file=file)

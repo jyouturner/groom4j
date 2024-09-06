@@ -3,18 +3,18 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 import vertexai.preview.generative_models as generative_models
 from typing import List, Dict, Optional
-
+from .config import LLMConfig
 class VertexAssistant:
-    def __init__(self, project_id: str, location: str, model_name: str, system_prompt: str = None, cached_prompt: str = None, use_history: bool = True) -> None:
+    def __init__(self, project_id: str, location: str,  config: LLMConfig, use_history: bool = True) -> None:
         self.project_id = project_id
         self.location = location
-        self.model_name = model_name
+        self.model_name = config.model_name
         self.use_history = use_history
-        self.system_prompt = system_prompt
-        self.cached_prompt = cached_prompt
+        self.system_prompt = config.system_prompt
+        self.cached_prompt = config.cached_prompt
         self.generation_config = generative_models.GenerationConfig(
-            max_output_tokens=8192,
-            temperature=1,
+            max_output_tokens=config.max_tokens,
+            temperature=config.temperature,
             top_p=0.95,
         )
         self.safety_settings = {
@@ -117,3 +117,12 @@ class VertexAssistant:
         
         return history
     
+
+if __name__ == "__main__":
+    import os
+    from config_utils import load_config_to_env
+    load_config_to_env()
+
+    config = LLMConfig(model_name=os.environ.get("GCP_MODEL_TIER2_NAME"))
+    assistant = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), config=config)
+    print(assistant.query("Hello, how are you?"))

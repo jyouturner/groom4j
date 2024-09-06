@@ -137,7 +137,7 @@ def summarize_api(pf: Optional[ProjectFiles], question, last_response="", max_ro
     new_information = ""
     stop_function_prompt = False
     # initiate the LLM query manager
-    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template)
+    query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
     reviewer = ConversationReviewer(query_manager=query_manager)
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
