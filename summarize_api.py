@@ -8,7 +8,7 @@ from projectfiles import ProjectFiles
 from typing import Union, Optional
 from functions import get_file, get_package, efficient_file_search, process_file_request, get_static_notes
 from functions import read_files, read_packages, read_all_packages, read_from_human
-
+from functions import save_response_to_markdown
 import logging
 
 # the order of the following imports is important
@@ -185,7 +185,5 @@ if __name__ == "__main__":
 
     # save to a gist file
     default_api_notes_file = "api_notes.md"
-    api_notes = response
-    api_notes_file = os.path.join(pf.root_path, ProjectFiles.default_gist_foler, default_api_notes_file)
-    with open(api_notes_file, "w") as file:
-        file.write(api_notes)
+    result_file = save_response_to_markdown(question, response, path=root_path+"/.gist/tell_me_about/")
+    logger.info(f"Response saved to {result_file}")

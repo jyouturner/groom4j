@@ -244,20 +244,23 @@ def get_static_notes(pf):
             notes_str += f"\n\n{f.read()}"
     return notes_str
 
-def save_response_to_markdown(question: str, response: str, root_path: str) -> str:
+def save_response_to_markdown(question: str, response: str, path: str) -> str:
     """
     Save the response to a markdown file.
 
     Args:
         question (str): The question string used to generate the filename.
         response (str): The response content to be saved in the file.
-        root_path (str): The root directory where the file will be saved.
+        path (str): The directory where the file will be saved.
 
     Returns:
         str: The path to the saved markdown file.
     """
+    # if path does not exist, create it
+    if not os.path.exists(path):
+        os.makedirs(path)
     result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower())  + ".md"
-    result_file = os.path.join(root_path, result_file)
+    result_file = os.path.join(path, result_file)
     with open(result_file, "w") as f:
         f.write(response)
     return result_file

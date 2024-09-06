@@ -176,14 +176,14 @@ def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: 
         response = answer_question(pf, q, last_response="", max_rounds=max_rounds)
         logger.info(response)
         research_notes += f"\n\n===Question: {q}===\n\n{response}"
-        # Write to a markdown file
-        result_file = save_response_to_markdown(q, response, root_path)
+        # Write to a markdown file, in root_path/.gist/tell_me_about/
+        result_file = save_response_to_markdown(q, response, path=root_path+"/.gist/tell_me_about/")
         logger.info(f"Response saved to {result_file}")
 
     # Now let's answer the original question
     response = answer_question(pf, refined_question, last_response=research_notes, max_rounds=args.max_rounds)
     # Save to markdown file
-    result_file = save_response_to_markdown(question, response, root_path)
+    result_file = save_response_to_markdown(question, response, path=root_path+"/.gist/tell_me_about/")
     logger.info(f"Response saved to {result_file}")
     return response
 
