@@ -1,6 +1,7 @@
 from collections import defaultdict
 import os
 import json
+from abc import ABC, abstractmethod
 
 class CodeFile:
     def __init__(self, filename, path, package):
@@ -46,13 +47,97 @@ class CodeFile:
 def dumb_package_gisting(package, subpackage_notes, filenotes):
     return f"This is the summary of package {package}"
 
+class FilePersistence(ABC):
+    @abstractmethod
+    def persist_package_notes(self, package_notes, file_path):
+        pass
+
+    @abstractmethod
+    def load_package_notes(self, file_path):
+        pass
+
+    @abstractmethod
+    def persist_code_files(self, files, gist_file_path):
+        pass
+
+    @abstractmethod
+    def load_code_files(self, gist_file_path):
+        pass
+
+class DefaultFilePersistence(FilePersistence):
+    def __init__(self, separator="|"):
+        self.separator = separator
+
+    def persist_package_notes(self, package_notes: dict[str, str], file_path: str) -> str:
+        with open(file_path, "w") as f:
+            for package, notes in package_notes.items():
+                f.write(self.separator)
+                f.write(f"Package: {package}\nNotes: {notes}\n\n")
+        return file_path
+
+    def load_package_notes(self, file_path) -> dict[str, str]:
+        package_notes = defaultdict(str)
+        with open(file_path, "r") as f:
+            content = f.read()
+            package_blocks = content.split(self.separator)
+            for block in package_blocks:
+                if block.strip():
+                    lines = block.split("\n")
+                    current_package = None
+                    notes = []
+                    for line in lines:
+                        if line.startswith("Package:"):
+                            current_package = line.split(":", 1)[1].strip()
+                        elif line.startswith("Notes:"):
+                            notes.append(line.split(":", 1)[1].strip())
+                        elif line.strip():
+                            notes.append(line.strip())
+                    if current_package:
+                        package_notes[current_package] = "\n".join(notes)
+        return package_notes
+
+    def persist_code_files(self, files: list[CodeFile], gist_file_path: str) -> str:
+        with open(gist_file_path, "w") as f:
+            for file in files:
+                f.write(self.separator)
+                f.write(f"Filename: {file.filename}\n")
+                f.write(f"Path: {file.path}\n")
+                f.write(f"Package: {file.package}\n")
+                f.write(f"Summary: {file.summary}\n")
+                f.write("\n")
+        return gist_file_path
+
+    def load_code_files(self, gist_file_path: str) -> list[CodeFile]:
+        files = []
+        with open(gist_file_path, "r") as f:
+            content = f.read()
+            file_blocks = content.split(self.separator)
+            for block in file_blocks:
+                if block.strip():
+                    lines = block.split("\n")
+                    file_data = {}
+                    current_key = None
+                    for line in lines:
+                        if ": " in line and not line.startswith(" "):
+                            key, value = line.split(": ", 1)
+                            file_data[key] = value
+                            current_key = key
+                        elif current_key:
+                            file_data[current_key] += "\n" + line
+
+                    if 'Filename' in file_data and 'Path' in file_data and 'Package' in file_data:
+                        code_file = CodeFile(file_data['Filename'], file_data['Path'], file_data['Package'])
+                        code_file.set_details(file_data.get('Summary', '').strip())
+                        files.append(code_file)
+        return files
+
 class ProjectFiles:
     default_codefile_gist_file = "code_files.txt"
     default_package_notes_file = "package_notes.txt"
     default_gist_foler = ".gist"
     default_seporator = "|"
 
-    def __init__(self, repo_root_path, prefix_list = None, suffix_list = None, resource_suffix_list=None):
+    def __init__(self, repo_root_path, prefix_list = None, suffix_list = None, resource_suffix_list=None, persistence=None):
         self.root_path = repo_root_path
         # default prefix list should be ["src/main/java", "src/main/resources", "src/test/java", "src/test/resources"]
         if prefix_list is None:
@@ -71,6 +156,7 @@ class ProjectFiles:
         self.packages = {}
         self.gist_file_path = None
         self.package_gisting_func = None
+        self.persistence = persistence or DefaultFilePersistence(self.default_seporator)
 
     def from_files(self, files):
         self.files = files
@@ -169,7 +255,7 @@ class ProjectFiles:
                     files.append(CodeFile(filename, file_relative_path, package))
         return files
 
-    def generate_package_structure(self, files):
+    def generate_package_structure(self, files: list[CodeFile]) -> dict[str, dict[str, list[str]]]:
         packages = {}
         for file in files:
             parts = file.package.split('.')
@@ -183,12 +269,12 @@ class ProjectFiles:
                 current = current[package_path]["sub_packages"]
         return packages
 
-    def check_code_file_exists(self, package, fileName):
+    def check_code_file_exists(self, package: str, fileName: str) -> CodeFile:
         file = self.find_codefile_by_name(fileName, package)
         if not file or not file.summary:
             raise Exception(f"expect file {fileName} have summary by now!")
 
-    def gist_package(self, package, subpackages, filenames):
+    def gist_package(self, package: str, subpackages: dict[str, dict[str, list[str]]], filenames: list[str]):
         # check to make sure the function is set
         if self.package_gisting_func is None:
             raise ValueError("package_gisting_func is not set!")
@@ -231,8 +317,6 @@ class ProjectFiles:
             if not is_bottom_up:
                 self.package_structure_traverse(sub_packages, action_file_func, action_package_func, is_bottom_up)
 
-    def to_tree(self):
-        return print_tree(self.packages)
 
     def find_codefile_by_name(self, file_name, package=None):
         if self.files is None:
@@ -242,7 +326,7 @@ class ProjectFiles:
                 return file
         return None
 
-    def find_package_node(self, package, packages=None):
+    def find_package_node(self, package: str, packages: dict[str, dict[str, list[str]]] = None) -> dict[str, dict[str, list[str]]]:
         if packages is None:
             packages = self.packages
         parts = package.split('.')
@@ -261,7 +345,7 @@ class ProjectFiles:
                 return None
         return current_structure
 
-    def find_subpackages_and_codefiles(self, package, packages=None):
+    def find_subpackages_and_codefiles(self, package: str, packages: dict[str, dict[str, list[str]]] = None) -> tuple[dict[str, dict[str, list[str]]], list[CodeFile]]:
         if packages is None:
             packages = self.packages
         node = self.find_package_node(package)
@@ -276,51 +360,29 @@ class ProjectFiles:
         else:
             return None, None
 
-    def add_package_notes(self, package, notes):
+    def add_package_notes(self, package: str, notes: str):
         self.package_notes[package] = notes
 
-    def find_notes_of_package(self, package):
+    def find_notes_of_package(self, package: str) -> str:
         if self.package_notes is None:
             raise ValueError("Package notes is not loaded!")
         return self.package_notes.get(package, None)
 
-    def persist_package_notes(self, file_path=None):
+    def persist_package_notes(self, file_path: str = None) -> str:
         if file_path is None:
             file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_package_notes_file)
         gist_folder_path = os.path.dirname(file_path)
         if not os.path.exists(gist_folder_path):
             os.makedirs(gist_folder_path)
-        with open(file_path, "w") as f:
-            for package, notes in self.package_notes.items():
-                f.write(self.default_seporator)
-                f.write(f"Package: {package}\nNotes: {notes}\n\n")
-        return file_path
+        return self.persistence.persist_package_notes(self.package_notes, file_path)
 
-    def load_package_notes(self, file_path=None):
+    def load_package_notes(self, file_path: str = None) -> dict[str, str]:
         if file_path is None:
             file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_package_notes_file)
-        package_notes = defaultdict(str)
         print(f"Loading package notes from {file_path}")
-        with open(file_path, "r") as f:
-            content = f.read()
-            package_blocks = content.split(self.default_seporator)  # Splitting by separator
-            for block in package_blocks:
-                if block.strip():  # Ensure the block is not empty
-                    lines = block.split("\n")
-                    current_package = None
-                    notes = []
-                    for line in lines:
-                        if line.startswith("Package:"):
-                            current_package = line.split(":", 1)[1].strip()
-                        elif line.startswith("Notes:"):
-                            notes.append(line.split(":", 1)[1].strip())
-                        elif line.strip():
-                            notes.append(line.strip())
-                    if current_package:
-                        package_notes[current_package] = "\n".join(notes)
-        return package_notes
+        return self.persistence.load_package_notes(file_path)
 
-    def persist_code_files(self, files=None, gist_file_path=None):
+    def persist_code_files(self, files: list[CodeFile] = None, gist_file_path: str = None) -> str:
         if files is None:
             files = self.files + self.resource_files
         if gist_file_path is None:
@@ -328,64 +390,52 @@ class ProjectFiles:
         gist_folder_path = os.path.dirname(gist_file_path)
         if not os.path.exists(gist_folder_path):
             os.makedirs(gist_folder_path)
-        with open(gist_file_path, "w") as f:
-            for file in files:
-                f.write(self.default_seporator) # separator of file entries
-                f.write(f"Filename: {file.filename}\n")
-                f.write(f"Path: {file.path}\n")
-                f.write(f"Package: {file.package}\n")
-                f.write(f"Summary: {file.summary}\n")
-                #f.write(f"Imports: {file.imports}\n")
-                #f.write(f"Functions: {file.functions}\n")
-                #f.write(f"TODO Comments: {file.todo_comments}\n")
-                f.write("\n")  # Empty line to separate file entries
-        return gist_file_path
+        return self.persistence.persist_code_files(files, gist_file_path)
 
-    def load_code_files(self, gist_file_path=None):
+    def load_code_files(self, gist_file_path: str = None) -> list[CodeFile]:
         if gist_file_path is None:
             gist_file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_codefile_gist_file)
-        files = []
-        with open(gist_file_path, "r") as f:
-            content = f.read()
-            file_blocks = content.split(self.default_seporator)  # Splitting by separator
-            for block in file_blocks:
-                if block.strip():  # Ensure the block is not empty
-                    lines = block.split("\n")
-                    file_data = {}
-                    current_key = None
-                    for line in lines:
-                        if ": " in line and not line.startswith(" "):  # New key-value pair
-                            key, value = line.split(": ", 1)
-                            file_data[key] = value
-                            current_key = key
-                        elif current_key:  # Continuation of previous value
-                            file_data[current_key] += "\n" + line
+        return self.persistence.load_code_files(gist_file_path)
 
-                    if 'Filename' in file_data and 'Path' in file_data and 'Package' in file_data:
-                        code_file = CodeFile(file_data['Filename'], file_data['Path'], file_data['Package'])
-                        code_file.set_details(
-                            file_data.get('Summary', '').strip(),
-                            #file_data.get('Imports', ''),
-                            #file_data.get('Functions', ''),
-                            #file_data.get('TODO Comments', '')
-                        )
-                        files.append(code_file)
-
-        return files
-
-    def get_file_notes(self):
+    def get_file_notes(self) -> str:
         file_notes = ""
         for file in self.files:
             file_notes += f"File: {file.filename} : {file.summary}\n\n"
         return file_notes
+    
+    def to_tree(self):
+        return print_tree(self.packages)
 
-def print_tree(packages, prefix=''):
+def print_tree(packages, prefix='', is_last=True):
     result = ""
-    for package, contents in packages.items():
-        result += f"{prefix}{package}/\n"
+    for i, (package, contents) in enumerate(packages.items()):
+        is_last_item = i == len(packages) - 1
+        
+        # Determine the appropriate prefix for this level
+        if is_last:
+            current_prefix = prefix + "└── "
+            next_prefix = prefix + "    "
+        else:
+            current_prefix = prefix + "├── "
+            next_prefix = prefix + "│   "
+
+        result += f"{current_prefix}{package}/\n"
+
         if 'files' in contents and contents['files']:
-            for file in contents['files']:
-                result += f"{prefix}    {file}\n"
+            for j, file in enumerate(contents['files']):
+                is_last_file = j == len(contents['files']) - 1 and 'sub_packages' not in contents
+                file_prefix = next_prefix + ("└── " if is_last_file else "├── ")
+                result += f"{file_prefix}{file}\n"
+
         if 'sub_packages' in contents:
-            result += print_tree(contents['sub_packages'], prefix=prefix + '    ')
+            result += print_tree(contents['sub_packages'], next_prefix, is_last_item)
+
     return result
+
+
+
+if __name__ == "__main__":
+    pf = ProjectFiles(repo_root_path="data/travel-service-dev")
+    pf.from_project()
+    tree = print(pf.to_tree())
+    print(tree)
