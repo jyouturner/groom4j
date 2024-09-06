@@ -22,7 +22,7 @@ By focusing on these aspects, Groom4J fills a crucial gap between generic coding
 
 ## Inspiration
 
-More about this project can be found at [what inspired this project](inspiration.md)
+More about this project can be found at [what inspired this project](docs/inspiration.md)
 
 
 ## Getting Started
