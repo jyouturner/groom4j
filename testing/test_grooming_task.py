@@ -19,12 +19,14 @@ def test_read_files():
     pf = ProjectFiles(project_path, prefix_list=["src/main/java"], suffix_list=[".java"])
     pf.from_project()
 
-    result = read_files(pf, ["TravelBeApplication.java", "MongoConfig.java"])
+    result, files_found, files_not_found = read_files(pf, ["TravelBeApplication.java", "MongoConfig.java"])
+    print(result)
     # Check the result is not empty
     assert result != ""
-    # Check the result contains "TravelBeApplication.java" and "MongoConfig.java"
-    assert "TravelBeApplication.java" in result
-    assert "MongoConfig.java" in result
+    # check TravelBeApplication.java and MongoConfig.java are in the result
+    assert "TravelBeApplication.java" in files_found
+    assert "MongoConfig.java" in files_found
+
 
 def test_read_packages():
     # find the local path to the test_project folder
@@ -37,12 +39,12 @@ def test_read_packages():
 
     print(pf.packages)
 
-    result = read_packages(pf, ["com.iky.travel.config"])
+    result, packages_found, packages_not_found = read_packages(pf, ["com.iky.travel.config"])
     print(result)
     # Check the result is not empty
     assert result != ""
     # Check the result contains "com.iky.travel.config"
-    assert "com.iky.travel.config" in result
+    assert "com.iky.travel.config" in packages_found
 
 
     
