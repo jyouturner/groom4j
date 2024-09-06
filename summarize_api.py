@@ -124,7 +124,7 @@ Provide code snippets and file locations where relevant.
 
 
 @observe(name="summarize_api", capture_input=True, capture_output=True)
-def summarize_api(pf: Optional[ProjectFiles], question, max_rounds=8):
+def summarize_api(pf: Optional[ProjectFiles], question, last_response="", max_rounds=8):
     """
     Find all the API endpoints in the project and summarize them with the LLM.
     Args:
@@ -134,7 +134,6 @@ def summarize_api(pf: Optional[ProjectFiles], question, max_rounds=8):
     """
     logger.info(f"Max rounds: {max_rounds}")
     i = 0
-    last_response = ""
     new_information = ""
     stop_function_prompt = False
     # initiate the LLM query manager
@@ -181,7 +180,7 @@ if __name__ == "__main__":
    
     max_rounds = args.max_rounds
 
-    response = summarize_api(pf, question, max_rounds=args.max_rounds)
+    response = summarize_api(pf, question, last_response="", max_rounds=args.max_rounds)
     logger.info(response)
 
     # save to a gist file

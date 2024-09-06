@@ -256,7 +256,7 @@ def save_response_to_markdown(question: str, response: str, root_path: str) -> s
     Returns:
         str: The path to the saved markdown file.
     """
-    result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower()) + "_" + str(int(time.time())) + ".md"
+    result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower())  + ".md"
     result_file = os.path.join(root_path, result_file)
     with open(result_file, "w") as f:
         f.write(response)

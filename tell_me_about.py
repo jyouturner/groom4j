@@ -111,7 +111,7 @@ Iteration: {iteration_number}
 
 
 @observe(name="answer_question", capture_input=True, capture_output=True)
-def answer_question(pf: Optional[ProjectFiles], question, max_rounds=8):
+def answer_question(pf: Optional[ProjectFiles], question, last_response="", max_rounds=8):
     """
     Given a question, answer it by interacting with the LLM.
     Args:
@@ -122,7 +122,6 @@ def answer_question(pf: Optional[ProjectFiles], question, max_rounds=8):
     logger.info(f"Answer question: {question}")
     logger.info(f"Max rounds: {max_rounds}")
     i = 0
-    last_response = ""
     new_information = ""
     stop_function_prompt = False
     # initiate the LLM query manager
@@ -174,15 +173,15 @@ def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: 
     research_notes = ""
     for q in decompose_questions:
         logger.info(f"Question: {q}")
-        response = answer_question(pf, q, max_rounds=max_rounds)
+        response = answer_question(pf, q, last_response="", max_rounds=max_rounds)
         logger.info(response)
-        research_notes += f"\n\nQuestion: {q}\n\n{response}"
+        research_notes += f"\n\n===Question: {q}===\n\n{response}"
         # Write to a markdown file
         result_file = save_response_to_markdown(q, response, root_path)
         logger.info(f"Response saved to {result_file}")
 
     # Now let's answer the original question
-    response = answer_question(pf, refined_question, max_rounds=args.max_rounds)
+    response = answer_question(pf, refined_question, last_response=research_notes, max_rounds=args.max_rounds)
     # Save to markdown file
     result_file = save_response_to_markdown(question, response, root_path)
     logger.info(f"Response saved to {result_file}")
@@ -195,7 +194,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tell me about")
     parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
-    parser.add_argument("--max-rounds", type=int, default=20, required=False, help="default 8, maximum rounds of conversation with LLM before stopping the conversation")
+    parser.add_argument("--max-rounds", type=int, default=8, required=False, help="default 8, maximum rounds of conversation with LLM before stopping the conversation")
     parser.add_argument("--breakdown", type=bool, default=False, required=False, help="bool indicator whether to break down the question into smaller questions")
     args = parser.parse_args()
 

@@ -129,7 +129,7 @@ Iteration: {iteration_number}
 
 
 @observe(name="grooming_task", capture_input=True, capture_output=True)
-def grooming_task(pf: Optional[ProjectFiles], task, max_rounds=8):
+def grooming_task(pf: Optional[ProjectFiles], task, last_response="", max_rounds=8):
     """
     Given a task, groom it by interacting with the LLM.
     Args:
@@ -140,7 +140,6 @@ def grooming_task(pf: Optional[ProjectFiles], task, max_rounds=8):
     logger.info(f"Task: {task}")
     logger.info(f"Max rounds: {max_rounds}")
     i = 0
-    last_response = ""
     new_information = ""
     stop_function_prompt = False
     # initiate the LLM query manager
@@ -206,6 +205,6 @@ if __name__ == "__main__":
         task = issue.fields.description
     max_rounds = args.max_rounds
     print(f"Task: {task} max_rounds: {max_rounds}")
-    res = grooming_task(pf, task, max_rounds=args.max_rounds)
+    res = grooming_task(pf, task, last_response="", max_rounds=args.max_rounds)
     logger.info(res)
     print("Conversation with LLM ended")
