@@ -7,18 +7,17 @@ Groom4J is designed to address a critical challenge in enterprise Java developme
 
 - **Understanding the big picture**: Grasping how different components of a large Java application interact.
 - **Connecting the dots**: Identifying relationships between various packages, classes, and services.
-- **Finding the starting point**: Determining where to begin when tackling a new task or bug fix.
+- **Focus On Development Process**: Tailored for the unique challenges of large-scale, complex Java projects common in enterprise development process where coding is just one step in the middle.
 - **Navigating internal complexity**: Making sense of company-specific architectures, patterns, and legacy code.
 
-## What Sets Groom4J Apart:
+## Techniques:
 
-1. **Java-Specific Intelligence**: Leverages deep understanding of Java language structures, common enterprise patterns, and best practices.
-2. **Focus On Development Process**: Tailored for the unique challenges of large-scale, complex Java projects common in enterprise development process where coding is just one step in the middle.
-3. **Context-Aware Assistance**: Provides insights that consider the entire project structure, not just isolated code snippets.
-4. **Practical Task Planning**: Helps break down high-level tasks into actionable steps, considering the specific project context.
-5. **Onboarding Accelerator**: Dramatically reduces the time it takes for new team members to become productive on large Java projects.
+- **Gisting Files and Packages**: This provides a hierarchical understanding of the project structure.
+- **Cached Prompt**: Use cached prompt to reduce the cost and improve the response time, with Anthropic models.
+- **Decomposing Questions**: Break down the question or task into smaller questions
+- **Review Conversation**: After providing an answer, the LLM is asked to review the conversation and decide if it is time to stop.
+- **Tier LLM Models**: Use different tier models for different purposes. For example, use a more powerful model for answering question, and a cheaper model for reviewing conversation.
 
-By focusing on these aspects, Groom4J fills a crucial gap between generic coding tools and the specific needs of Java development teams in enterprise environments. It's not just about writing code—it's about understanding, navigating, and effectively contributing to complex Java ecosystems.
 
 ## Inspiration
 
