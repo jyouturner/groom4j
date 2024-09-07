@@ -35,6 +35,17 @@ Prioritize thoroughness over speed. If the project is large, focus on the most i
 
 You must follow exactly the above specified format for requests and structure your response using markdown.
 
+Important: When you identify key findings, present them in the following format:
+
+KEY_FINDINGS:
+- [BUSINESS_RULE] Description of a business rule
+- [IMPLEMENTATION_DETAIL] Description of an important implementation detail
+- [DATA_FLOW] Description of a significant aspect of the data flow
+- [ARCHITECTURE] Description of a notable architectural decision
+- [SPECIAL_CASE] Description of any special cases or exceptions
+
+Ensure that each key finding starts with the appropriate tag in square brackets.
+
 """
 
 reused_prompt_template = """
@@ -56,6 +67,9 @@ Iteration: {iteration_number}
 
 ===QUESTION===
 {question}
+
+===KEY_FINDINGS===
+{key_findings}
 
 ===PREVIOUS_ANALYSIS===
 {previous_llm_response}
@@ -135,6 +149,7 @@ def summarize_api(pf: Optional[ProjectFiles], question, last_response="", max_ro
     logger.info(f"Max rounds: {max_rounds}")
     i = 0
     new_information = ""
+    key_findings = []
     stop_function_prompt = False
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
@@ -142,12 +157,13 @@ def summarize_api(pf: Optional[ProjectFiles], question, last_response="", max_ro
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, stop_function_prompt = query_llm(
+            new_information, last_response, stop_function_prompt, key_findings = query_llm(
                 query_manager, question=question, user_prompt_template=user_prompt_template,
                 instruction_prompt=instructions, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
+                key_findings=key_findings,
                 stop_function_prompt=stop_function_prompt,
                 reviewer=reviewer
             )
@@ -184,6 +200,5 @@ if __name__ == "__main__":
     logger.info(response)
 
     # save to a gist file
-    default_api_notes_file = "api_notes.md"
-    result_file = save_response_to_markdown(question, response, path=root_path+"/.gist/tell_me_about/")
+    result_file = save_response_to_markdown("api_notes", response, path=root_path+"/.gist/tell_me_about/")
     logger.info(f"Response saved to {result_file}")

@@ -6,6 +6,11 @@ import argparse
 from projectfiles import ProjectFiles
 from typing import Union, List, Tuple
 import time
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 def read_files(pf, file_names) -> Tuple[str, List[str], List[str]]:
     additional_reading = ""
     files_found = []
@@ -86,7 +91,7 @@ def read_all_packages(pf) -> str:
 
 def read_from_human(line) -> str:
     # ask user to enter manually through commmand line
-    print("Question: \n", line)
+    logger.info(f"Question: \n{line}")
     human_response = input("Answer:\n")
     additional_reading = f"{human_response}"
     return additional_reading
@@ -118,7 +123,7 @@ def efficient_file_search(root_path: str, keyword: str, max_files: int = 1000, m
                     print(f"Found {keyword} in file: {rel_path}")
                     return rel_path, True
         except Exception as e:
-            print(f"Error reading {rel_path}: {e}")
+            logger.error(f"Error reading {rel_path}: {e}")
         
         return rel_path, False
 
@@ -157,7 +162,7 @@ def get_file(pf, file_name, package=None) -> Tuple[str, str, str, str]:
     """
     given a file name, return the file name, summary, path, and content of the file
     """
-    print("attempting to find file:", file_name, "package:", package)
+    logger.info(f"attempting to find file: {file_name} package: {package}")
     file = pf.find_codefile_by_name(file_name, package)
     if file:
         # now let's get the file content, since we have the path
@@ -184,7 +189,7 @@ def get_package(pf, package_name) -> Tuple[str, str, str, str]:
     """
     notes = pf.find_notes_of_package(package_name.strip())
     if not notes:
-        print(f"Package {package_name} does not exist in our gist files!")
+        logger.info(f"Package {package_name} does not exist in our gist files!")
         notes = ""
         
     subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
@@ -260,7 +265,21 @@ def save_response_to_markdown(question: str, response: str, path: str) -> str:
     if not os.path.exists(path):
         os.makedirs(path)
     result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower())  + ".md"
+    # remove the leading "_", if any
+    result_file = result_file.lstrip("_")
     result_file = os.path.join(path, result_file)
     with open(result_file, "w") as f:
         f.write(response)
     return result_file
+
+def make_api_call(api_name, endpoint, params):
+    logger.info(f"Making API call to {api_name} with endpoint {endpoint} and params {params}")
+    # TODO: implement the API call
+    response = "NA" #requests.get(endpoint, params=params)
+    return f"API call result for {api_name} with endpoint {endpoint} and params {params}:\n{response}"
+
+def make_db_query(db_name, query):
+    logger.info(f"Making database query to {db_name} with query {query}")
+    # TODO: implement the database query
+    result = "NA" #mongo_collection.find(query)
+    return f"Database query result for {db_name} with query {query}:\n{result}"

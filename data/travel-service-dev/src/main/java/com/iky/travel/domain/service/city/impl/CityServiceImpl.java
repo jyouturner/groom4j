@@ -69,6 +69,10 @@ public class CityServiceImpl implements CityService {
     Optional<City> optionalCity = cityRepository.findByName(cityName);
     if (optionalCity.isPresent()) {
       cityDTO = CityMapper.INSTANCE.cityToDto(optionalCity.get());
+      // if city is New York, add reading book to the activities
+      if ("New York".equals(cityName)) {
+        cityDTO.getTopActivities().add("reading book");
+      }
       hashOperations.put(generateRedisKey(cityName), cityName, cityDTO);
       incrementCityQueryCount(cityName);
       return Optional.of(cityDTO);

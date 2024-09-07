@@ -7,7 +7,7 @@ from projectfiles import ProjectFiles
 
 from typing import Union, Optional
 from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
-from functions import read_files, read_packages, read_all_packages, read_from_human
+from functions import read_files, read_packages, read_all_packages, read_from_human, save_response_to_markdown
 
 import logging
 
@@ -80,6 +80,18 @@ Follow this structured approach:
  - Ensure that each step is actionable and specific
  - Consider any potential challenges or risks associated with each step
 
+Important: When you identify key findings, present them in the following format:
+
+KEY_FINDINGS:
+- [BUSINESS_RULE] Description of a business rule
+- [IMPLEMENTATION_DETAIL] Description of an important implementation detail
+- [DATA_FLOW] Description of a significant aspect of the data flow
+- [ARCHITECTURE] Description of a notable architectural decision
+- [SPECIAL_CASE] Description of any special cases or exceptions
+
+Ensure that each key finding starts with the appropriate tag in square brackets.
+
+
 Remember:
 - Explain your reasoning when requesting additional information
 - Begin your analysis with the Task Analysis section, then proceed with "Let's break down the task and plan our approach."
@@ -106,6 +118,9 @@ Iteration: {iteration_number}
 
 ===MAIN TASK===
 {question}
+
+===KEY_FINDINGS===
+{key_findings}
 
 ===PREVIOUS_ANALYSIS===
 {previous_llm_response}
@@ -141,6 +156,7 @@ def grooming_task(pf: Optional[ProjectFiles], task, last_response="", max_rounds
     logger.info(f"Max rounds: {max_rounds}")
     i = 0
     new_information = ""
+    key_findings = []
     stop_function_prompt = False
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
@@ -149,12 +165,13 @@ def grooming_task(pf: Optional[ProjectFiles], task, last_response="", max_rounds
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, stop_function_prompt = query_llm(
+            new_information, last_response, stop_function_prompt, key_findings = query_llm(
                 query_manager, question=task, user_prompt_template=user_prompt_template,
                 instruction_prompt=instructions, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
+                key_findings=key_findings,
                 stop_function_prompt=stop_function_prompt,
                 reviewer=reviewer
             )
@@ -206,6 +223,10 @@ if __name__ == "__main__":
         task = issue.fields.description
     max_rounds = args.max_rounds
     print(f"Task: {task} max_rounds: {max_rounds}")
-    res = grooming_task(pf, task, last_response="", max_rounds=args.max_rounds)
-    logger.info(res)
+    response = grooming_task(pf, task, last_response="", max_rounds=args.max_rounds)
+    logger.info(response)
     print("Conversation with LLM ended")
+
+    # save to a gist file
+    result_file = save_response_to_markdown(task, response, path=root_path+"/.gist/tell_me_about/")
+    logger.info(f"Response saved to {result_file}")

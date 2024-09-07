@@ -60,6 +60,19 @@ instructions = """
    - Before requesting information, check if it's already been provided in previous rounds.
    - If you're unsure about previously provided information, ask for clarification rather than requesting the same information again.
 
+   Remember to integrate both new information and previously identified important points in your analysis.
+
+Important: When you identify key findings, present them in the following format:
+
+KEY_FINDINGS:
+- [BUSINESS_RULE] Description of a business rule
+- [IMPLEMENTATION_DETAIL] Description of an important implementation detail
+- [DATA_FLOW] Description of a significant aspect of the data flow
+- [ARCHITECTURE] Description of a notable architectural decision
+- [SPECIAL_CASE] Description of any special cases or exceptions
+
+Ensure that each key finding starts with the appropriate tag in square brackets.
+
 Remember, the goal is to provide the most comprehensive and accurate answer possible. It's okay to revise your understanding as you gather more information, and it's better to provide a well-reasoned partial answer than to continue requesting information indefinitely.
 
 """
@@ -85,6 +98,9 @@ Iteration: {iteration_number}
 
 ===QUESTION===
 {question}
+
+===KEY_FINDINGS===
+{key_findings}
 
 ===PREVIOUS_ANALYSIS===
 {previous_llm_response}
@@ -123,6 +139,7 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", max_
     logger.info(f"Max rounds: {max_rounds}")
     i = 0
     new_information = ""
+    key_findings = []
     stop_function_prompt = False
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
@@ -131,12 +148,13 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", max_
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, stop_function_prompt = query_llm(
+            new_information, last_response, stop_function_prompt, key_findings = query_llm(
                 query_manager, question=question, user_prompt_template=user_prompt_template,
                 instruction_prompt=instructions, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
+                key_findings=key_findings,
                 stop_function_prompt=stop_function_prompt,
                 reviewer=reviewer
             )
@@ -181,7 +199,7 @@ def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: 
         result_file = save_response_to_markdown(q, response, path=root_path+"/.gist/tell_me_about/")
         logger.info(f"Response saved to {result_file}")
 
-    # Now let's answer the original question
+    # Now let's answer the refined question with answers to the decomposed questions
     response = answer_question(pf, refined_question, last_response=research_notes, max_rounds=args.max_rounds)
     # Save to markdown file
     result_file = save_response_to_markdown(question, response, path=root_path+"/.gist/tell_me_about/")
@@ -223,6 +241,6 @@ if __name__ == "__main__":
         res = answer_question(pf, question, max_rounds=args.max_rounds)
         logger.info(res)
         # Write to a markdown file
-        result_file = save_response_to_markdown(question, res, root_path)
+        result_file = save_response_to_markdown(question, res, path=root_path+"/.gist/tell_me_about/")
         logger.info(f"Response saved to {result_file}")
     logger.info("Conversation with LLM ended")

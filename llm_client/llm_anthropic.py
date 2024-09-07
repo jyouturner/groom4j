@@ -6,6 +6,9 @@ from typing import List, Dict
 from time import sleep
 from .config import LLMConfig
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Claude 3 Sonnet
 SONNET_INPUT_COST = 0.00000300  # $0.003 per 1000 tokens
 SONNET_OUTPUT_COST = 0.00001500  # $0.015 per 1000 tokens
@@ -22,8 +25,8 @@ class AnthropicAssistant:
         self.reset_messages()
         self.max_retries = 3
         self.base_delay = 20  # 5 seconds
-        print(f"Anthropic model: {self.model}, temperature: {self.temperature}, max_tokens: {self.max_tokens}")
-        print(f"Anthropic system prompt: {self.system_prompt}")
+        logger.info(f"Anthropic model: {self.model}, temperature: {self.temperature}, max_tokens: {self.max_tokens}")
+        logger.debug(f"Anthropic system prompt: {self.system_prompt}")
 
     def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
         self.system_prompt = system_prompt
@@ -31,7 +34,7 @@ class AnthropicAssistant:
             if self.is_support_cached_prompt() and self.cached_prompt is not None:
                 self.cached_prompt = cached_prompt
             else:
-                print("Cached prompt is not supported by this assistant. Will append it to the system prompt.")
+                logger.info("Cached prompt is not supported by this assistant. Will append it to the system prompt.")
                 self.system_prompt += "\n" + cached_prompt
 
     def reset_messages(self):
@@ -61,7 +64,7 @@ class AnthropicAssistant:
 
         for attempt in range(self.max_retries):
             try:
-                print(self.messages)
+                logger.debug(f"Anthropic messages: {self.messages}")
                 response = self.anthropic.messages.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
@@ -75,10 +78,10 @@ class AnthropicAssistant:
             except RateLimitError as e:
                 if attempt < self.max_retries - 1:
                     delay = self.base_delay * (2 ** attempt)  # Exponential backoff
-                    print(f"Rate limit reached. Retrying in {delay} seconds...")
+                    logger.info(f"Rate limit reached. Retrying in {delay} seconds...")
                     sleep(delay)
                 else:
-                    print("Max retries reached. Please try again later.")
+                    logger.info("Max retries reached. Please try again later.")
                     raise e
 
         langfuse_context.update_current_observation(
@@ -99,9 +102,9 @@ class AnthropicAssistant:
             self.reset_messages()
         
         try:
-            print(f"\ncost: {self.get_cost()}\n")
+            logger.debug(f"\ncost: {self.get_cost()}\n")
         except Exception as e:
-            print(e)
+            logger.info(f"Error getting cost: {e}")
         return assistant_message
 
     def get_session_history(self) -> List[Dict[str, str]]:
@@ -115,7 +118,7 @@ class AnthropicAssistant:
                     content = message.get('content')
                     f.write(f"###{role}###\n{content}\n###END###\n")
         else:
-            print("History saving is disabled when use_history is False.")
+            logger.info("History saving is disabled when use_history is False.")
 
     def read_session_history(self, filename: str) -> list:
         history = []
@@ -145,7 +148,7 @@ class AnthropicAssistant:
             for message in messages:
                 self.messages.append({"role": message['role'], "content": message['content']})
         else:
-            print("History loading is disabled when use_history is False.")
+            logger.info("History loading is disabled when use_history is False.")
 
 
     def set_use_history(self, use_history: bool):

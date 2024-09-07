@@ -13,11 +13,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 review_prompt_template = """
-
-You are an AI assistant tasked with reviewing a conversation between a human and an AI about a Java project analysis. Your goal is to determine if the conversation is progressing effectively or if it's at risk of entering an infinite loop.
+You are an AI assistant tasked with reviewing a conversation between a human and an AI about a Java project analysis. Your goal is to determine if the conversation is progressing effectively and when it has gathered sufficient information to answer the main question.
 
 Below is a summary of the conversation so far:
-
 {conversation_summary}
 
 ===
@@ -28,32 +26,36 @@ Please analyze this conversation and answer the following questions:
 
 2. Are there any signs that the AI is stuck or repeating itself unnecessarily?
 
-3. Based on the information gathered so far, does it seem like the AI has enough information to answer the main question? If not, what crucial information is still missing?
+3. Based on the information gathered so far, does it seem like the AI has enough information to answer the main question? Consider the following:
+   a) Have all key components (Controller, Service, Repository, DTO) been analyzed?
+   b) Are the main data flows and business logic clear?
+   c) Have any special cases or business rules been identified?
+   d) Would additional information significantly change the understanding of the system?
 
-4. What action do you recommend for the next step? Choose one of the following and explain why:
-   a) Continue the conversation as is
-   b) Push for a conclusion by removing the option to request more information
+4. If crucial information is still missing, what specific details are needed and how would they contribute to answering the main question?
 
-
+5. Evaluate the potential value of continuing the conversation versus concluding it now:
+   a) What are the potential benefits of gathering more information?
+   b) What are the risks of continuing (e.g., redundancy, inefficiency)?
 
 Your analysis will be used to guide the conversation and ensure it reaches a productive conclusion. Be concise but thorough in your responses.
 
 After your analysis, please provide a final recommendation in the following format:
 
 RECOMMENDATION: [CONTINUE|CONCLUDE]
-REASON: [Brief explanation for the recommendation]
-EFFICIENCY_SCORE: [1-10]
-
+REASON: [Brief explanation for the recommendation, including key factors that influenced the decision]
+EFFICIENCY_SCORE: [1-10, where 10 indicates optimal efficiency in information gathering and analysis]
 
 If your recommendation is CONCLUDE, please provide:
-FINAL_ANSWER_PROMPT: [A concise prompt to give the main LLM to formulate its final answer]
+FINAL_ANSWER_PROMPT: [A concise prompt to give the main LLM to formulate its final answer, highlighting key points to address]
 
 Explanation of recommendations:
-- CONTINUE: The conversation is progressing well and should continue as is.
-- CONCLUDE: There's sufficient information to answer the question. The main LLM should provide a final answer.
+- CONTINUE: The conversation should proceed as there is still valuable information to be gathered that will significantly contribute to answering the main question.
+- CONCLUDE: There's sufficient information to answer the question comprehensively. Any additional information would likely be redundant or of minimal value.
 
-Please ensure your recommendation is followed by the appropriate additional information as specified above.
-"""
+Remember: It's better to conclude slightly early than to continue unnecessarily. If the core question can be answered with the current information, lean towards concluding the conversation.
+
+Please ensure your recommendation is followed by the appropriate additional information as specified above."""
 
 
 #
@@ -100,7 +102,7 @@ class ConversationReviewer:
 
     
     @observe(name="review_conversation", capture_input=True, capture_output=True)
-    def review_conversation(self) -> Tuple[str, int, List[str], Optional[str]]:
+    def review_conversation(self) -> Tuple[str, Optional[str]]:
         conversation_summary_str = ""
         for i, round_data in enumerate(self.conversation_list, 1):
             conversation_summary_str += f"Round {i}:\n"
@@ -126,13 +128,12 @@ class ConversationReviewer:
 
         return self.process_llm_response(review_response)
 
-    def process_llm_response(self, reviewer_response):
+    def process_llm_response(self, reviewer_response) -> Tuple[str, Optional[str]]:
         import re
 
         # Initialize variables with default values
         recommendation = None
         efficiency_score = None
-        next_steps = []
         final_answer_prompt = None
 
         # Print the full reviewer response for debugging
@@ -152,36 +153,29 @@ class ConversationReviewer:
         efficiency_score = int(efficiency_match.group(1)) if efficiency_match else None
 
         # Process based on recommendation
-        if recommendation in ["CONTINUE", "REDIRECT"]:
-            next_steps_match = re.search(r'NEXT_STEPS:\s*(.+)', reviewer_response, re.IGNORECASE | re.DOTALL)
-            next_steps = next_steps_match.group(1).split(', ') if next_steps_match else []
+        if recommendation in ["CONTINUE"]:
+            pass
+            #next_steps_match = re.search(r'NEXT_STEPS:\s*(.+)', reviewer_response, re.IGNORECASE | re.DOTALL)
+            #next_steps = next_steps_match.group(1).split(', ') if next_steps_match else []
         elif recommendation == "CONCLUDE":
             final_answer_prompt_match = re.search(r'FINAL_ANSWER_PROMPT:\s*(.+)', reviewer_response, re.IGNORECASE | re.DOTALL)
             final_answer_prompt = final_answer_prompt_match.group(1) if final_answer_prompt_match else None
-        elif recommendation == "RESTART":
-            # Logic to restart the conversation
-            pass
+        else:
+            raise ValueError(f"Unknown recommendation: {recommendation}")
+        logger.info(f"Processed response: Recommendation={recommendation}, Efficiency={efficiency_score}, Final prompt={final_answer_prompt}")
 
-        logger.info(f"Processed response: Recommendation={recommendation}, Efficiency={efficiency_score}, Next steps={next_steps}, Final prompt={final_answer_prompt}")
+        return recommendation, final_answer_prompt
 
-        return recommendation, efficiency_score, next_steps, final_answer_prompt
-
-    def should_continue_conversation(self) -> bool:
-        recommendation, efficiency_score, next_steps, final_answer_prompt = self.review_conversation()
+    def should_continue_conversation(self) -> Tuple[bool, Optional[str]]:
+        # return the boolean value and the final answer prompt when the recommendation is CONCLUDE
+        recommendation, final_answer_prompt = self.review_conversation()
         
         if recommendation == "CONTINUE":
-            return True
-        elif recommendation == "REDIRECT":
-            # Implement logic to incorporate next_steps into the next prompt
-            self.incorporate_next_steps(next_steps)
-            return False
+            return True, None
         elif recommendation == "CONCLUDE":
             # Implement logic to use final_answer_prompt
             self.get_final_answer(final_answer_prompt)
-            return False
-        elif recommendation == "RESTART":
-            self.restart_conversation()
-            return False
+            return False, final_answer_prompt
         else:
             raise ValueError(f"Unknown recommendation: {recommendation}")
 
@@ -191,7 +185,7 @@ class ConversationReviewer:
 
     def get_final_answer(self, final_answer_prompt: str):
         # Implement logic to get the final answer using the provided prompt
-        pass
+        return final_answer_prompt
 
     def restart_conversation(self):
         pass
