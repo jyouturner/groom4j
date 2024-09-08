@@ -56,8 +56,6 @@ Below is the Java project structure for your reference:
 and summaries of the packages in the project:
 {package_notes}
 
-and notes of the files in the project:
-{file_notes}
 """
 
 user_prompt_template = """
@@ -102,7 +100,7 @@ Ensure that each key finding starts with the appropriate tag in square brackets.
 trace_api_question_prompt = """
 Given a API request: {api_request}
 
-1. What would be the response data structure for this request?
+1. What would be the response data for this request?
 2. What is the step-by-step flow of data and logic from receiving the request to sending the response?
 3. Are there any special business rules or implementation details that are worth noting?
 
