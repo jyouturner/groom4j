@@ -114,23 +114,22 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
     return query_manager
 
 
-def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> Tuple[str, str, bool]:
+def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
     """
     Extract 'Next Steps' from LLM response, process requests, and prepare new information.
     
-    return new_information, response, stop_function_prompt
+    return new_information, response
     """
     new_information = ""
-    stop_function_prompt = False
     next_steps_index = response.find("**Next Steps**")
     if next_steps_index == -1:
         logger.info("No next steps found in the response")
-        return new_information, response, stop_function_prompt
+        return new_information
 
     next_steps = response[next_steps_index:].strip()
     if not next_steps:
         logger.info("process_llm_response: No next steps found in the response")
-        return new_information, response, stop_function_prompt
+        return new_information
 
     logger.debug(f"Next steps: {next_steps}")
     lines = next_steps.split("\n")
@@ -193,16 +192,20 @@ def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> Tuple[str
             pass # ignore the line
         i += 1
 
+    return new_information
 
-    # Remove the **Next Steps** section and everything following it
-    updated_response = response[:next_steps_index].strip()
+def remove_next_steps(response) -> str:
+    next_steps_index = response.find("**Next Steps**")
+    if next_steps_index != -1:
+        return response[:next_steps_index].strip()
+    return response.strip()
 
-    return new_information, updated_response, stop_function_prompt
-
-
-def query_llm(query_manager, question, user_prompt_template, instruction_prompt, last_response, pf, iteration_number: str="", new_information: str="", key_findings: List[str]=[], stop_function_prompt: bool=False, reviewer: ConversationReviewer=None) -> Tuple[str, str, bool, List[str]]:
+def query_llm(query_manager, question, user_prompt_template, instruction_prompt, last_response, pf, iteration_number: str="", new_information: str="", key_findings: List[str]=[], reviewer: ConversationReviewer=None) -> Tuple[str, str, bool, List[str]]:
     """
-    return new_information, response, stop_function_prompt, updated_key_findings
+    query the LLM with the given question, user_prompt_template, instruction_prompt, last_response, pf, iteration_number, new_information, key_findings, reviewer
+    process the response and update the key findings
+    review the conversation and decide whether to continue the conversation
+    return new_information, response, should_conclude, key_findings
     """
     user_prompt = user_prompt_template.format(
         iteration_number=iteration_number,
@@ -212,7 +215,7 @@ def query_llm(query_manager, question, user_prompt_template, instruction_prompt,
         new_information=str(new_information) if new_information else "",
         key_findings="\n".join(key_findings) if key_findings else "",
         instructions=instruction_prompt,
-        function_prompt=function_prompt if not stop_function_prompt else "",
+        function_prompt=function_prompt
     )
     response = query_manager.query(user_prompt)
     # update the tracing with the iteration number
@@ -221,45 +224,41 @@ def query_llm(query_manager, question, user_prompt_template, instruction_prompt,
     #TODO: Cross-check response against key findings
     inconsistencies = cross_check_response(response, key_findings)
     if inconsistencies:
-        correction_prompt = f"""
-        Your response has the following inconsistencies with previously identified key points:
-        {inconsistencies}
-        Please provide a corrected response that addresses these inconsistencies.
-        """
-        response = query_manager.query(correction_prompt)
-    
-    if reviewer is not None:
-        # Add the conversation to the reviewer's history
-        if iteration_number != "0":
-            reviewer.add_conversation(new_information, response)
-        else:
-            reviewer.add_conversation(question, response)
-        
-        # Only review every 2 rounds, and not the first round
-        if int(iteration_number) % 2 == 1:
-            should_continue, final_answer_prompt = reviewer.should_continue_conversation()
-            if not should_continue:
-                logger.info("The conversation reviewer does not want to continue the conversation")
-                if final_answer_prompt is not None:
-                    logger.info(f"The conversation reviewer final answer prompt: {final_answer_prompt}")
-                    # TODO: add the final_answer_prompt to the response ...
+        pass
 
-                # make sure to remove anything that after the **Next Steps** section
-                next_steps_index = response.find("**Next Steps**")
-                if next_steps_index != -1:
-                    response = response[:next_steps_index]
-                return None, response, True, key_findings
     # Extract and update key findings
     new_key_findings = extract_key_findings(response)
     updated_key_findings = update_key_findings(key_findings, new_key_findings)
-    
+
     try:
-        new_information, response, stop_function_prompt = extract_and_process_next_steps(response, pf)
+        new_information = extract_and_process_next_steps(response, pf)
+        # record the conversation and decide whether to continue the conversation
+        #TODO: not sure how to handle the final_answer_prompt...
+        should_continue, final_answer_prompt = shoud_continue_conversation(question, response, new_information, reviewer, int(iteration_number) % 2 == 1)
+
+        # make sure to remove anything that after the **Next Steps** section since it is already processed
+        updated_response = remove_next_steps(response)
+
+        return new_information, updated_response, not should_continue, updated_key_findings
     except Exception as e:
-        logger.error(f"An error occurred in extract_and_process_next_steps: {str(e)}", exc_info=True)
-        return None, response, True, key_findings
-    
-    return new_information, response, stop_function_prompt, updated_key_findings
+        logger.error(f"An error occurred in query_llm: {str(e)}", exc_info=True)
+        return None, response, True, updated_key_findings
+
+def shoud_continue_conversation(question, response, new_information, conversation_reviewer: ConversationReviewer, check_history: bool=True):
+    if not new_information:
+        return False, response
+    # review the conversation so far
+    if conversation_reviewer.is_history_empty():
+        conversation_reviewer.add_conversation(question, response)
+    else:
+        conversation_reviewer.add_conversation(new_information, response)
+
+    if check_history:
+        should_continue, final_answer_prompt = conversation_reviewer.should_continue_conversation()
+    else:
+        should_continue, final_answer_prompt = True, None
+
+    return should_continue, final_answer_prompt
 
 def extract_key_findings(response):
     key_findings = []

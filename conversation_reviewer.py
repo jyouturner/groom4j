@@ -83,6 +83,9 @@ class ConversationReviewer:
         self.conversation_list = []
         self.max_history = max_history
 
+    def is_history_empty(self):
+        return len(self.conversation_list) == 0
+
     def add_conversation(self, human: str, ai: str):
         conversation = {
             "human": human,

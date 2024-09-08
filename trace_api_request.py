@@ -118,7 +118,7 @@ def trace_api_request(pf: Optional[ProjectFiles], api_request, last_response="",
     i = 0
     new_information = ""
     key_findings = []
-    stop_function_prompt = False
+    
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
     query_manager_tier2 = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier2")
     reviewer = ConversationReviewer(query_manager=query_manager_tier2)
@@ -129,23 +129,23 @@ def trace_api_request(pf: Optional[ProjectFiles], api_request, last_response="",
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, stop_function_prompt, key_findings = query_llm(
+            new_information, last_response, should_conclude, key_findings = query_llm(
                 query_manager, question=question, user_prompt_template=user_prompt_template,
                 instruction_prompt=instructions, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
                 key_findings=key_findings,
-                stop_function_prompt=stop_function_prompt,
                 reviewer=reviewer
             )
+            if should_conclude:
+                logger.info("The conversation has ended or no new information was found")
+                break
         except Exception as e:
             logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
-            break
+            raise
 
-        if new_information is None or new_information == "":
-            logger.info("The conversation has ended or no new information was found")
-            break
+
 
         i += 1
     
