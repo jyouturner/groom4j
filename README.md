@@ -134,9 +134,23 @@ poetry run python tell_me_about.py ./data/travel-service-dev/ --question="how da
 
 or just use a dedicated script to find info in the API projects, which will generate a markdown file (api_note.md) under ".gist" folder
 
+For example, the generated answer to above question "how data flow from database to the API" can be found [data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md](./data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md)
+
+If you want to summarize all the API endpoints:
+
 ```sh
 poetry run python summarize_api.py ./data/travel-service-dev
 ```
+
+The summaries can be found at [./data/travel-service-dev/.gist/tell_me_about/api_notes.md](./data/travel-service-dev/.gist/tell_me_about/api_notes.md)
+
+If you want to trace an API endpoint from end to end, run this command
+
+```
+poetry run python trace_api_request.py data/travel-service-dev --api-request=/api/v1/city/New%20York
+```
+
+The detail of the API endpoint will be saved to [./data/travel-service-dev/.gist/tell_me_about/endpoint_api_v1_city_new_20york.md](./data/travel-service-dev/.gist/tell_me_about/endpoint_api_v1_city_new_20york.md)
 
 ## Use on Your Project
 
