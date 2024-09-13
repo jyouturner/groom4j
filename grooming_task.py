@@ -8,7 +8,7 @@ from projectfiles import ProjectFiles
 from typing import Union, Optional
 from functions import get_file, get_package, get_static_notes, efficient_file_search, process_file_request
 from functions import read_files, read_packages, read_all_packages, read_from_human, save_response_to_markdown
-
+from functions import function_prompt
 import logging
 
 # the order of the following imports is important
@@ -142,6 +142,24 @@ Iteration: {iteration_number}
 
 """
 
+final_user_prompt_template = """
+===MAIN TASK===
+{question}
+
+===KEY_FINDINGS===
+{key_findings}
+
+===PREVIOUS_ANALYSIS===
+{previous_llm_response}
+
+
+===NEW_INFORMATION===
+
+{new_information}
+
+===GUIDELINES_FOR_ANALYSIS===
+{instructions}
+"""
 
 @observe(name="grooming_task", capture_input=True, capture_output=True)
 def grooming_task(pf: Optional[ProjectFiles], task, last_response="", max_rounds=8):
@@ -162,12 +180,13 @@ def grooming_task(pf: Optional[ProjectFiles], task, last_response="", max_rounds
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
     query_manager_tier2 = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier2")
     reviewer = ConversationReviewer(query_manager=query_manager_tier2)
+    final_answer_prompt = None
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
             new_information, last_response, should_conclude, key_findings = query_llm(
                 query_manager, question=task, user_prompt_template=user_prompt_template,
-                instruction_prompt=instructions, last_response=last_response,
+                instruction_prompt=instructions, function_prompt=function_prompt, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
@@ -175,8 +194,13 @@ def grooming_task(pf: Optional[ProjectFiles], task, last_response="", max_rounds
                 reviewer=reviewer
             )
             if should_conclude:
-                logger.info("The conversation has ended or no new information was found")
-                break   
+                logger.info("The conversation is about to end")
+                if final_answer_prompt:
+                    logger.info("but we still need to do the final conversation...")
+                    _, last_response, _, _, _ = query_llm(query_manager=query_manager, question=task, user_prompt_template=final_user_prompt_template,
+                              instruction_prompt=final_answer_prompt, function_prompt="", last_response=last_response, pf=pf,
+                              iteration_number=str(i), new_information=new_information, key_findings=key_findings, reviewer=None)
+                break
         except Exception as e:
             logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
             raise

@@ -4,9 +4,11 @@ from typing import List, Tuple, Optional
 from projectfiles import ProjectFiles
 from functions import efficient_file_search, read_files, read_packages, process_file_request, get_static_notes
 from functions import make_api_call, make_db_query
+from functions import do_not_search_prompt
 from llm_client import LLMQueryManager, langfuse_context
 from conversation_reviewer import ConversationReviewer
 import logging
+import string
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -15,55 +17,6 @@ logger = logging.getLogger(__name__)
 # this is important to avoid repeated search for the same keyword
 global_search_results = {}
 
-function_prompt = """
-If you need more information, use the following formats to request it:
-
-1. To search for keywords:
-   [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
-   I will provide the results in this format:
-   ```text
-   You requested to search for : [keyword]
-   Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
-   ```
-   Or if no files are found:
-   ```text
-   No matching files found with [keyword]
-   ```
-
-2. To request file contents:
-   [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
-   I will provide a summary and content of the file, or notify you if the file is not found.
-
-3. To get information about packages:
-   [I need info about packages: <package>com.example.package1</package>, <package>com.example.package2</package>]
-   I will provide a summary of the package and its files.
-
-Make your requests for additional information at the end of your response, using this format:
-
-**Next Steps**
-[your request to search for keywords]
-[your request to read files]
-[your request to read packages]
-[your request for external API response]
-[your request for database query results]
-...
-
-You can include multiple requests in the Next Steps section. Be selective and efficient in your requests, focusing on information most relevant to the task at hand.
-
-For external API and database requests:
-- Clearly specify the API name or database name.
-- For APIs, provide the exact endpoint and any necessary parameters.
-- For databases, provide a precise query or description of the data you need.
-- Explain why you need this information and how it relates to the current task.
-
-After receiving the requested information, analyze it and relate it back to the original question. The answers to your requests, including search results, file contents, package summaries, API responses, and database query results, will be provided in the NEW_INFORMATION section of the next prompt.
-"""
-
-do_not_search_prompt = """
-The following terms have already been searched and confirmed not to exist in the project:
-[{not_found_terms}]
-
-"""
 
 def not_found_terms(search_results: dict = None) -> str:
     # print the search results in the format that can be used in the LLM prompt
@@ -188,24 +141,35 @@ def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
 def remove_next_steps(response) -> str:
     return response.replace("**Next Steps**", "AI requested more info").strip()
 
-def query_llm(query_manager, question, user_prompt_template, instruction_prompt, last_response, pf, iteration_number: str="", new_information: str="", key_findings: List[str]=[], reviewer: ConversationReviewer=None) -> Tuple[str, str, bool, List[str]]:
+def query_llm(query_manager, question, user_prompt_template, instruction_prompt, function_prompt, last_response, pf, iteration_number: str="", new_information: str="", key_findings: List[str]=[], reviewer: ConversationReviewer=None) -> Tuple[str, str, bool, List[str], str]:
     """
     query the LLM with the given question, user_prompt_template, instruction_prompt, last_response, pf, iteration_number, new_information, key_findings, reviewer
     process the response and update the key findings
     review the conversation and decide whether to continue the conversation
-    return new_information, response, should_conclude, key_findings
+    return new_information, response, should_conclude, key_findings, final_answer_prompt
     """
-    user_prompt = user_prompt_template.format(
-        iteration_number=iteration_number,
-        question=question,
-        previous_llm_response=last_response,
-        do_not=do_not_search_prompt.format(not_found_terms=not_found_terms()),
-        new_information=str(new_information) if new_information else "",
-        key_findings="\n".join(key_findings) if key_findings else "",
-        instructions=instruction_prompt,
-        function_prompt=function_prompt
-    )
+    # Prepare a dictionary of format parameters
+    format_params = {
+        "iteration_number": iteration_number,
+        "question": question,
+        "previous_llm_response": last_response,
+        "do_not": do_not_search_prompt.format(not_found_terms=not_found_terms()),
+        "new_information": str(new_information) if new_information else "",
+        "key_findings": "\n".join(key_findings) if key_findings else "",
+        "instructions": instruction_prompt,
+        "function_prompt": function_prompt
+    }
+
+    # Filter out keys that are not in the template
+    template_keys = [key[1] for key in string.Formatter().parse(user_prompt_template) if key[1] is not None]
+    filtered_params = {k: v for k, v in format_params.items() if k in template_keys}
+
+    # Format the user prompt
+    user_prompt = user_prompt_template.format(**filtered_params)
+
+    # query LLM
     response = query_manager.query(user_prompt)
+
     # update the tracing with the iteration number
     langfuse_context.update_current_observation(tags=[iteration_number])
 
@@ -224,21 +188,27 @@ def query_llm(query_manager, question, user_prompt_template, instruction_prompt,
     try:
         new_information = extract_and_process_next_steps(response, pf)
         # record the conversation and decide whether to continue the conversation
-        #TODO: not sure how to handle the final_answer_prompt...
-        should_continue, final_answer_prompt = shoud_continue_conversation(question, response, new_information, reviewer, int(iteration_number) % 3 == 1)
+        should_continue, final_answer_prompt = shoud_continue_conversation(question, response, new_information, reviewer, bool(iteration_number) and int(iteration_number) % 3 == 1)
 
-        # make sure to remove anything that after the **Next Steps** section since it is already processed
-        updated_response = remove_next_steps(response)
+        # if reviwer suggest to conclude the conversation, then we use the final_answer_prompt as the prompt to LLM
+        # to have the last conversation
+        if not should_continue and final_answer_prompt:
+            updated_response = final_answer_prompt
+        else:
+            # make sure to remove anything that after the **Next Steps** section since it is already processed
+            updated_response = remove_next_steps(response)
 
-        return new_information, updated_response, not should_continue, updated_key_findings
+        return new_information, updated_response, not should_continue, updated_key_findings, final_answer_prompt
     except Exception as e:
         logger.error(f"An error occurred in query_llm: {str(e)}", exc_info=True)
-        return None, response, True, updated_key_findings
+        return None, response, True, updated_key_findings, None
 
 def shoud_continue_conversation(question, response, new_information, conversation_reviewer: ConversationReviewer, check_history: bool=True):
     if not new_information:
         logger.info("the conversation should stop now that there is no new information found.")
-        return False, response
+        return False, None
+    if not conversation_reviewer:
+        return True, None
     # review the conversation so far
     if conversation_reviewer.is_history_empty():
         conversation_reviewer.add_conversation(question, response)
@@ -249,7 +219,7 @@ def shoud_continue_conversation(question, response, new_information, conversatio
         should_continue, final_answer_prompt = conversation_reviewer.should_continue_conversation()
     else:
         should_continue, final_answer_prompt = True, None
-    logger.info(f"the conversation reviewer decided the conversation should_continue={should_continue}")
+    logger.info(f"New information is requested, and the conversation reviewer decided the conversation should_continue={should_continue}")
     return should_continue, final_answer_prompt
 
 def extract_key_findings(response):

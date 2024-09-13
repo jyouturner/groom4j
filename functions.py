@@ -11,6 +11,56 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+function_prompt = """
+If you need more information, use the following formats to request it:
+
+1. To search for keywords:
+   [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
+   I will provide the results in this format:
+   ```text
+   You requested to search for : [keyword]
+   Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
+   ```
+   Or if no files are found:
+   ```text
+   No matching files found with [keyword]
+   ```
+
+2. To request file contents:
+   [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
+   I will provide a summary and content of the file, or notify you if the file is not found.
+
+3. To get information about packages:
+   [I need info about packages: <package>com.example.package1</package>, <package>com.example.package2</package>]
+   I will provide a summary of the package and its files.
+
+Make your requests for additional information at the end of your response, using this format:
+
+**Next Steps**
+[your request to search for keywords]
+[your request to read files]
+[your request to read packages]
+[your request for external API response]
+[your request for database query results]
+...
+
+You can include multiple requests in the Next Steps section. Be selective and efficient in your requests, focusing on information most relevant to the task at hand.
+
+For external API and database requests:
+- Clearly specify the API name or database name.
+- For APIs, provide the exact endpoint and any necessary parameters.
+- For databases, provide a precise query or description of the data you need.
+- Explain why you need this information and how it relates to the current task.
+
+After receiving the requested information, analyze it and relate it back to the original question. The answers to your requests, including search results, file contents, package summaries, API responses, and database query results, will be provided in the NEW_INFORMATION section of the next prompt.
+"""
+
+do_not_search_prompt = """
+The following terms have already been searched and confirmed not to exist in the project:
+[{not_found_terms}]
+
+"""
+
 def read_files(pf, file_names) -> Tuple[str, List[str], List[str]]:
     additional_reading = ""
     files_found = []
@@ -194,9 +244,10 @@ def get_package(pf, package_name) -> Tuple[str, str, str, str]:
         notes = ""
         
     subpackages, codefiles = pf.find_subpackages_and_codefiles(package_name)
-    subpacakgenames = ', '.join(subpackages)
-    codefilenames = ', '.join([f.filename for f in codefiles])
-    return package_name, notes, subpacakgenames, codefilenames
+
+    subpackagenames = ', '.join(subpackages) if subpackages else ""
+    codefilenames = ', '.join([f.filename for f in codefiles]) if codefiles else ""
+    return package_name, notes, subpackagenames, codefilenames
 
 def get_packages(pf, package_names) -> Tuple[Tuple[str, str, str, str]]:
     packages = []

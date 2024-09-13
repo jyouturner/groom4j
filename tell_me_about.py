@@ -11,6 +11,7 @@ from functions import get_file, get_package, get_static_notes
 from functions import efficient_file_search, read_files, read_packages, read_all_packages, read_from_human
 from functions import process_file_request
 from functions import save_response_to_markdown
+from functions import function_prompt
 
 import logging
 
@@ -25,14 +26,15 @@ from rewrite_question import decompose_question, system_prompt_rewrite_question
 from llm_client import LLMQueryManager, langfuse_context, observe
 from conversation_reviewer import ConversationReviewer
 from llm_interaction import initiate_llm_query_manager, query_llm
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 system_prompt = """
-You are an AI assistant designed to help Java developers understand and analyze existing Java projects. Your task is to investigate a specific question about the Java codebase.
-
+You are an AI assistant designed to help Java developers understand and analyze existing Java projects. 
 """
+
 
 instructions = """
 1. Start with a high-level overview of relevant components.
@@ -59,6 +61,7 @@ instructions = """
 9. Avoid repetitive requests:
    - Before requesting information, check if it's already been provided in previous rounds.
    - If you're unsure about previously provided information, ask for clarification rather than requesting the same information again.
+
 
    Remember to integrate both new information and previously identified important points in your analysis.
 
@@ -122,7 +125,26 @@ Iteration: {iteration_number}
 
 """
 
+final_user_prompt_template = """
 
+===QUESTION===
+{question}
+
+===KEY_FINDINGS===
+{key_findings}
+
+===PREVIOUS_ANALYSIS===
+{previous_llm_response}
+
+
+===NEW_INFORMATION===
+
+{new_information}
+
+===GUIDELINES_FOR_ANALYSIS===
+{instructions}
+
+"""
 
 
 
@@ -144,12 +166,13 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", max_
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
     query_manager_tier2 = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier2")
     reviewer = ConversationReviewer(query_manager=query_manager_tier2)
+    final_answer_prompt = None
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, should_conclude, key_findings = query_llm(
+            new_information, last_response, should_conclude, key_findings, final_answer_prompt = query_llm(
                 query_manager, question=question, user_prompt_template=user_prompt_template,
-                instruction_prompt=instructions, last_response=last_response,
+                instruction_prompt=instructions, function_prompt=function_prompt, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
@@ -157,7 +180,12 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", max_
                 reviewer=reviewer
             )
             if should_conclude:
-                logger.info("The conversation has ended or no new information was found")
+                logger.info("The conversation is about to end")
+                if final_answer_prompt:
+                    logger.info("but we still need to do the final conversation...")
+                    _, last_response, _, _, _ = query_llm(query_manager=query_manager, question=question, user_prompt_template=final_user_prompt_template,
+                              instruction_prompt=final_answer_prompt, function_prompt="", last_response=last_response, pf=pf,
+                              iteration_number=str(i), new_information=new_information, key_findings=key_findings, reviewer=None)
                 break
         except Exception as e:
             logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
@@ -186,6 +214,7 @@ def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: 
     
     # Record the answers to the decomposed questions
     research_notes = ""
+    decomposed_links = []
     for q in decompose_questions:
         logger.info(f"Question: {q}")
         response = answer_question(pf, q, last_response="", max_rounds=max_rounds)
@@ -193,12 +222,17 @@ def break_down_and_answer(question: str, pf: Optional[ProjectFiles], root_path: 
         research_notes += f"\n\n===Question: {q}===\n\n{response}"
         # Write to a markdown file, in root_path/.gist/tell_me_about/
         result_file = save_response_to_markdown(q, response, path=root_path+"/.gist/tell_me_about/")
+        decomposed_links.append(f"- [{q}]({os.path.basename(result_file)})")
         logger.info(f"Response saved to {result_file}")
 
     # Now let's answer the refined question with answers to the decomposed questions
     response = answer_question(pf, refined_question, last_response=research_notes, max_rounds=args.max_rounds)
+    
+    # Prepare the final content with links to decomposed questions
+    final_content = "# Refined Answer\n\n" + response + "\n\n## Decomposed Questions\n\n" + "\n".join(decomposed_links)
+    
     # Save to markdown file
-    result_file = save_response_to_markdown(question, response, path=root_path+"/.gist/tell_me_about/")
+    result_file = save_response_to_markdown(question, final_content, path=root_path+"/.gist/tell_me_about/")
     logger.info(f"Response saved to {result_file}")
     return response
 
@@ -210,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--question", type=str, default="", required=True, help="a question about the Java code, for example 'Tell me about the package structure of the project'")
     parser.add_argument("--max-rounds", type=int, default=8, required=False, help="default 8, maximum rounds of conversation with LLM before stopping the conversation")
-    parser.add_argument("--breakdown", type=bool, default=False, required=False, help="bool indicator whether to break down the question into smaller questions")
+    parser.add_argument("--breakdown", action="store_true", help="Flag to break down the question into smaller questions")
     args = parser.parse_args()
 
 
@@ -229,7 +263,7 @@ if __name__ == "__main__":
     if not question:
         logger.error("Please provide a question")
         sys.exit(1)
-    if bool(args.breakdown):
+    if args.breakdown:
         logger.info("Breaking down the question into smaller questions ...")
         res = break_down_and_answer(question, pf, root_path, max_rounds=args.max_rounds)
         logger.info(res)
