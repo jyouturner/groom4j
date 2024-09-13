@@ -19,7 +19,7 @@ load_config_to_env()
 from llm_client import LLMQueryManager, langfuse_context, observe
 from conversation_reviewer import ConversationReviewer
 from llm_interaction import initiate_llm_query_manager, query_llm
-
+from functions import function_prompt
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -101,6 +101,27 @@ Given a API request: {api_request}
 
 """
 
+final_user_prompt_template = """
+
+===QUESTION===
+{question}
+
+===KEY_FINDINGS===
+{key_findings}
+
+===PREVIOUS_ANALYSIS===
+{previous_llm_response}
+
+===NEW_INFORMATION===
+{new_information}
+
+===DO_NOT_SEARCH===
+{do_not}
+
+===GUIDELINES_FOR_ANALYSIS===
+{instructions}
+"""
+
 @observe(name="trace_api_request", capture_input=True, capture_output=True)
 def trace_api_request(pf: Optional[ProjectFiles], api_request, last_response="", max_rounds=8):
     logger.info(f"Tracing API request: {api_request}")
@@ -115,13 +136,13 @@ def trace_api_request(pf: Optional[ProjectFiles], api_request, last_response="",
 
     # create the question from the api_request
     question = trace_api_question_prompt.format(api_request=api_request)
-    
+    final_answer_prompt = None
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, should_conclude, key_findings = query_llm(
+            new_information, last_response, should_conclude, key_findings, final_answer_prompt = query_llm(
                 query_manager, question=question, user_prompt_template=user_prompt_template,
-                instruction_prompt=instructions, last_response=last_response,
+                instruction_prompt=instructions, function_prompt=function_prompt, last_response=last_response,
                 pf=pf, 
                 iteration_number=str(i),
                 new_information=new_information,
@@ -129,7 +150,12 @@ def trace_api_request(pf: Optional[ProjectFiles], api_request, last_response="",
                 reviewer=reviewer
             )
             if should_conclude:
-                logger.info("The conversation has ended or no new information was found")
+                logger.info("The conversation is about to end")
+                if final_answer_prompt:
+                    logger.info("but we still need to do the final conversation...")
+                    _, last_response, _, _, _ = query_llm(query_manager=query_manager, question=question, user_prompt_template=final_user_prompt_template,
+                              instruction_prompt=final_answer_prompt, function_prompt="", last_response=last_response, pf=pf,
+                              iteration_number=str(i), new_information=new_information, key_findings=key_findings, reviewer=None)
                 break
         except Exception as e:
             logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)

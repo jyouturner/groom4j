@@ -155,8 +155,8 @@ class ConversationReviewer:
             #next_steps_match = re.search(r'NEXT_STEPS:\s*(.+)', reviewer_response, re.IGNORECASE | re.DOTALL)
             #next_steps = next_steps_match.group(1).split(', ') if next_steps_match else []
         elif recommendation == "CONCLUDE":
-            final_answer_prompt_match = re.search(r'FINAL_ANSWER_PROMPT:\s*(.+)', reviewer_response, re.IGNORECASE | re.DOTALL)
-            final_answer_prompt = final_answer_prompt_match.group(1) if final_answer_prompt_match else None
+            final_answer_prompt_match = re.search(r'FINAL_ANSWER_PROMPT\s*(.+)', reviewer_response, re.IGNORECASE | re.DOTALL)
+            final_answer_prompt = final_answer_prompt_match.group(1).strip() if final_answer_prompt_match else None
         else:
             raise ValueError(f"Unknown recommendation: {recommendation}")
         logger.info(f"Processed response: Recommendation={recommendation}, Efficiency={efficiency_score}, Final prompt={final_answer_prompt}")
