@@ -82,32 +82,22 @@ Remember to integrate both new information and previously identified important p
 
 When you identify key findings, present them in the following format:
 
-KEY_FINDINGS:
+**KEY_FINDINGS**:
 - [BUSINESS_RULE] Description of a business rule
 - [IMPLEMENTATION_DETAIL] Description of an important implementation detail
 - [DATA_FLOW] Description of a significant aspect of the data flow
 - [ARCHITECTURE] Description of a notable architectural decision
 - [SPECIAL_CASE] Description of any special cases or exceptions
 
-Ensure that each key finding starts with the appropriate tag in square brackets.
+Ensure that each key finding starts with a hyphen followed by a space and the appropriate tag in square brackets, exactly as shown above. Do not use asterisks or other formatting within the key findings list.
 """
 
 trace_api_question_prompt = """
 Given a API request: {api_request}
 
-1. What would be the response data for this request?
-2. What is the step-by-step flow of data and logic from receiving the request to sending the response?
+1. Trace the request through the code, and find out the step-by-step flow of data and logic from receiving the request to sending the response.
+2. What is the response data for this request?
 3. Are there any special business rules or implementation details that are worth noting?
-
-For your reference, here is the database table data:
-
-| id (ObjectId) | name | plate_no | population | country | top_activities |
-|----------------|------|----------|------------|---------|----------------|
-| 60a7c1e8f1d3b22e4c9b1234 | New York | 1 | 8419000 | USA | ["Sightseeing", "Shopping", "Museums"] |
-| 60a7c1e8f1d3b22e4c9b1235 | Paris | 75 | 2161000 | France | ["Eiffel Tower", "Louvre", "Seine River Cruise"] |
-| 60a7c1e8f1d3b22e4c9b1236 | Tokyo | 13 | 13960000 | Japan | ["Cherry Blossom Viewing", "Temples", "Shopping"] |
-| 60a7c1e8f1d3b22e4c9b1237 | Rio de Janeiro | 21 | 6320000 | Brazil | ["Beaches", "Christ the Redeemer", "Carnival"] |
-| 60a7c1e8f1d3b22e4c9b1238 | Sydney | 2 | 5312000 | Australia | ["Opera House", "Bondi Beach", "Harbour Bridge"] |
 
 """
 
@@ -144,9 +134,6 @@ def trace_api_request(pf: Optional[ProjectFiles], api_request, last_response="",
         except Exception as e:
             logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
             raise
-
-
-
         i += 1
     
     logger.info(f"Total rounds: {i}")

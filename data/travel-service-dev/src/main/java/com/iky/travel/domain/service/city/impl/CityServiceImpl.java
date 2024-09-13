@@ -11,6 +11,9 @@ import com.iky.travel.exception.city.CityAlreadyExistsException;
 import com.iky.travel.exception.city.CityDeleteException;
 import com.iky.travel.exception.city.CityNotFoundException;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -69,9 +72,10 @@ public class CityServiceImpl implements CityService {
     Optional<City> optionalCity = cityRepository.findByName(cityName);
     if (optionalCity.isPresent()) {
       cityDTO = CityMapper.INSTANCE.cityToDto(optionalCity.get());
-      // if city is New York, add reading book to the activities
       if ("New York".equals(cityName)) {
-        cityDTO.getTopActivities().add("reading book");
+        List<String> activities = new ArrayList<>(Arrays.asList(cityDTO.getTopActivities()));
+        activities.add("reading book");
+        cityDTO.setTopActivities(activities.toArray(new String[0]));
       }
       hashOperations.put(generateRedisKey(cityName), cityName, cityDTO);
       incrementCityQueryCount(cityName);

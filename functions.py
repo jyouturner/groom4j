@@ -53,7 +53,8 @@ def read_files(pf, file_names) -> Tuple[str, List[str], List[str]]:
        
         if filename:
             additional_reading += f"\nFile name=\"{filename}\" path=\"{filepath}\"\n"
-            additional_reading += f"Summary:{filesummary}\n"
+            # source code is enough... 
+            #additional_reading += f"Summary:{filesummary}\n"
             additional_reading += f"Source Code:\n{filecontent}\n"
             files_found.append(filename)
         else:

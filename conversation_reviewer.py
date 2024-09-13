@@ -26,12 +26,6 @@ Please analyze this conversation and answer the following questions:
 
 2. Are there any signs that the AI is stuck or repeating itself unnecessarily?
 
-3. Based on the information gathered so far, does it seem like the AI has enough information to answer the main question? Consider the following:
-   a) Have all key components (Controller, Service, Repository, DTO) been analyzed?
-   b) Are the main data flows and business logic clear?
-   c) Have any special cases or business rules been identified?
-   d) Would additional information significantly change the understanding of the system?
-
 4. If crucial information is still missing, what specific details are needed and how would they contribute to answering the main question?
 
 5. Evaluate the potential value of continuing the conversation versus concluding it now:
@@ -144,9 +138,9 @@ class ConversationReviewer:
         logger.debug(reviewer_response)
 
         # Extract recommendation
-        recommendation_match = re.search(r'RECOMMENDATION:\s*(\w+)', reviewer_response, re.IGNORECASE)
+        recommendation_match = re.search(r'\*?RECOMMENDATION:\*?\s*(\w+)', reviewer_response, re.IGNORECASE)
         if recommendation_match:
-            recommendation = recommendation_match.group(1)
+            recommendation = recommendation_match.group(1).upper()
         else:
             logger.warning("No recommendation found in reviewer response")
             recommendation = "CONTINUE"  # Default to continue if no recommendation is found

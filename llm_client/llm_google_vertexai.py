@@ -37,7 +37,7 @@ class VertexAssistant:
         self._start_new_session()
 
     def _start_new_session(self) -> None:
-        self.chat = self.model.start_chat(history=[])
+        self.chat = self.model.start_chat(history=[], response_validation=False)
 
     def set_system_prompts(self, system_prompt: str, cached_prompt: str = None):
         self.system_prompt = system_prompt
@@ -91,7 +91,7 @@ class VertexAssistant:
                 ))
             
             # Rebuild the chat session with the loaded history
-            self.chat = self.model.start_chat(history=loaded_history)
+            self.chat = self.model.start_chat(history=loaded_history, response_validation=False)
             
             print(f"Loaded {len(loaded_history)} messages into the chat history.")
         else:
@@ -126,3 +126,4 @@ if __name__ == "__main__":
     config = LLMConfig(model_name=os.environ.get("GCP_MODEL_TIER2_NAME"))
     assistant = VertexAssistant(project_id=os.environ.get("GCP_PROJECT_ID"), location=os.environ.get("GCP_LOCATION"), config=config)
     print(assistant.query("Hello, how are you?"))
+    print(assistant.query("why?"))

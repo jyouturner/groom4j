@@ -38,15 +38,6 @@ If you need more information, use the following formats to request it:
    [I need info about packages: <package>com.example.package1</package>, <package>com.example.package2</package>]
    I will provide a summary of the package and its files.
 
-4. To get response data from an external API:
-   [I need external API response for: <api>API_NAME</api>, <endpoint>/path/to/endpoint</endpoint>, <params>param1=value1&param2=value2</params>]
-   I will provide the response data from the external API for the specified endpoint and parameters.
-
-5. To get results from a database query:
-   [I need database query results for: <db>DATABASE_NAME</db>, <query>SELECT * FROM table WHERE condition</query>]
-   For SQL databases, provide the SQL query. For NoSQL databases, describe the query in natural language.
-   I will provide the results of executing this query on the specified database.
-
 Make your requests for additional information at the end of your response, using this format:
 
 **Next Steps**
@@ -115,20 +106,19 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
 
 
 def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
-    """
-    Extract 'Next Steps' from LLM response, process requests, and prepare new information.
-    
-    return new_information, response
-    """
     new_information = ""
-    next_steps_index = response.find("**Next Steps**")
-    if next_steps_index == -1:
+    next_steps_pattern = r'(?:\*\*Next Steps\*\*|### Next Steps)'
+    next_steps_match = re.search(next_steps_pattern, response, re.IGNORECASE)
+    
+    if not next_steps_match:
         logger.info("No next steps found in the response")
         return new_information
 
+    next_steps_index = next_steps_match.start()
     next_steps = response[next_steps_index:].strip()
-    if not next_steps:
-        logger.info("process_llm_response: No next steps found in the response")
+    
+    if not next_steps or "No additional information is needed" in next_steps:
+        logger.info("No additional information requested in next steps")
         return new_information
 
     logger.debug(f"Next steps: {next_steps}")
@@ -159,6 +149,7 @@ def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
 
         elif "[I need content of files:" in line or "[I need access files:" in line:
             file_names = process_file_request(lines[i:])
+            logger.info(f"need files {file_names}")
             request = f"{', '.join(file_names)}"
             file_contents, files_found, files_not_found = read_files(pf, file_names)
             new_information += file_contents
@@ -175,19 +166,19 @@ def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
 
         elif "[I need external API response for:" in line:
             # parse the API name, endpoint, and parameters
-            api_name = re.search(r'<api>(.*?)</api>', line).group(1)
-            endpoint = re.search(r'<endpoint>(.*?)</endpoint>', line).group(1)
-            params = re.search(r'<params>(.*?)</params>', line).group(1)
+            #api_name = re.search(r'<api>(.*?)</api>', line).group(1)
+           # endpoint = re.search(r'<endpoint>(.*?)</endpoint>', line).group(1)
+           # params = re.search(r'<params>(.*?)</params>', line).group(1)
             # make the API call
-            api_response = make_api_call(api_name, endpoint, params)
-            new_information += f"\nYou requested external API response for '{api_name}'\nHere is the response: {api_response}\n"
+            #api_response = make_api_call(api_name, endpoint, params)
+            new_information += f"\nYou requested external API response, unfortunately there is no information available. You may need to do your best guess. You can do it. You are the best!\n"
         elif "[I need database query results for:" in line:
             # parse the database name and query
-            database_name = re.search(r'<db>(.*?)</db>', line).group(1)
-            query = re.search(r'<query>(.*?)</query>', line).group(1)
+            #database_name = re.search(r'<db>(.*?)</db>', line).group(1)
+            #query = re.search(r'<query>(.*?)</query>', line).group(1)
             # make the database query
-            db_response = make_db_query(database_name, query)
-            new_information += f"\nYou requested database query results for '{database_name}'\nHere is the response: {db_response}\n"
+            #db_response = make_db_query(database_name, query)
+            new_information += f"\nYou requested database query results, unfortunately there is no information available. You may need to do your best guess. You can do it. You are the best!\n"
         else:
             pass # ignore the line
         i += 1
@@ -195,10 +186,7 @@ def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
     return new_information
 
 def remove_next_steps(response) -> str:
-    next_steps_index = response.find("**Next Steps**")
-    if next_steps_index != -1:
-        return response[:next_steps_index].strip()
-    return response.strip()
+    return response.replace("**Next Steps**", "AI requested more info").strip()
 
 def query_llm(query_manager, question, user_prompt_template, instruction_prompt, last_response, pf, iteration_number: str="", new_information: str="", key_findings: List[str]=[], reviewer: ConversationReviewer=None) -> Tuple[str, str, bool, List[str]]:
     """
@@ -228,13 +216,16 @@ def query_llm(query_manager, question, user_prompt_template, instruction_prompt,
 
     # Extract and update key findings
     new_key_findings = extract_key_findings(response)
+    logger.info(f"new_key_findings: {new_key_findings}")
     updated_key_findings = update_key_findings(key_findings, new_key_findings)
+    logger.info(f"updated_key_findings: {updated_key_findings}")
 
+    
     try:
         new_information = extract_and_process_next_steps(response, pf)
         # record the conversation and decide whether to continue the conversation
         #TODO: not sure how to handle the final_answer_prompt...
-        should_continue, final_answer_prompt = shoud_continue_conversation(question, response, new_information, reviewer, int(iteration_number) % 2 == 1)
+        should_continue, final_answer_prompt = shoud_continue_conversation(question, response, new_information, reviewer, int(iteration_number) % 3 == 1)
 
         # make sure to remove anything that after the **Next Steps** section since it is already processed
         updated_response = remove_next_steps(response)
@@ -246,6 +237,7 @@ def query_llm(query_manager, question, user_prompt_template, instruction_prompt,
 
 def shoud_continue_conversation(question, response, new_information, conversation_reviewer: ConversationReviewer, check_history: bool=True):
     if not new_information:
+        logger.info("the conversation should stop now that there is no new information found.")
         return False, response
     # review the conversation so far
     if conversation_reviewer.is_history_empty():
@@ -257,17 +249,19 @@ def shoud_continue_conversation(question, response, new_information, conversatio
         should_continue, final_answer_prompt = conversation_reviewer.should_continue_conversation()
     else:
         should_continue, final_answer_prompt = True, None
-
+    logger.info(f"the conversation reviewer decided the conversation should_continue={should_continue}")
     return should_continue, final_answer_prompt
 
 def extract_key_findings(response):
     key_findings = []
-    key_findings_section = re.search(r'KEY_FINDINGS:(.*?)(?=\n\n|\Z)', response, re.DOTALL)
+    key_findings_section = re.search(r'\*?\*?KEY_FINDINGS\*?\*?:(.*?)(?=\n\n|\Z)', response, re.DOTALL | re.IGNORECASE)
     if key_findings_section:
         findings = key_findings_section.group(1).strip().split('\n')
         for finding in findings:
             finding = finding.strip()
-            if finding.startswith('- ['):
+            if re.match(r'[-\*]?\s*\*?\[(BUSINESS_RULE|IMPLEMENTATION_DETAIL|DATA_FLOW|ARCHITECTURE|SPECIAL_CASE)\]\*?', finding):
+                # Remove leading dash or asterisk and surrounding asterisks, if present
+                finding = re.sub(r'^[-\*]?\s*\*?|\*?$', '', finding).strip()
                 key_findings.append(finding)
     return key_findings
 

@@ -135,3 +135,4 @@ if __name__ == "__main__":
     config = LLMConfig(api_key=os.environ.get("OPENAI_API_KEY"), model_name=os.environ.get("OPENAI_MODEL_TIER2_NAME"))
     assistant = OpenAIAssistant(config)
     print(assistant.query("Hello, how are you?"))
+    print(assistant.query("why?"))
