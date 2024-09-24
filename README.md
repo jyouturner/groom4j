@@ -290,4 +290,3 @@ Pull requests are a gold mine of information on how to implement new features or
 
 Integration tests are a valuable resource for understanding how a project interacts with its dependencies and how data flows between systems. In today's microservices-oriented world, these tests often encapsulate critical knowledge about system interactions.
 
-##
