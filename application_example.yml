@@ -43,7 +43,7 @@ gcp:
 #  api_token: ...
 
 #
-# comment out the following lines if you want to use Langfuse
+# uncomment out the following lines if you want to use Langfuse
 #
 #langfuse:
 #  secret_key: ...
