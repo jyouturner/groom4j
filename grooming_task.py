@@ -108,8 +108,6 @@ Below is the Java project structure for your reference:
 and summaries of the packages in the project:
 {package_notes}
 
-and notes of the files in the project:
-{file_notes}
 """
 
 user_prompt_template = """
