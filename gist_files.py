@@ -3,6 +3,7 @@ import sys
 import argparse
 from projectfiles import ProjectFiles
 import re
+import time
 
 
 system_prompt = """
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     from config_utils import load_config_to_env
     load_config_to_env()
     from llm_client import LLMQueryManager
-    from llm_interaction import process_llm_response, initiate_llm_query_manager
+    from llm_interaction import initiate_llm_query_manager
 
     root_path = os.path.abspath(args.project_root)
     if not os.path.exists(root_path):
@@ -313,6 +314,8 @@ if __name__ == "__main__":
         print(f"Processing file {index}/{total_files}: {file.filename} ({file.package})")
         notes = code_gisting(query_manager=query_manager, project_root=root_path, code_file=file)
         file.set_summary(notes)
+        # sleep for a short duration to avoid rate limiting
+        time.sleep(3)
 
     gist_file_path = pf.persist_code_files(all_files)
     print(f"Gist file is persisted to {gist_file_path}")

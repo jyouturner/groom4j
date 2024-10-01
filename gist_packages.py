@@ -40,7 +40,7 @@ Please provide a comprehensive summary of this package based on the information 
 from config_utils import load_config_to_env
 load_config_to_env()
 from llm_client import LLMQueryManager
-from llm_interaction import process_llm_response, initiate_llm_query_manager
+from llm_interaction import initiate_llm_query_manager
 
 query_manager = initiate_llm_query_manager(pf=None, system_prompt=system_prompt, reused_prompt_template=None, tier="tier2")
 
