@@ -316,12 +316,13 @@ def save_response_to_markdown(question: str, response: str, path: str) -> str:
     # if path does not exist, create it
     if not os.path.exists(path):
         os.makedirs(path)
-    result_file = re.sub(r"[^a-zA-Z0-9]", "_", question.lower())  + ".md"
-    # remove the leading "_", if any
-    result_file = result_file.lstrip("_")
+    # use the timestamp as the filename
+    result_file = f"Q&A_{int(time.time())}.md"
     result_file = os.path.join(path, result_file)
+    # the markdown file will have two secctions, the first is the Question, the second is the Answer
     with open(result_file, "w") as f:
-        f.write(response)
+        f.write(f"## Question\n\n{question}\n\n## Answer\n\n{response}")
+
     return result_file
 
 def make_api_call(api_name, endpoint, params):

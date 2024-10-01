@@ -41,7 +41,7 @@ instructions = """
 2. Dive deeper into specific areas as needed, leveraging the project structure and codebase.
 3. Provide clear, concise explanations.
 4. If you're unsure about something, state it clearly.
-5. The goal is to be as thorough as possible to help developers plan for maintenance tasks more effectively.
+5. The goal is to be as thorough as possible to answer the questions effectively.
 
 6. Synthesize information as you go:
    - After each round, summarize what you've learned so far.
@@ -90,8 +90,7 @@ Below is the Java project structure for your reference:
 and summaries of the packages in the project:
 {package_notes}
 
-and notes of the files in the project:
-{file_notes}
+
 """
 
 user_prompt_template = """

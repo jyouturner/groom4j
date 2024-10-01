@@ -47,8 +47,6 @@ Explanation of recommendations:
 - CONTINUE: The conversation should proceed as there is still valuable information to be gathered that will significantly contribute to answering the main question.
 - CONCLUDE: There's sufficient information to answer the question comprehensively. Any additional information would likely be redundant or of minimal value.
 
-Remember: It's better to conclude slightly early than to continue unnecessarily. If the core question can be answered with the current information, lean towards concluding the conversation.
-
 Please ensure your recommendation is followed by the appropriate additional information as specified above."""
 
 
