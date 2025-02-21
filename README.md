@@ -42,10 +42,17 @@ Depends on the LLM provider, you need to set the corresponding API key in the ap
 ```yaml
 llm:
   use: anthropic
+  max_tokens:
+    tier1: 8192
+    tier2: 4096
   
 anthropic:
   api_key: ...
-  model: claude-3-5-sonnet-20240620
+  model: 
+    tier1: 
+      name: claude-3-7-sonnet-20250219
+    tier2: 
+      name: claude-3-5-sonnet-latest
 ```
 
 
@@ -126,15 +133,46 @@ poetry run python grooming_task.py ./data/travel-service-dev --task="refactor th
 
 ```
 
-or if you have a specific question to ask
+## Interactive Project Analysis with tell_me_about.py
+
+For a more interactive experience with your Java project, use the `tell_me_about.py` tool which allows you to ask specific questions and have multi-turn conversations about your codebase:
 
 ```sh
 poetry run python tell_me_about.py ./data/travel-service-dev/ --question="how data flow from database to the API"
 ```
 
-or just use a dedicated script to find info in the API projects, which will generate a markdown file (api_note.md) under ".gist" folder
+### Conversation Mode
 
-For example, the generated answer to above question "how data flow from database to the API" can be found [data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md](./data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md)
+For a more interactive experience, create a markdown file with your questions and use the `--conversation-file` flag:
+
+```sh
+poetry run python tell_me_about.py ./data/travel-service-dev/ --conversation-file conversations.md --thoroughness 8 --max-rounds 12
+```
+
+Example `conversations.md` format:
+```markdown
+# Conversation about Travel Service
+
+## Question 1
+How does the authentication system work?
+
+## Question 2
+What design patterns are used in the project?
+```
+
+The tool will process each question and append the answers to the markdown file.
+
+### Advanced Options
+
+- `--thoroughness`: Set the level of detail (1-10, default: 6)
+- `--max-rounds`: Maximum conversation rounds before concluding (default: 8)
+- `--breakdown`: Break complex questions into smaller parts for more detailed analysis
+
+```bash
+poetry run python tell_me_about.py ./data/travel-service-dev/ --question="Explain the entire architecture" --thoroughness 9 --max-rounds 12 --breakdown
+```
+
+For example, the generated answer to the question "how data flow from database to the API" can be found [data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md](./data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md)
 
 If you want to summarize all the API endpoints:
 
@@ -186,7 +224,7 @@ After the process is done, you will see a mardown file "api_notes.md" created in
 If you have a specific question to ask about the codebase, you can use below command to inspect the codebase
 
 ```sh
-poetry run python grooming_task.py path/to/the/Java/Project/Repo --question="..."
+poetry run python tell_me_about.py path/to/the/Java/Project/Repo --question="..."
 ```
 
 More info can be found in [tell_me_about](docs/tell_me_about.md)
