@@ -61,57 +61,89 @@ The following terms have already been searched and confirmed not to exist in the
 
 """
 
+def find_file_in_project(pf, file_name: str) -> Tuple[str, str, str, str]:
+    """
+    Consolidated function to find a file in the project using multiple strategies.
+    Returns: (filename, summary, path, content) or (None, None, None, None)
+    """
+    logger.info(f"Attempting to find file: {file_name}")
+    
+    # Clean up the file name - remove any XML-style tags if present
+    file_name = re.sub(r'<file>(.*?)</file>', r'\1', file_name)
+    
+    # Add root-level file search for common config files
+    if file_name in ['pom.xml', '.github/workflows/build_and_deploy_java_app.yml']:
+        full_path = os.path.join(pf.root_path, file_name)
+        if os.path.exists(full_path):
+            logger.info(f"Found root-level config file at: {full_path}")
+            with open(full_path, "r") as f:
+                return os.path.basename(file_name), "", file_name, f.read()
+    
+    # Strategy 1: Try project files database first
+    file = pf.find_codefile_by_name(file_name, package=None)
+    if file:
+        full_path = os.path.join(pf.root_path, file.path)
+        if os.path.exists(full_path):
+            logger.info(f"Found file in database at: {full_path}")
+            with open(full_path, "r") as f:
+                return file.filename, file.summary, file.path, f.read()
+    
+    # Strategy 2: Try direct path if it contains slashes
+    if '/' in file_name:
+        # Try with and without source roots
+        paths_to_try = [file_name]  # Direct path
+        source_roots = ["src/main/java/", "src/test/java/", "src/main/resources/"]
+        paths_to_try.extend(os.path.join(root, file_name) for root in source_roots)
+        
+        for try_path in paths_to_try:
+            full_path = os.path.join(pf.root_path, try_path)
+            if os.path.exists(full_path):
+                logger.info(f"Found file at: {full_path}")
+                with open(full_path, "r") as f:
+                    return os.path.basename(file_name), "", try_path, f.read()
+    
+    # Strategy 3: Try converting class name to path
+    if '.' in file_name:
+        # Remove .java if present and handle path conversion
+        base_name = file_name[:-5] if file_name.endswith('.java') else file_name
+        path_style_name = base_name.replace('.', '/') + '.java'
+        logger.info(f"Trying class name as path: {path_style_name}")
+        
+        # Try in standard source directories
+        for root in source_roots:
+            full_path = os.path.join(pf.root_path, root, path_style_name)
+            if os.path.exists(full_path):
+                logger.info(f"Found file at: {full_path}")
+                with open(full_path, "r") as f:
+                    return os.path.basename(path_style_name), "", f"{root}{path_style_name}", f.read()
+    
+    logger.info(f"File not found: {file_name}")
+    return None, None, None, None
+
 def read_files(pf, file_names) -> Tuple[str, List[str], List[str]]:
+    """
+    Read multiple files and return their contents along with success/failure lists.
+    """
     additional_reading = ""
     files_found = []
     files_not_found = []
+    
     for file_name in file_names:
         file_name = file_name.strip()
-        print("need to read file:", file_name)
-        # check whether it is a single file name or a file name with path
-        if "/" in file_name:
-            # if it starts with '/', that is unexpected, since we don't read from absolute path
-            if file_name.startswith("/"):
-                print(f"!!!File {file_name} does not meet expectations we are looking for relative path!")
-                additional_reading += f"\nFile name=\"{file_name}\"\n"
-                additional_reading += f"Expected file name with relative path, starting with src/main/java or src/test/java, but got {file_name}\n"
-                continue
-            # it is a file name with path, it could be src/main/java/com/iky/travel/config/TravelBeApplication.java ...
-            file_path, file_name = os.path.split(file_name)
-            # let's find the "src/main/java" in the file_path, then we can get the package name
-            if "src/main/java" in file_path:
-                file_path = file_path.replace("src/main/java/", "")
-            elif "src/test/java" in file_path:
-                file_path = file_path.replace("src/test/java/", "")
-            elif "src/main/resources" in file_path:
-                # FIXME: we need to handle the resources folder differently, since it is not a java file
-                print("resources file:", file_path)
-                file_path = file_path.replace("src/main/resources", "")
-            else:
-                print(f"!!!File {file_name} does not meet expectations we are looking for src/main/java or src/test/java in the path!")
-                additional_reading += f"\nFile name=\"{file_name}\"\n"
-                additional_reading += f"Expected file name with relative path, starting with src/main/java or src/test/java, but got {file_name}\n"
-                continue
-            package = file_path.replace("/", ".")
-            # if package is empty, then use None
-            if package == "":
-                package = None
-            filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=package)
-        else:
-            # it is a single file name, then we look up in the code_files to find the path and summary, then read the file
-            filename,filesummary, filepath, filecontent = get_file(pf, file_name, package=None)
-       
+        logger.info(f"Processing file request: {file_name}")
+        
+        filename, summary, filepath, content = find_file_in_project(pf, file_name)
+        
         if filename:
             additional_reading += f"\nFile name=\"{filename}\" path=\"{filepath}\"\n"
-            # source code is enough... 
-            #additional_reading += f"Summary:{filesummary}\n"
-            additional_reading += f"Source Code:\n{filecontent}\n"
+            additional_reading += f"Source Code:\n{content}\n"
             files_found.append(filename)
         else:
-            print(f"!!!File {file_name} does not exist!")
-            additional_reading += f"\nFile name=\"{file_name}\"\n"
-            additional_reading += f"!!!File {file_name} does not exist!\n"
+            msg = f"!!!File {file_name} could not be found in the project!"
+            logger.info(msg)
+            additional_reading += f"\n{msg}\n"
             files_not_found.append(file_name)
+    
     return additional_reading, files_found, files_not_found
 
 
@@ -218,10 +250,19 @@ def get_file(pf, file_name, package=None) -> Tuple[str, str, str, str]:
     if file:
         # now let's get the file content, since we have the path
         full_path = os.path.join(pf.root_path, file.path)
+        logger.info(f"Found file at path: {full_path}")
         with open(full_path, "r") as f:
             file_content = f.read()
         return file.filename, file.summary, file.path, file_content
     else:
+        logger.info(f"File not found in project files database: {file_name}")
+        # Try direct file access as fallback
+        try_path = os.path.join(pf.root_path, "src/main/java", file_name)
+        if os.path.exists(try_path):
+            logger.info(f"Found file directly at: {try_path}")
+            with open(try_path, "r") as f:
+                file_content = f.read()
+            return os.path.basename(file_name), "", file_name, file_content
         return None, None, None, None
     
 def get_files(pf, file_names) -> Tuple[Tuple[str, str, str, str]]:
