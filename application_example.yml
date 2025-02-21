@@ -1,5 +1,8 @@
 llm:
   use: anthropic
+  max_tokens:
+    tier1: 8192
+    tier2: 4096
   
 anthropic:
   api_key: ...
