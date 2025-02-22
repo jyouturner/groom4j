@@ -16,6 +16,9 @@ class LLMInterface(ABC):
     @abstractmethod
     def query(self, user_prompt: str) -> str:
         pass
+    @abstractmethod
+    def get_model(self):
+        pass
 
 
 class OpenAILLM(LLMInterface):
@@ -32,6 +35,9 @@ class OpenAILLM(LLMInterface):
             response = response()
         
         return response
+    
+    def get_model(self):
+        return self.assistant.model
 
     
 class VertexAILLM(LLMInterface):
@@ -50,6 +56,9 @@ class VertexAILLM(LLMInterface):
     #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
+    
+    def get_model(self):
+        return self.assistant.model
 
 class AnthropicLLM(LLMInterface):
     def __init__(self, config: LLMConfig):
@@ -60,6 +69,9 @@ class AnthropicLLM(LLMInterface):
     #@observe(as_type="generation", capture_input=True, capture_output=True)
     def query(self, user_prompt: str) -> str:
         return self.assistant.query(user_prompt)
+    
+    def get_model(self):
+        return self.assistant.model
 
 class LLMFactory: 
     
@@ -87,7 +99,10 @@ class LLMQueryManager:
                  encoding_name: str = "cl100k_base"):
         if not use_llm:
             raise ValueError("Please set the environment variable USE_LLM to either openai, gemini, or anthropic")
-        
+        self.use_llm = use_llm
+        self.llm_tier = tier
+        self.system_prompt = system_prompt
+        self.cached_prompt = cached_prompt
         self.llm = LLMFactory.get_llm(use_llm=use_llm, tier=tier, system_prompt=system_prompt, cached_prompt=cached_prompt)
         self.max_calls = max_calls
         self.period = period
@@ -144,7 +159,8 @@ class LLMQueryManager:
         return response
 
     def query(self, user_prompt: str) -> str:
-        return self.rate_limited_query(user_prompt)
+        llm_res = self.rate_limited_query(user_prompt)
+        return llm_res
 
     def get_total_tokens(self) -> tuple:
         return (self.input_tokens_used_today, self.output_tokens_used_today)
