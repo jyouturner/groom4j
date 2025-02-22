@@ -149,7 +149,13 @@ class ProjectFiles:
             suffix_list = [".java", ".xml", ".yml", ".yaml", ".properties", ".sql", ".json"]
         self.suffix_list = suffix_list
         #FIXME, the suffix list and resource_suffix_list are conflicting, need to fix it
-        self.resource_suffix_list = resource_suffix_list or ['.properties', '.yaml', ".yml", ".json", '.xml']
+        if resource_suffix_list is None:
+            resource_suffix_list = [
+                '.properties', '.yaml', '.yml', '.json', '.xml',
+                'pom.xml',  # Maven config
+                '.github/workflows/*.yml'  # GitHub Actions workflows
+            ]
+        self.resource_suffix_list = resource_suffix_list
         self.package_notes = defaultdict(str)
         self.files = []
         self.resource_files = []
