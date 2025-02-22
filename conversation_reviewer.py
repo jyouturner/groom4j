@@ -216,7 +216,11 @@ class ConversationReviewer:
         has_file_requests = any(x in response for x in ["[I need to search", "[I need content of files:", "[I need info about packages:"])
         has_structure = len(re.findall(r'^##? ', response, re.MULTILINE)) > 1
         
-        return has_findings or has_code or has_file_requests or has_structure
+        # Check for specific content patterns that indicate progress
+        has_specific_findings = re.search(r'\[(BUSINESS_RULE|IMPLEMENTATION_DETAIL|DATA_FLOW|ARCHITECTURE|SPECIAL_CASE)\]', response) is not None
+        has_file_analysis = re.search(r'(file|files) (contains?|defines?|specifies?|sets?|configures?)', response, re.IGNORECASE) is not None
+        
+        return has_specific_findings or has_file_analysis or has_code or has_file_requests or has_structure
 
     def _generate_guidance_prompt(self, current_thoroughness: int) -> str:
         """Generate a prompt to guide the LLM to a conclusion."""
