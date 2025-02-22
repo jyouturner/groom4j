@@ -25,6 +25,15 @@ def load_config_to_env(config_path=None):
         return dict(items)
     
     flattened_config = flatten_dict(config)
+    
+    # Load LLM configuration
+    os.environ["LLM_USE"] = config.get("llm", {}).get("use", "anthropic")
+    
+    # Load max_tokens configuration
+    max_tokens = config.get("llm", {}).get("max_tokens", {})
+    os.environ["LLM_MAX_TOKENS_TIER1"] = str(max_tokens.get("tier1", 4096))
+    os.environ["LLM_MAX_TOKENS_TIER2"] = str(max_tokens.get("tier2", 2048))
+    
     os.environ.update(flattened_config)
 
 # You can add other config-related utility functions here if needed
