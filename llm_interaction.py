@@ -9,6 +9,7 @@ from llm_client import LLMQueryManager, langfuse_context
 from conversation_reviewer import ConversationReviewer
 import logging
 import string
+from prompts import system_prompt_answer_question
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -17,6 +18,8 @@ logger = logging.getLogger(__name__)
 # this is important to avoid repeated search for the same keyword
 global_search_results = {}
 
+# Add at the top with other globals
+global_failed_file_requests = set()
 
 def not_found_terms(search_results: dict = None) -> str:
     # print the search results in the format that can be used in the LLM prompt
@@ -38,6 +41,12 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
         package_notes = get_static_notes(pf)
         project_tree = pf.to_tree()
         file_notes = pf.get_file_notes()
+        # check the token size limit
+        tokenSize = count_tokens(package_notes)
+        if tokenSize > 200000:
+            #raise ValueError("The system_prompt exceeds the maximum token limit")
+            # reduce the size of package notes
+            package_notes = package_notes[:120000]
     else:
         project_tree = ""
         package_notes = ""
@@ -55,86 +64,129 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
                                     max_tokens_per_day=2500000,
                                     encoding_name="cl100k_base")
     
+
+    
     return query_manager
 
 
 def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
+    """Extract and process next steps from the response."""
     new_information = ""
+    
+    # Look for next steps in both formats:
+    # 1. After "**Next Steps**" section
+    # 2. Direct file requests in the response
     next_steps_pattern = r'(?:\*\*Next Steps\*\*|### Next Steps)'
     next_steps_match = re.search(next_steps_pattern, response, re.IGNORECASE)
     
-    if not next_steps_match:
-        logger.info("No next steps found in the response")
-        return new_information
-
-    next_steps_index = next_steps_match.start()
-    next_steps = response[next_steps_index:].strip()
+    # Make file request pattern more flexible to handle different path formats
+    file_request_pattern = r'\[I need (?:content of files|access files):([^\]]*)\]'
+    file_request_match = re.search(file_request_pattern, response, re.MULTILINE | re.DOTALL)
     
-    if not next_steps or "No additional information is needed" in next_steps:
-        logger.info("No additional information requested in next steps")
-        return new_information
-
-    logger.debug(f"Next steps: {next_steps}")
-    lines = next_steps.split("\n")
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        if "[I need to search" in line:
-            keywords = re.findall(r'<keyword>(.*?)</keyword>', line)
-            for keyword in keywords:
-                logger.info(f"LLM needs to search: {keyword}")
+    has_requests = False
+    has_new_information = False
+    
+    # Process file requests from either location
+    if next_steps_match or file_request_match:
+        content_to_process = response
+        if next_steps_match:
+            content_to_process = response[next_steps_match.start():]
+        
+        lines = content_to_process.split("\n")
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Handle file requests - make more flexible to handle comma-separated paths
+            if "[I need content of files:" in line or "[I need access files:" in line:
+                has_requests = True
+                # Extract everything between : and ] with improved multiline support
+                request_text = line
+                while i < len(lines) and ']' not in request_text:
+                    i += 1
+                    if i < len(lines):
+                        request_text += ' ' + lines[i].strip()
                 
-                matching_files = []
-                if keyword in global_search_results:
-                    matching_files = global_search_results[keyword]
-                else:
-                    # Perform the actual search, with all the common extensions
-                    matching_files = efficient_file_search(pf.root_path, keyword, file_extensions=[".java", ".xml", ".yml", ".yaml", ".properties", ".sql", ".json"])           
-                    # remember the search results so we don't have to search again
-                    global_search_results[keyword] = matching_files
-                logger.info(f"Found matching files: {matching_files} for keyword: {keyword}")
-                if matching_files: 
-                    files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
-                    new_information += f"\nYou requested to search for '{keyword}'\nHere are results: {files_str}\n"
-                else:
-                    new_information += f"\nNo matching files found with '{keyword}'\n"
+                match = re.search(r':\s*([^\]]+)', request_text)
+                if match:
+                    # Split on commas and clean up each file path
+                    file_names = [f.strip() for f in match.group(1).split(',')]
+                    # Filter out empty strings that might come from extra whitespace
+                    file_names = [f for f in file_names if f]
+                    logger.info(f"need files {file_names}")
+                
+                    # Filter out previously failed requests
+                    new_files = [f for f in file_names if f not in global_failed_file_requests]
+                    if not new_files:
+                        new_information += "\nThe requested files were previously not found or are not accessible. Please proceed with available information.\n"
+                        i += 1
+                        continue
+
+                    file_contents, files_found, files_not_found = read_files(pf, new_files)
                     
+                    # Track failed requests
+                    global_failed_file_requests.update(files_not_found)
+                    
+                    if file_contents:
+                        new_information += file_contents
+                        has_new_information = True
+                    if files_not_found:
+                        not_found_msg = f"\nThe following files could not be found or accessed: {', '.join(files_not_found)}\n"
+                        new_information += not_found_msg
+                        logger.info(not_found_msg)
+                    
+                    logger.info(f"files_found: {files_found}")
+                    logger.info(f"files_not_found: {files_not_found}")
+            
+            # Handle other types of requests (search, packages, etc.)
+            elif "[I need to search" in line:
+                has_requests = True
+                # Make the pattern more flexible to handle "for keywords:" format
+                pattern = r'<keyword>(.*?)</keyword>'
+                request_text = line
+                while i < len(lines) and ']' not in request_text:
+                    i += 1
+                    if i < len(lines):
+                        request_text += ' ' + lines[i].strip()
+                
+                keywords = re.findall(pattern, request_text)
+                if keywords:
+                    for keyword in keywords:
+                        if keyword in global_search_results:
+                            continue  # Skip already searched keywords
+                        logger.info(f"LLM needs to search: {keyword}")
+                        
+                        matching_files = efficient_file_search(pf.root_path, keyword, file_extensions=[".java", ".xml", ".yml", ".yaml", ".properties", ".sql", ".json"])           
+                        global_search_results[keyword] = matching_files
+                        logger.info(f"Found matching files: {matching_files} for keyword: {keyword}")
+                        if matching_files: 
+                            files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
+                            new_information += f"\nYou requested to search for '{keyword}'\nHere are results: {files_str}\n"
+                            has_new_information = True
+                        else:
+                            new_information += f"\nNo matching files found with '{keyword}'\n"
 
-        elif "[I need content of files:" in line or "[I need access files:" in line:
-            file_names = process_file_request(lines[i:])
-            logger.info(f"need files {file_names}")
-            request = f"{', '.join(file_names)}"
-            file_contents, files_found, files_not_found = read_files(pf, file_names)
-            new_information += file_contents
-            logger.info(f"files_found: {files_found}" )
-            logger.info(f"files_not_found: {files_not_found}")
+            elif "[I need info about packages:" in line:
+                has_requests = True
+                pattern = r'<package>(.*?)</package>'
+                package_names = re.findall(pattern, line)
+                package_contents, packages_found, packages_not_found = read_packages(pf, package_names)
+                if package_contents:
+                    new_information += package_contents
+                    has_new_information = True
+                logger.info(f"packages_found: {packages_found}")
+                logger.info(f"packages_not_found: {packages_not_found}")
 
-        elif "[I need info about packages:" in line:
-            pattern = r'<package>(.*?)</package>'
-            package_names = re.findall(pattern, line)
-            package_contents, packages_found, packages_not_found = read_packages(pf, package_names)
-            new_information += package_contents
-            logger.info(f"packages_found: {packages_found}" )
-            logger.info(f"packages_not_found: {packages_not_found}")
+            elif "[I need external API response for:" in line or "[I need database query results for:" in line:
+                has_requests = True
+                new_information += f"\nYou requested external API/DB response, unfortunately there is no information available. You may need to do your best guess.\n"
+            
+            i += 1
 
-        elif "[I need external API response for:" in line:
-            # parse the API name, endpoint, and parameters
-            #api_name = re.search(r'<api>(.*?)</api>', line).group(1)
-           # endpoint = re.search(r'<endpoint>(.*?)</endpoint>', line).group(1)
-           # params = re.search(r'<params>(.*?)</params>', line).group(1)
-            # make the API call
-            #api_response = make_api_call(api_name, endpoint, params)
-            new_information += f"\nYou requested external API response, unfortunately there is no information available. You may need to do your best guess. You can do it. You are the best!\n"
-        elif "[I need database query results for:" in line:
-            # parse the database name and query
-            #database_name = re.search(r'<db>(.*?)</db>', line).group(1)
-            #query = re.search(r'<query>(.*?)</query>', line).group(1)
-            # make the database query
-            #db_response = make_db_query(database_name, query)
-            new_information += f"\nYou requested database query results, unfortunately there is no information available. You may need to do your best guess. You can do it. You are the best!\n"
-        else:
-            pass # ignore the line
-        i += 1
+    # Return empty string only if there were no requests or no new information was found
+    if not has_requests or (has_requests and not has_new_information):
+        logger.info("No new information found in this round")
+        return ""
 
     return new_information
 
@@ -169,6 +221,9 @@ def query_llm(query_manager, question, user_prompt_template, instruction_prompt,
 
     # query LLM
     response = query_manager.query(user_prompt)
+
+    # debug to print the end 500 characters of the response
+    logger.info(f"LLM response: {response[-500:]}")
 
     # update the tracing with the iteration number
     langfuse_context.update_current_observation(tags=[iteration_number])
@@ -251,3 +306,10 @@ def update_key_findings(old_findings, new_findings):
 def cross_check_response(response, key_findings):
     # Implement logic to check if all key findings are reflected in the response
     pass
+
+
+import tiktoken
+
+def count_tokens(text):
+    encoding = tiktoken.get_encoding("gpt2")
+    return len(encoding.encode(text))
