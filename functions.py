@@ -61,22 +61,27 @@ The following terms have already been searched and confirmed not to exist in the
 
 """
 
-def find_file_in_project(pf, file_name: str) -> Tuple[str, str, str, str]:
+def find_file_in_project(pf: ProjectFiles, file_name: str) -> Tuple[str, str, str, str]:
     """
     Consolidated function to find a file in the project using multiple strategies.
     Returns: (filename, summary, path, content) or (None, None, None, None)
     """
     logger.info(f"Attempting to find file: {file_name}")
     
+    # Define source_roots at the beginning
+    source_roots = ["src/main/java/", "src/test/java/", "src/main/resources/"]
+    
     # Clean up the file name - remove any XML-style tags if present
     file_name = re.sub(r'<file>(.*?)</file>', r'\1', file_name)
+    # Remove backticks that might be present in markdown code formatting
+    file_name = file_name.replace('`', '')
     
     # Add root-level file search for common config files
-    if file_name in ['pom.xml', '.github/workflows/build_and_deploy_java_app.yml']:
+    if '/' in file_name or file_name in ['pom.xml', 'Dockerfile', 'mvnw', 'mvnw.cmd']:
         full_path = os.path.join(pf.root_path, file_name)
         if os.path.exists(full_path):
-            logger.info(f"Found root-level config file at: {full_path}")
-            with open(full_path, "r") as f:
+            logger.info(f"Found root-level file at: {full_path}")
+            with open(full_path, "r", errors='ignore') as f:
                 return os.path.basename(file_name), "", file_name, f.read()
     
     # Strategy 1: Try project files database first
@@ -85,21 +90,20 @@ def find_file_in_project(pf, file_name: str) -> Tuple[str, str, str, str]:
         full_path = os.path.join(pf.root_path, file.path)
         if os.path.exists(full_path):
             logger.info(f"Found file in database at: {full_path}")
-            with open(full_path, "r") as f:
+            with open(full_path, "r", errors='ignore') as f:
                 return file.filename, file.summary, file.path, f.read()
     
     # Strategy 2: Try direct path if it contains slashes
     if '/' in file_name:
         # Try with and without source roots
         paths_to_try = [file_name]  # Direct path
-        source_roots = ["src/main/java/", "src/test/java/", "src/main/resources/"]
         paths_to_try.extend(os.path.join(root, file_name) for root in source_roots)
         
         for try_path in paths_to_try:
             full_path = os.path.join(pf.root_path, try_path)
             if os.path.exists(full_path):
                 logger.info(f"Found file at: {full_path}")
-                with open(full_path, "r") as f:
+                with open(full_path, "r", errors='ignore') as f:
                     return os.path.basename(file_name), "", try_path, f.read()
     
     # Strategy 3: Try converting class name to path
@@ -114,8 +118,18 @@ def find_file_in_project(pf, file_name: str) -> Tuple[str, str, str, str]:
             full_path = os.path.join(pf.root_path, root, path_style_name)
             if os.path.exists(full_path):
                 logger.info(f"Found file at: {full_path}")
-                with open(full_path, "r") as f:
+                with open(full_path, "r", errors='ignore') as f:
                     return os.path.basename(path_style_name), "", f"{root}{path_style_name}", f.read()
+    
+    # Strategy 4: Try a case-insensitive search for the file
+    for root, dirs, files in os.walk(pf.root_path):
+        for file in files:
+            if file.lower() == file_name.lower():
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, pf.root_path)
+                logger.info(f"Found file with case-insensitive match at: {full_path}")
+                with open(full_path, "r", errors='ignore') as f:
+                    return file, "", rel_path, f.read()
     
     logger.info(f"File not found: {file_name}")
     return None, None, None, None
@@ -129,18 +143,26 @@ def read_files(pf, file_names) -> Tuple[str, List[str], List[str]]:
     files_not_found = []
     
     for file_name in file_names:
-        file_name = file_name.strip()
-        logger.info(f"Processing file request: {file_name}")
-        
-        filename, summary, filepath, content = find_file_in_project(pf, file_name)
-        
-        if filename:
-            additional_reading += f"\nFile name=\"{filename}\" path=\"{filepath}\"\n"
-            additional_reading += f"Source Code:\n{content}\n"
-            files_found.append(filename)
-        else:
-            msg = f"!!!File {file_name} could not be found in the project!"
-            logger.info(msg)
+        try:
+            # Clean the file name by removing XML tags, backticks, and whitespace
+            file_name = re.sub(r'<file>(.*?)</file>', r'\1', file_name.strip())
+            file_name = file_name.replace('`', '')
+            logger.info(f"Processing file request: {file_name}")
+            
+            filename, summary, filepath, content = find_file_in_project(pf, file_name)
+            
+            if filename:
+                additional_reading += f"\nFile name=\"{filename}\" path=\"{filepath}\"\n"
+                additional_reading += f"Source Code:\n{content}\n"
+                files_found.append(filename)
+            else:
+                msg = f"!!!File {file_name} could not be found in the project!"
+                logger.info(msg)
+                additional_reading += f"\n{msg}\n"
+                files_not_found.append(file_name)
+        except Exception as e:
+            logger.error(f"Error processing file {file_name}: {str(e)}")
+            msg = f"!!!Error reading file {file_name}: {str(e)}"
             additional_reading += f"\n{msg}\n"
             files_not_found.append(file_name)
     
@@ -319,18 +341,37 @@ def process_file_request(lines):
         elif in_file_request:
             file_request += line
         else:
-            break  # Stop if we're not in a file request and haven't found one
+            continue  # Continue checking other lines if we're not in a file request
     
     if file_request:
         # Extract content between square brackets
         bracket_content = re.search(r'\[(I need (?:content of|access) files:.*?)\]', file_request, re.DOTALL)
         if bracket_content:
             content = bracket_content.group(1)
-            # Extract file names
-            pattern = r'<file>(.*?)</file>'
-            file_names = re.findall(pattern, content)
+            # Extract file names with multiple patterns
+            patterns = [
+                r'<file>(.*?)</file>',  # XML-style tags
+                r'`([^`]+)`'            # Markdown code formatting
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, content)
+                if matches:
+                    file_names.extend(matches)
+            
+            # If no matches with patterns, try comma-separated list
+            if not file_names:
+                # Extract everything after the colon
+                after_colon = re.search(r'files:(.*)', content)
+                if after_colon:
+                    # Split by commas and clean up
+                    raw_files = after_colon.group(1).split(',')
+                    file_names = [f.strip() for f in raw_files if f.strip()]
     
+    # Clean up file names (remove backticks, etc.)
+    file_names = [f.replace('`', '') for f in file_names]
     return file_names
+
 def get_static_notes(pf):
     notes_str = read_all_packages(pf)
         
