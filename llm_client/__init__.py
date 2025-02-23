@@ -1,5 +1,5 @@
 # llm_client/__init__.py
-
+import os
 from .langfuse_setup import initialize_langfuse
 #
 # make sure the os environment variables are set before importing the llm classes
