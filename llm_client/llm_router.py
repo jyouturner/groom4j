@@ -93,23 +93,57 @@ class LLMFactory:
             raise ValueError("Please set the environment variable USE_LLM to either openai, gemini, or anthropic")
 
 class LLMQueryManager:
-    def __init__(self, use_llm: str, tier: str = "tier1", system_prompt: str = "You are a helpful assistant", cached_prompt: str = None, 
-                 max_calls: int = 10, period: int = 60, 
-                 max_tokens_per_min: int = 80000, max_tokens_per_day: int = 2500000,
-                 encoding_name: str = "cl100k_base"):
-        if not use_llm:
-            raise ValueError("Please set the environment variable USE_LLM to either openai, gemini, or anthropic")
+    def __init__(self, use_llm="anthropic", tier="tier1", system_prompt=None, cached_prompt=None, 
+                 max_tokens=None, max_calls=None, period=None, max_tokens_per_min=None, 
+                 max_tokens_per_day=None, encoding_name=None):
         self.use_llm = use_llm
-        self.llm_tier = tier
+        self.tier = tier
         self.system_prompt = system_prompt
         self.cached_prompt = cached_prompt
-        self.llm = LLMFactory.get_llm(use_llm=use_llm, tier=tier, system_prompt=system_prompt, cached_prompt=cached_prompt)
+        self.max_tokens = max_tokens
         self.max_calls = max_calls
         self.period = period
         self.max_tokens_per_min = max_tokens_per_min
         self.max_tokens_per_day = max_tokens_per_day
         self.encoding_name = encoding_name
         
+        # Get the model name based on tier
+        if use_llm == "anthropic":
+            model_name = os.environ.get(f"ANTHROPIC_MODEL_{tier.upper()}_NAME")
+            config = LLMConfig(
+                api_key=os.environ.get("ANTHROPIC_API_KEY"), 
+                model_name=model_name,
+                temperature=0.0,
+                max_tokens=self.max_tokens,
+                system_prompt=system_prompt,
+                cached_prompt=cached_prompt
+            )
+            self.llm = AnthropicLLM(config=config)
+        elif use_llm == "openai":
+            model_name = os.environ.get(f"OPENAI_MODEL_{tier.upper()}_NAME")
+            config = LLMConfig(
+                api_key=os.environ.get("OPENAI_API_KEY"), 
+                model_name=model_name,
+                temperature=0.0,
+                max_tokens=self.max_tokens,
+                system_prompt=system_prompt,
+                cached_prompt=cached_prompt
+            )
+            self.llm = OpenAILLM(config=config)
+        elif use_llm == "gcp":
+            model_name = os.environ.get(f"GCP_MODEL_{tier.upper()}_NAME")
+            config = LLMConfig(
+                api_key=None,  # Not needed for GCP
+                model_name=model_name,
+                temperature=0.0,
+                max_tokens=self.max_tokens,
+                system_prompt=system_prompt,
+                cached_prompt=cached_prompt
+            )
+            self.llm = VertexAILLM(config=config)
+        else:
+            raise ValueError(f"Unknown LLM: {use_llm}")
+
         self.input_tokens_used_today = 0
         self.output_tokens_used_today = 0
         self.tokens_used_this_minute = 0
