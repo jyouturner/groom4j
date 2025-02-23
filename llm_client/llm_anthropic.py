@@ -70,7 +70,7 @@ class AnthropicAssistant:
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     #FIXME: remove this after anthropic support prompt caching
-                    extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+                    # extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
                     system=system_prompt,
                     messages=self.messages
                 )
