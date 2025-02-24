@@ -36,6 +36,11 @@ def not_found_terms(search_results: dict = None) -> str:
 
 def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused_prompt_template, tier="tier1"):
     use_llm = os.environ.get("LLM_USE")
+    # Get max_tokens from environment if available
+    max_tokens_tier1 = int(os.environ.get("LLM_MAX_TOKENS_TIER1", "4096"))
+    max_tokens_tier2 = int(os.environ.get("LLM_MAX_TOKENS_TIER2", "2048"))
+    max_tokens = max_tokens_tier1 if tier == "tier1" else max_tokens_tier2
+    
     # prompts can be reused and cached in the LLM if it is supported
     if pf is not None:
         package_notes = get_static_notes(pf)
@@ -58,13 +63,12 @@ def initiate_llm_query_manager(pf: Optional[ProjectFiles], system_prompt, reused
         cached_prompt = None
     #FIXME: need to add the max_calls, period, max_tokens_per_min, max_tokens_per_day, encoding_name to application.yml
     query_manager = LLMQueryManager(use_llm=use_llm, tier=tier, system_prompt=system_prompt, cached_prompt=cached_prompt,
+                                    max_tokens=max_tokens,
                                     max_calls=1000,
                                     period=60,
                                     max_tokens_per_min=80000,
                                     max_tokens_per_day=2500000,
                                     encoding_name="cl100k_base")
-    
-
     
     return query_manager
 
@@ -73,119 +77,128 @@ def extract_and_process_next_steps(response: str, pf: ProjectFiles) -> str:
     """Extract and process next steps from the response."""
     new_information = ""
     
-    # Look for next steps in both formats:
-    # 1. After "**Next Steps**" section
-    # 2. Direct file requests in the response
-    next_steps_pattern = r'(?:\*\*Next Steps\*\*|### Next Steps)'
-    next_steps_match = re.search(next_steps_pattern, response, re.IGNORECASE)
-    
-    # Make file request pattern more flexible to handle different path formats
-    file_request_pattern = r'\[I need (?:content of files|access files):([^\]]*)\]'
-    file_request_match = re.search(file_request_pattern, response, re.MULTILINE | re.DOTALL)
-    
+    # Process the entire response for any type of request
+    lines = response.split("\n")
+    i = 0
     has_requests = False
     has_new_information = False
     
-    # Process file requests from either location
-    if next_steps_match or file_request_match:
-        content_to_process = response
-        if next_steps_match:
-            content_to_process = response[next_steps_match.start():]
+    while i < len(lines):
+        line = lines[i].strip()
         
-        lines = content_to_process.split("\n")
-        i = 0
-        while i < len(lines):
-            line = lines[i].strip()
+        # Handle file requests
+        if "[I need content of files:" in line or "[I need access files:" in line:
+            has_requests = True
+            # Extract everything between : and ] with improved multiline support
+            request_text = line
+            j = i
+            while j < len(lines) and ']' not in request_text:
+                j += 1
+                if j < len(lines):
+                    request_text += ' ' + lines[j].strip()
             
-            # Handle file requests - make more flexible to handle comma-separated paths
-            if "[I need content of files:" in line or "[I need access files:" in line:
-                has_requests = True
-                # Extract everything between : and ] with improved multiline support
-                request_text = line
-                while i < len(lines) and ']' not in request_text:
-                    i += 1
-                    if i < len(lines):
-                        request_text += ' ' + lines[i].strip()
-                
-                match = re.search(r':\s*([^\]]+)', request_text)
-                if match:
-                    # Split on commas and clean up each file path
-                    file_names = [f.strip() for f in match.group(1).split(',')]
-                    # Filter out empty strings that might come from extra whitespace
-                    file_names = [f for f in file_names if f]
-                    logger.info(f"need files {file_names}")
-                
-                    # Filter out previously failed requests
-                    new_files = [f for f in file_names if f not in global_failed_file_requests]
-                    if not new_files:
-                        new_information += "\nThe requested files were previously not found or are not accessible. Please proceed with available information.\n"
-                        i += 1
-                        continue
-
-                    file_contents, files_found, files_not_found = read_files(pf, new_files)
-                    
-                    # Track failed requests
-                    global_failed_file_requests.update(files_not_found)
-                    
-                    if file_contents:
-                        new_information += file_contents
-                        has_new_information = True
-                    if files_not_found:
-                        not_found_msg = f"\nThe following files could not be found or accessed: {', '.join(files_not_found)}\n"
-                        new_information += not_found_msg
-                        logger.info(not_found_msg)
-                    
-                    logger.info(f"files_found: {files_found}")
-                    logger.info(f"files_not_found: {files_not_found}")
+            # Extract file names using process_file_request
+            file_names = process_file_request([request_text])
             
-            # Handle other types of requests (search, packages, etc.)
-            elif "[I need to search" in line:
-                has_requests = True
-                # Make the pattern more flexible to handle "for keywords:" format
-                pattern = r'<keyword>(.*?)</keyword>'
-                request_text = line
-                while i < len(lines) and ']' not in request_text:
-                    i += 1
-                    if i < len(lines):
-                        request_text += ' ' + lines[i].strip()
+            if file_names:
+                logger.info(f"need files {file_names}")
                 
-                keywords = re.findall(pattern, request_text)
-                if keywords:
-                    for keyword in keywords:
-                        if keyword in global_search_results:
-                            continue  # Skip already searched keywords
-                        logger.info(f"LLM needs to search: {keyword}")
-                        
-                        matching_files = efficient_file_search(pf.root_path, keyword, file_extensions=[".java", ".xml", ".yml", ".yaml", ".properties", ".sql", ".json"])           
-                        global_search_results[keyword] = matching_files
-                        logger.info(f"Found matching files: {matching_files} for keyword: {keyword}")
-                        if matching_files: 
-                            files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
-                            new_information += f"\nYou requested to search for '{keyword}'\nHere are results: {files_str}\n"
-                            has_new_information = True
-                        else:
-                            new_information += f"\nNo matching files found with '{keyword}'\n"
+                # Filter out previously failed requests
+                new_files = [f for f in file_names if f not in global_failed_file_requests]
+                if not new_files:
+                    new_information += "\nThe requested files were previously not found or are not accessible. Please proceed with available information.\n"
+                    i = j + 1
+                    continue
 
-            elif "[I need info about packages:" in line:
-                has_requests = True
-                pattern = r'<package>(.*?)</package>'
-                package_names = re.findall(pattern, line)
-                package_contents, packages_found, packages_not_found = read_packages(pf, package_names)
-                if package_contents:
-                    new_information += package_contents
+                file_contents, files_found, files_not_found = read_files(pf, new_files)
+                
+                # Track failed requests
+                global_failed_file_requests.update(files_not_found)
+                
+                if file_contents:
+                    new_information += file_contents
                     has_new_information = True
-                logger.info(f"packages_found: {packages_found}")
-                logger.info(f"packages_not_found: {packages_not_found}")
-
-            elif "[I need external API response for:" in line or "[I need database query results for:" in line:
-                has_requests = True
-                new_information += f"\nYou requested external API/DB response, unfortunately there is no information available. You may need to do your best guess.\n"
+                if files_not_found:
+                    not_found_msg = f"\nThe following files could not be found or accessed: {', '.join(files_not_found)}\n"
+                    new_information += not_found_msg
+                    logger.info(not_found_msg)
+                
+                logger.info(f"files_found: {files_found}")
+                logger.info(f"files_not_found: {files_not_found}")
+                
+                i = j + 1
+                continue
+        
+        # Handle search requests with more flexible pattern matching
+        elif "[I need to search" in line:
+            has_requests = True
+            request_text = line
+            while i < len(lines) and ']' not in request_text:
+                i += 1
+                if i < len(lines):
+                    request_text += ' ' + lines[i].strip()
             
-            i += 1
+            # Try multiple patterns to extract keywords
+            keywords = []
+            
+            # Pattern 1: <keyword>text</keyword>
+            tag_pattern = r'<keyword>(.*?)</keyword>'
+            tag_keywords = re.findall(tag_pattern, request_text)
+            if tag_keywords:
+                keywords.extend(tag_keywords)
+            
+            # Pattern 2: keywords: keyword1, keyword2
+            if not keywords and "keywords:" in request_text:
+                keyword_text = re.search(r'keywords:\s*([^\]]+)', request_text)
+                if keyword_text:
+                    raw_keywords = keyword_text.group(1).split(',')
+                    keywords.extend([k.strip() for k in raw_keywords if k.strip()])
+            
+            # Pattern 3: keywords: single phrase without commas
+            if not keywords and "keywords:" in request_text:
+                keyword_text = re.search(r'keywords:\s*([^\]]+)', request_text)
+                if keyword_text:
+                    keywords = [keyword_text.group(1).strip()]
+            
+            # Pattern 4: for keywords: phrase
+            if not keywords and "for keywords:" in request_text:
+                keyword_text = re.search(r'for keywords:\s*([^\]]+)', request_text)
+                if keyword_text:
+                    keywords = [keyword_text.group(1).strip()]
+            
+            if keywords:
+                for keyword in keywords:
+                    logger.info(f"LLM needs to search: {keyword}")
+                    
+                    # Skip already searched keywords
+                    if keyword in global_search_results:
+                        new_information += f"\nYou already searched for '{keyword}'. Using previous results.\n"
+                        if global_search_results[keyword]:
+                            files_str = ', '.join(f"<file>{file}</file>" for file in global_search_results[keyword])
+                            new_information += f"Here are results: {files_str}\n"
+                        else:
+                            new_information += f"No matching files were found.\n"
+                        has_new_information = True
+                        continue
+                    
+                    matching_files = efficient_file_search(pf.root_path, keyword)
+                    global_search_results[keyword] = matching_files
+                    if matching_files:
+                        files_str = ', '.join(f"<file>{file}</file>" for file in matching_files)
+                        new_information += f"\nYou requested to search for '{keyword}'\nHere are results: {files_str}\n"
+                        has_new_information = True
+                    else:
+                        new_information += f"\nNo matching files found with '{keyword}'\n"
+                        has_new_information = True  # Consider "no results" as new information
+            else:
+                # If we couldn't extract keywords with any pattern, log the issue
+                logger.warning(f"Could not extract keywords from search request: {request_text}")
+                new_information += "\nI couldn't understand your search request. Please use the format: [I need to search for keywords: <keyword>keyword</keyword>]\n"
+                has_new_information = True
+        
+        i += 1
 
-    # Return empty string only if there were no requests or no new information was found
-    if not has_requests or (has_requests and not has_new_information):
-        logger.info("No new information found in this round")
+    if not has_requests:
         return ""
 
     return new_information
