@@ -179,33 +179,55 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         try:
-            new_information, last_response, should_conclude, key_findings, final_answer_prompt = query_llm(
-                query_manager, question=question, user_prompt_template=user_prompt_template,
-                instruction_prompt=instructions, function_prompt=function_prompt, last_response=last_response,
-                pf=pf, 
+            new_information, last_response, should_conclude, key_findings, final_answer_prompt = query_llm_with_retry(
+                query_manager=query_manager,
+                question=question,
+                user_prompt_template=user_prompt_template,
+                instruction_prompt=instructions,
+                function_prompt=function_prompt,
+                last_response=last_response,
+                pf=pf,
                 iteration_number=str(i),
                 new_information=new_information,
                 key_findings=key_findings,
                 reviewer=reviewer
             )
-            # debug to print the end 500 characters of the last_response
-            logger.info(f"Last response: {last_response[-500:]}")
+            
+            logger.info(f"Last response: {last_response[:100]}...")
+            
             if should_conclude:
                 logger.info("The conversation is about to end")
                 if final_answer_prompt:
-                    logger.info("but we still need to do the final conversation...")
-                    _, last_response, _, _, _ = query_llm(query_manager=query_manager, question=question, user_prompt_template=final_user_prompt_template,
-                              instruction_prompt=final_answer_prompt, function_prompt="", last_response=last_response, pf=pf,
-                              iteration_number=str(i), new_information=new_information, key_findings=key_findings, reviewer=None)
+                    logger.info("Using final answer prompt")
+                    new_information, last_response, _, key_findings, _ = query_llm_with_retry(
+                        query_manager=query_manager,
+                        question=question,
+                        user_prompt_template=final_user_prompt_template,
+                        instruction_prompt=final_answer_prompt,
+                        function_prompt="",
+                        last_response=last_response,
+                        pf=pf,
+                        iteration_number="final",
+                        new_information=new_information,
+                        key_findings=key_findings,
+                        reviewer=None
+                    )
                 break
+            
         except Exception as e:
             logger.error(f"An error occurred in round {i}: {str(e)}", exc_info=True)
-            raise
+            break
+            
         i += 1
+    
     logger.info(f"Total rounds: {i}")
-    # get the total tokens from langfuse
-    total_tokens = query_manager.get_total_tokens()
-    logger.info(f"Total tokens: {total_tokens}")
+    # Use get_total_tokens instead of get_token_usage
+    try:
+        total_tokens = query_manager.get_total_tokens()
+        logger.info(f"Total tokens: {total_tokens}")
+    except (AttributeError, TypeError) as e:
+        logger.info(f"Token usage information not available: {str(e)}")
+    
     return last_response
 
 
@@ -366,6 +388,43 @@ def process_conversation_file(conversation_file: str, project_root: str, thoroug
         
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}", exc_info=True)
+
+def query_llm_with_retry(query_manager, question, user_prompt_template, instruction_prompt, function_prompt, last_response, pf, iteration_number, new_information, key_findings, reviewer, max_retries=2):
+    """
+    Query the LLM with retry mechanism for file requests that fail.
+    """
+    retry_count = 0
+    while retry_count <= max_retries:
+        new_info, response, should_conclude, updated_key_findings, final_answer_prompt = query_llm(
+            query_manager=query_manager,
+            question=question,
+            user_prompt_template=user_prompt_template,
+            instruction_prompt=instruction_prompt,
+            function_prompt=function_prompt,
+            last_response=last_response,
+            pf=pf,
+            iteration_number=iteration_number,
+            new_information=new_information,
+            key_findings=key_findings,
+            reviewer=reviewer
+        )
+        
+        # If we got new information or should conclude, return the results
+        if new_info or should_conclude or "NONE" in response:
+            return new_info, response, should_conclude, updated_key_findings, final_answer_prompt
+        
+        # If we didn't get new information but the response contains file requests,
+        # modify the prompt to suggest alternative files
+        if "[I need content of files:" in response or "[I need access files:" in response:
+            logger.info(f"File request failed, retrying with modified prompt (attempt {retry_count+1}/{max_retries})")
+            last_response = response + "\n\nNote: The requested files could not be found. Please try with different file names or proceed with the information you have."
+            retry_count += 1
+        else:
+            # If there are no file requests, just return the results
+            return new_info, response, should_conclude, updated_key_findings, final_answer_prompt
+    
+    # If we've exhausted retries, return the last results
+    return new_info, response, should_conclude, updated_key_findings, final_answer_prompt
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tell me about")
