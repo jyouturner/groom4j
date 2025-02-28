@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import time
 from ratelimit import limits, sleep_and_retry
 from datetime import datetime, timedelta
-from token_estimation_utils import estimate_tokens
+from llm_client.token_estimation_utils import estimate_tokens
 from .config import LLMConfig
 # set up tracing, use relative import to avoid import errors since they are in the same path
 #from .langfuse_setup import observe, langfuse_context
