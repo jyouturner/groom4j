@@ -3,7 +3,7 @@ import os
 import sys
 import re
 import argparse
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 from typing import Union, List, Tuple
 import time
 
