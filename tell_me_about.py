@@ -4,7 +4,7 @@ import sys
 import re
 import argparse
 import yaml
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 import time
 from typing import Union, Optional, List
 from functions import get_file, get_package, get_static_notes
