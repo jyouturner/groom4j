@@ -1,37 +1,3 @@
-#!/bin/bash
-
-# Check if Docker is installed
-if ! command -v docker &> /dev/null; then
-    echo "Docker is not installed. Please install Docker and try again."
-    exit 1
-fi
-
-# Check if the image exists, if not build it
-if [[ "$(docker images -q read-agent-java 2> /dev/null)" == "" ]]; then
-    echo "Building Docker image..."
-    docker build -t read-agent-java .
-fi
-
-# Function to run a command in the Docker container
-run_in_docker() {
-    local java_project_path="$1"
-    shift
-    local script="$1"
-    shift
-    
-    # Convert the Java project path to an absolute path
-    java_project_path=$(realpath "$java_project_path")
-    
-    echo "Mapping $java_project_path to /java_project in Docker container"
-    
-    docker run --rm -it \
-        -v "$(pwd):/app" \
-        -v "$java_project_path:/java_project:ro" \
-        -v "$(pwd)/application.yml:/app/application.yml:ro" \
-        read-agent-java "$script" /java_project "$@"
-}
-
-# Check the command argument
 case "$1" in
     gist-files)
         if [ "$#" -lt 2 ]; then
