@@ -9,7 +9,6 @@ from llm_client import LLMQueryManager, langfuse_context
 from conversation_reviewer import ConversationReviewer
 import logging
 import string
-from prompts import system_prompt_answer_question
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
