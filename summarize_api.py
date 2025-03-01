@@ -3,7 +3,7 @@ import os
 import sys
 import re
 import argparse
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 
 from typing import Union, Optional
 from functions import get_file, get_package, efficient_file_search, process_file_request, get_static_notes
