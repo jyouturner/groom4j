@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 from typing import List, Tuple, Optional
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 import logging
 # the order of the following imports is important
 # since the initialization of langfuse depends on the os environment variables
