@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import pytest
 from unittest.mock import patch
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 # Import the function to be tested
 from grooming_task import read_files, read_packages
 import os
