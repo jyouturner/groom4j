@@ -11,7 +11,7 @@ import os
 import sys
 import argparse
 import logging
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 from functions import save_response_to_markdown
 from config_utils import load_config_to_env
 load_config_to_env()
