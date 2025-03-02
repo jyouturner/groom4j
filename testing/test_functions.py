@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 import os
 from functions import get_file, get_package, read_files
 
