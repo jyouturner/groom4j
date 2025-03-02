@@ -4,7 +4,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import pytest
 
-from projectfiles import ProjectFiles, CodeFile
+from gist.projectfiles import ProjectFiles, CodeFile
+from gist.gist_files import code_gisting
 
 use_llm = "gemini"  # You can change this to test different LLM providers
 
