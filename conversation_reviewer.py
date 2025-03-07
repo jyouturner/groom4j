@@ -1,4 +1,4 @@
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict, Any
 import logging
 import re
 
@@ -8,6 +8,14 @@ import re
 from config_utils import load_config_to_env
 load_config_to_env()
 from llm_client import LLMQueryManager, langfuse_context, observe
+
+# Import the state machine
+from conversation_state_machine import (
+    ConversationState, 
+    ConversationStateMachine,
+    StateManager,
+    generate_prompt_for_state
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -65,6 +73,10 @@ class ConversationReviewer:
         self.current_round = 0
         self.consecutive_empty_rounds = 0
         self.max_empty_rounds = 3
+        
+        # Initialize the state machine
+        self.state_manager = StateManager()
+        self.conversation_context = {}
 
     def is_history_empty(self):
         return len(self.conversation_list) == 0
@@ -80,12 +92,32 @@ class ConversationReviewer:
         if len(self.conversation_list) > self.max_history:
             self.conversation_list = self.conversation_list[-self.max_history:]
         
+        # Update state manager conversation history
+        self.state_manager.update_conversation_history("user", human)
+        self.state_manager.update_conversation_history("assistant", ai)
+        
         # Debug print
         logger.debug(f"Added conversation:")
         logger.debug(f"Human: {human[:50]}...")
         logger.debug(f"AI: {ai[:50]}...")
         logger.debug(f"Conversation history length: {len(self.conversation_list)}")
 
+    def get_current_state(self) -> ConversationState:
+        """Get the current conversation state"""
+        return self.state_manager.state_machine.current_state
+    
+    def get_state_prompt_guidance(self) -> str:
+        """Get prompt guidance based on current state"""
+        result = self.state_manager.state_machine.process(self.conversation_context)
+        return result.get("prompt_guidance", "")
+    
+    def update_conversation_context(self, **kwargs):
+        """Update the conversation context used by the state machine"""
+        self.conversation_context.update(kwargs)
+        
+        # Always update round information
+        self.conversation_context["round"] = self.current_round
+        self.conversation_context["max_rounds"] = self.max_rounds
     
     @observe(name="review_conversation", capture_input=True, capture_output=True)
     def review_conversation(self) -> Tuple[str, Optional[str]]:
@@ -95,6 +127,29 @@ class ConversationReviewer:
             logger.info("No conversation to review yet")
             return "CONTINUE", None
 
+        # Update conversation context with latest information
+        self.update_conversation_context(
+            relevant_components_found=(self.current_round > 0),
+            components_selected=(self.current_round > 1)
+        )
+        
+        # Process through state machine
+        old_state = self.state_manager.state_machine.current_state
+        state_result = self.state_manager.state_machine.process(self.conversation_context)
+        new_state = self.state_manager.state_machine.current_state
+        
+        if old_state != new_state:
+            self.state_manager.log_state_transition(
+                old_state, 
+                new_state, 
+                f"Round {self.current_round} transition"
+            )
+            
+        # Get thoroughness target adjusted for current state
+        state_thoroughness = self.state_manager.get_thoroughness_target_for_state(new_state)
+        adjusted_thoroughness = min(self.target_thoroughness, state_thoroughness)
+        
+        # Prepare conversation summary for review
         conversation_summary_str = ""
         for i, round_data in enumerate(self.conversation_list, 1):
             conversation_summary_str += f"Round {i}:\n"
@@ -102,11 +157,28 @@ class ConversationReviewer:
             conversation_summary_str += f"AI: {round_data['ai']}\n\n"
 
         # Query the LLM to get the review
-        review_prompt = review_prompt_template.format(target_throughness=self.target_thoroughness)
+        review_prompt = review_prompt_template.format(target_throughness=adjusted_thoroughness)
         
         try:
             review_response = self.query_manager.query(review_prompt)
-            return self.process_llm_response(review_response)
+            recommendation, final_answer_prompt = self.process_llm_response(review_response)
+            
+            # Add state-specific guidance if we need to continue
+            if recommendation == "CONTINUE" and final_answer_prompt is None:
+                state_guidance = state_result.get("prompt_guidance", "")
+                if state_guidance:
+                    logger.info(f"Adding state-specific guidance: {state_guidance}")
+                    # We'll keep the recommendation but add state-specific guidance
+                    
+            # Special handling for certain states
+            if new_state == ConversationState.CONCLUDING:
+                recommendation = "CONCLUDE"
+                if not final_answer_prompt:
+                    final_answer_prompt = self._generate_concluding_prompt()
+            
+            logger.info(f"Conversation state: {new_state.value}")
+            return recommendation, final_answer_prompt
+            
         except Exception as e:
             logger.error(f"Error querying LLM for review: {str(e)}", exc_info=True)
             return "CONTINUE", None
@@ -174,6 +246,9 @@ class ConversationReviewer:
             - Final score: {min(10, score)}
         """)
         
+        # Update the conversation context with the thoroughness score
+        self.update_conversation_context(current_thoroughness=min(10, score))
+        
         return min(10, score)
 
     def process_llm_response(self, reviewer_response) -> Tuple[str, Optional[str]]:
@@ -187,13 +262,21 @@ class ConversationReviewer:
         
         logger.info(f"Reviewer assessment - Recommendation: {recommendation}, Thoroughness: {thoroughness_score}/10")
         
+        # Update conversation context with the thoroughness score
+        self.update_conversation_context(current_thoroughness=thoroughness_score)
+        
         # Check for empty rounds - only if we have conversation history
         if self.conversation_list:
             if not self._has_new_content(self.conversation_list[-1]['ai']):
                 self.consecutive_empty_rounds += 1
                 logger.info(f"No new content detected. Empty rounds: {self.consecutive_empty_rounds}/{self.max_empty_rounds}")
+                
+                # Update context to potentially trigger RECOVERY state
+                if self.consecutive_empty_rounds >= 2:
+                    self.update_conversation_context(error_detected=True)
             else:
                 self.consecutive_empty_rounds = 0
+                self.update_conversation_context(error_detected=False)
             
             # If stuck, provide guidance
             if self.consecutive_empty_rounds >= self.max_empty_rounds:
@@ -224,7 +307,20 @@ class ConversationReviewer:
 
     def _generate_guidance_prompt(self, current_thoroughness: int) -> str:
         """Generate a prompt to guide the LLM to a conclusion."""
-        return f"""
+        # Check the current state and customize the guidance accordingly
+        current_state = self.state_manager.state_machine.current_state
+        
+        # Generate the appropriate state-specific prompt
+        if current_state in [ConversationState.SYNTHESIZING, ConversationState.CONCLUDING]:
+            return generate_prompt_for_state(current_state, {
+                "question": self._get_original_question(),
+                "current_thoroughness": current_thoroughness,
+                "rounds_remaining": self.max_rounds - self.current_round,
+                "key_findings": self._extract_key_findings_from_history()
+            })
+        else:
+            # Default concluding guidance
+            return f"""
 Based on the current analysis (thoroughness score: {current_thoroughness}/10), please provide a final comprehensive answer that:
 
 1. Synthesizes all the information gathered so far
@@ -242,20 +338,75 @@ Format your response with:
 - A "Limitations and Future Investigation" section
 """
 
+    def _generate_concluding_prompt(self) -> str:
+        """Generate a concluding prompt for the CONCLUDING state"""
+        return generate_prompt_for_state(ConversationState.CONCLUDING, {
+            "question": self._get_original_question(),
+            "current_thoroughness": self.conversation_context.get("current_thoroughness", 5),
+            "rounds_remaining": 0,
+            "key_findings": self._extract_key_findings_from_history(),
+            "conclusions": self._extract_conclusions_from_history()
+        })
+    
+    def _get_original_question(self) -> str:
+        """Get the original question from the conversation history"""
+        if self.conversation_list:
+            return self.conversation_list[0].get("human", "")
+        return ""
+    
+    def _extract_key_findings_from_history(self) -> List[str]:
+        """Extract key findings from conversation history"""
+        key_findings = []
+        for conv in self.conversation_list:
+            ai_response = conv.get("ai", "")
+            # Use a regex to extract key findings from the response
+            findings_section = re.search(r'KEY_FINDINGS:(.*?)(?=\n\n|\Z)', ai_response, re.DOTALL | re.IGNORECASE)
+            if findings_section:
+                findings = findings_section.group(1).strip().split('\n')
+                for finding in findings:
+                    if finding.strip() and "[" in finding and "]" in finding:
+                        key_findings.append(finding.strip())
+        return key_findings
+    
+    def _extract_conclusions_from_history(self) -> List[str]:
+        """Extract conclusions from conversation history"""
+        conclusions = []
+        for conv in self.conversation_list:
+            ai_response = conv.get("ai", "")
+            # Look for conclusions or summaries
+            conclusion_sections = re.findall(r'(?:##\s*Conclusion|##\s*Summary)(.*?)(?=\n##|\Z)', 
+                                            ai_response, re.DOTALL | re.IGNORECASE)
+            for section in conclusion_sections:
+                points = section.strip().split('\n')
+                for point in points:
+                    if point.strip() and len(point.strip()) > 20:  # Avoid very short lines
+                        conclusions.append(point.strip())
+        return conclusions
+
     def should_continue_conversation(self) -> Tuple[bool, Optional[str]]:
         # Check if we've exceeded max rounds
         self.current_round += 1
+        self.update_conversation_context(round=self.current_round)
+        
         if self.current_round >= self.max_rounds:
             logger.info(f"Reached maximum rounds ({self.max_rounds}), forcing conclusion")
-            return False, "Please provide a final comprehensive answer based on all information gathered so far."
+            self.state_manager.state_machine.current_state = ConversationState.CONCLUDING
+            return False, self._generate_concluding_prompt()
             
-        # Continue with existing review logic
+        # Continue with existing review logic enhanced with state machine
         recommendation, final_answer_prompt = self.review_conversation()
         
         # Log the decision process
         logger.info(f"Round {self.current_round}/{self.max_rounds}")
         logger.info(f"Recommendation: {recommendation}")
+        logger.info(f"Current state: {self.state_manager.state_machine.current_state.value}")
         logger.info(f"Target thoroughness: {self.target_thoroughness}")
+        
+        # Generate state-specific final prompt if concluding
+        if recommendation != "CONTINUE" and self.state_manager.state_machine.current_state != ConversationState.CONCLUDING:
+            self.state_manager.state_machine.current_state = ConversationState.CONCLUDING
+            if not final_answer_prompt:
+                final_answer_prompt = self._generate_concluding_prompt()
         
         return recommendation == "CONTINUE", final_answer_prompt
 
@@ -268,7 +419,19 @@ Format your response with:
         return final_answer_prompt
 
     def restart_conversation(self):
-        pass
+        self.conversation_list = []
+        self.current_round = 0
+        self.consecutive_empty_rounds = 0
+        self.conversation_context = {}
+        self.state_manager = StateManager()  # Reinitialize the state manager
+    
+    def save_state(self, path: str):
+        """Save the current conversation state to disk"""
+        self.state_manager.persist_session(path)
+    
+    def load_state(self, path: str) -> bool:
+        """Load conversation state from disk"""
+        return self.state_manager.restore_session(path)
 
 
 if __name__ == "__main__":
