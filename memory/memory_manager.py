@@ -369,7 +369,12 @@ class MemoryManager:
             project_root: Path to project directory
             project_id: Unique identifier for the project
             db_path: Path to SQLite database
-            embedding_config: Optional configuration for embedding service
+            embedding_config: Optional configuration for embedding service, exaxmple is:
+            {
+                'model_name': 'all-MiniLM-L6-v2',
+                'provider': 'sentence_transformer',
+                'dimensionality': 384
+            }
             vector_store_config: Optional configuration for vector store, example is
             'qdrant': {
                 'collection': 'my_project_memories',  # Name of the Qdrant collection to use
