@@ -55,4 +55,27 @@ gcp:
 #
 #
 #
-#
+vector_store:
+  use: qdrant
+  embedding:
+    provider: sentence_transformer  # can be 'sentence_transformer', 'openai', or 'gemini'
+    gemini:
+      model_name: all-MiniLM-L6-v2
+      dimensionality: 384
+      batch_size: 100
+      score_threshold: 0.75
+    openai:
+      model_name: text-embedding-3-small
+      dimensionality: 1536
+      batch_size: 100
+      score_threshold: 0.75
+    sentence_transformer:
+      model_name: all-MiniLM-L6-v2
+      dimensionality: 384
+      batch_size: 100
+      score_threshold: 0.75
+  qdrant:
+    # use local qdrant instance
+    #api_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwiZXhwIjoxNzczMTExNjU3fQ.PTG_3_-zSkVuPEgVd5pkiVHrRPPR8e2kLdzyFoYiCqc
+    #url: https://164c6283-4e46-4656-af68-84fd0e96c74c.europe-west3-0.gcp.cloud.qdrant.io
+    collection: java_assistant
