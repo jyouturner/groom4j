@@ -37,3 +37,10 @@ def load_config_to_env(config_path=None):
     os.environ.update(flattened_config)
 
 # You can add other config-related utility functions here if needed
+
+# Example usage
+if __name__ == "__main__":
+    load_config_to_env()
+    # print all the environment variables
+    for key, value in os.environ.items():
+        print(f"{key}")
