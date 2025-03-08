@@ -10,7 +10,8 @@ import logging
 from config_utils import load_config_to_env
 load_config_to_env()
 from llm_client import LLMQueryManager, langfuse_context, observe
-from llm_interaction import initiate_llm_query_manager, query_llm
+from llm_utils import initiate_llm_query_manager
+from llm_interaction import query_llm
 from conversation_reviewer import ConversationReviewer
 
 # Set up logging
