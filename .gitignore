@@ -19,3 +19,7 @@ response.txt
 poetry.lock
 conversations.md
 output/
+data/travel-service-dev/.gist/conversation_states/*
+data/travel-service-dev/.gist/state_diagrams/*
+MagicMock/
+data/travel-service-dev/.gist/tell_me_about/
