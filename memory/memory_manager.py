@@ -11,7 +11,8 @@ from datetime import datetime
 import yaml  # Add this import at the top
 
 from vector_store.vector_store_client import QdrantVectorStore
-from embedding import EmbeddingFactory
+from embedding.embedding_config import EmbeddingConfig
+from embedding.embedding_factory import create_embedding_service
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -359,8 +360,7 @@ class MemoryManager:
         project_root: str,
         project_id: Optional[str] = None,
         db_path: Optional[str] = None,
-        embedding_provider: str = "auto",
-        use_backup_embeddings: bool = True,
+        embedding_config: Optional[EmbeddingConfig] = None,
         vector_store_config: Optional[Dict[str, Any]] = None
     ):
         """Initialize memory manager with storage backends
@@ -369,9 +369,13 @@ class MemoryManager:
             project_root: Path to project directory
             project_id: Unique identifier for the project
             db_path: Path to SQLite database
-            embedding_provider: Which embedding provider to use ('openai', 'gemini', 'sentence_transformer', or 'auto')
-            use_backup_embeddings: Whether to initialize SentenceTransformer as fallback
-            vector_store_config: Optional configuration for vector store and embeddings
+            embedding_config: Optional configuration for embedding service
+            vector_store_config: Optional configuration for vector store, example is
+            'qdrant': {
+                'collection': 'my_project_memories',  # Name of the Qdrant collection to use
+                'url': 'http://localhost:6333',       # URL of the Qdrant server
+                'api_key': 'my-qdrant-api-key'        # API key for authentication (if needed)
+            }
         """
         # Generate project ID from project directory if not provided
         if project_id is None:
@@ -380,7 +384,8 @@ class MemoryManager:
         
         self.project_id = project_id
         self.project_root = os.path.abspath(project_root)
-        self.embedding_provider = embedding_provider
+        
+        self.vector_store = None
         
         # Initialize SQLite storage
         if db_path is None:
@@ -390,30 +395,11 @@ class MemoryManager:
         self.sqlite_storage = SQLiteStorage(db_path)
         
         # Initialize embedding service using factory
+        self.embedding_service = None
         try:
-            # Start with default embedding config
-            embedding_config = {
-                'model_name': 'all-MiniLM-L6-v2'  # Default model for sentence-transformers
-            }
-
-            # Try to load config from vector_store_config first
-            if vector_store_config and 'embedding' in vector_store_config:
-                embedding_config = vector_store_config['embedding']
-            # Otherwise try to load from application.yml
-            elif os.path.isfile(os.path.join(self.project_root, "application.yml")):
-                try:
-                    with open(os.path.join(self.project_root, "application.yml"), 'r') as f:
-                        config = yaml.safe_load(f)
-                    if config and 'vector_store' in config and 'embedding' in config['vector_store']:
-                        embedding_config = config['vector_store']['embedding']
-                except Exception as e:
-                    logger.warning(f"Failed to load config file: {e}")
-
-            self.embedding_service = EmbeddingFactory.create_embedding_service(
-                provider=embedding_provider,
-                use_backup=use_backup_embeddings,
-                config=embedding_config
-            )
+            if embedding_config is None:
+                embedding_config = EmbeddingConfig()
+            self.embedding_service = create_embedding_service(embedding_config)
         except Exception as e:
             logger.error(f"Failed to initialize embedding service: {str(e)}")
             self.embedding_service = None
@@ -424,38 +410,14 @@ class MemoryManager:
         # Set vector size based on the created service
         vector_size = getattr(self.embedding_service, 'embedding_dimension', 384)
         
-        # Initialize vector store with configuration
-        qdrant_config = {}
-        collection_name = 'java_assistant'
-        url = None
-        api_key = None
+        # Extract Qdrant config from vector_store_config
+        if not vector_store_config or 'qdrant' not in vector_store_config:
+            raise ValueError("No Qdrant configuration found, please provide a valid configuration")
         
-        # Try to get Qdrant config from vector_store_config first
-        if vector_store_config and 'qdrant' in vector_store_config:
-            qdrant_config = vector_store_config['qdrant']
-            collection_name = qdrant_config.get('collection', collection_name)
-            url = qdrant_config.get('url', url)
-            api_key = qdrant_config.get('api_key', api_key)
-        # Otherwise try application.yml
-        elif os.path.isfile(os.path.join(self.project_root, "application.yml")):
-            try:
-                with open(os.path.join(self.project_root, "application.yml"), 'r') as f:
-                    config = yaml.safe_load(f)
-                if config and 'vector_store' in config and 'qdrant' in config['vector_store']:
-                    qdrant_config = config['vector_store']['qdrant']
-                    collection_name = qdrant_config.get('collection', collection_name)
-                    url = qdrant_config.get('url', url)
-                    api_key = qdrant_config.get('api_key', api_key)
-            except Exception as e:
-                logger.warning(f"Failed to load Qdrant config from application.yml: {e}")
-        
-        # If URL not in config, check environment variable
-        if not url:
-            url = os.environ.get("QDRANT_URL")
-        
-        # If API key not in config, check environment variable
-        if not api_key:
-            api_key = os.environ.get("QDRANT_API_KEY")
+        qdrant_config = vector_store_config['qdrant']
+        collection_name = qdrant_config.get('collection', 'java_assistant')
+        url = qdrant_config.get('url', None)
+        api_key = qdrant_config.get('api_key', None)
         
         # Initialize vector store
         self.vector_store = QdrantVectorStore(
@@ -737,3 +699,94 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Error generating memory summary: {str(e)}")
             return "Error generating memory summary"
+
+    def get_recent_memories(self, limit: int = 5, entry_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get the most recent memory entries for the project
+        
+        Args:
+            limit: Maximum number of entries to return
+            entry_type: Optional filter for entry type
+            
+        Returns:
+            List of memory entries as dictionaries
+        """
+        try:
+            entries = self.sqlite_storage.get_entries_by_project(
+                project_id=self.project_id,
+                entry_type=entry_type,
+                limit=limit,
+                offset=0
+            )
+            
+            # Convert entries to dictionaries
+            return [entry.to_dict() for entry in entries]
+        except Exception as e:
+            logger.error(f"Error getting recent memories: {str(e)}")
+            return []
+    
+    def delete_memory(self, entry_id: str) -> bool:
+        """Delete a specific memory entry by ID
+        
+        Args:
+            entry_id: The unique identifier of the memory entry to delete
+            
+        Returns:
+            True if deletion was successful, False otherwise
+        """
+        try:
+            # First check if the entry exists and belongs to this project
+            entry = self.sqlite_storage.get_entry(entry_id)
+            if not entry or entry.project_id != self.project_id:
+                logger.warning(f"Entry {entry_id} not found or doesn't belong to project {self.project_id}")
+                return False
+                
+            # Delete from vector store if embedding_id exists
+            if entry.embedding_id and self.vector_store:
+                try:
+                    self.vector_store.delete_embedding(entry.embedding_id)
+                except Exception as e:
+                    logger.warning(f"Failed to delete embedding {entry.embedding_id}: {str(e)}")
+            
+            # Delete from SQLite
+            return self.sqlite_storage.delete_entry(entry_id)
+        except Exception as e:
+            logger.error(f"Error deleting memory: {str(e)}")
+            return False
+    
+    def clear_project_memories(self, entry_type: Optional[str] = None) -> bool:
+        """Clear all memories for the current project
+        
+        Args:
+            entry_type: Optional filter to only clear specific types of memories
+            
+        Returns:
+            True if clearing was successful, False otherwise
+        """
+        try:
+            # Get all entries to delete from vector store
+            entries = self.sqlite_storage.get_entries_by_project(
+                project_id=self.project_id,
+                entry_type=entry_type,
+                limit=1000  # Use a reasonable limit
+            )
+            
+            # Delete from vector store
+            if self.vector_store:
+                for entry in entries:
+                    if entry.embedding_id:
+                        try:
+                            self.vector_store.delete_embedding(entry.embedding_id)
+                        except Exception as e:
+                            logger.warning(f"Failed to delete embedding {entry.embedding_id}: {str(e)}")
+            
+            # Delete from SQLite
+            deleted_count = self.sqlite_storage.delete_entries_by_project(
+                project_id=self.project_id,
+                entry_type=entry_type
+            )
+            
+            logger.info(f"Cleared {deleted_count} memories from project {self.project_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing project memories: {str(e)}")
+            return False
