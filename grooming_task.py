@@ -19,7 +19,8 @@ load_config_to_env()
 
 from llm_client import LLMQueryManager, langfuse_context, observe
 from conversation_reviewer import ConversationReviewer
-from llm_interaction import initiate_llm_query_manager, query_llm
+from llm_utils import initiate_llm_query_manager
+from llm_interaction import query_llm
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
