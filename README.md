@@ -262,6 +262,8 @@ poetry run python grooming_task.py path/to/the/Java/Project/Repo --jira=[issue k
 
 <img src="docs/ask_tracing.jpg" width="600" alt="tracing image of asking">
 
+---
+
 ## Common Questions
 
 ### Is this similar to the "planning" phase in agentic coding assistants?
@@ -328,3 +330,74 @@ Pull requests are a gold mine of information on how to implement new features or
 
 Integration tests are a valuable resource for understanding how a project interacts with its dependencies and how data flows between systems. In today's microservices-oriented world, these tests often encapsulate critical knowledge about system interactions.
 
+---
+
+# Embedding Providers for Memory
+
+The memory system now supports multiple embedding providers to generate vector representations of text:
+
+1. **OpenAI** - Uses OpenAI's text-embedding-3-small model (default)
+2. **Google Gemini** - Uses Google's Gemini embedding models
+3. **Sentence Transformers** - Fallback option that runs locally
+
+## Configuration
+
+You can configure the embedding provider in the `application.yml` file:
+
+```yaml
+vector_store:
+  use: qdrant
+  embedding_provider: auto  # Options: auto, openai, gemini
+  qdrant:
+    # Qdrant configuration...
+```
+
+Options for `embedding_provider`:
+- `auto`: Try OpenAI first, then Gemini, then fall back to Sentence Transformers
+- `openai`: Use only OpenAI embeddings
+- `gemini`: Use only Google Gemini embeddings
+
+## Requirements
+
+### For OpenAI embeddings:
+```
+pip install openai tiktoken
+```
+
+### For Google Gemini embeddings:
+```
+pip install google-cloud-aiplatform
+```
+
+You'll also need to set up Google Cloud authentication:
+```bash
+# Set environment variable to your credentials file
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-service-account-key.json"
+
+# Alternatively, use gcloud CLI to authenticate
+gcloud auth application-default login
+```
+
+### For Sentence Transformers (fallback):
+```
+pip install sentence-transformers
+```
+
+## Command-line Usage
+
+You can specify the embedding provider when using the CLI:
+
+```bash
+python memory_cli.py --project-root /path/to/project --embedding-provider gemini search "authentication system"
+```
+
+## Embedding Dimensions
+
+Different embedding providers produce vectors of different dimensions:
+- OpenAI: 1536 dimensions
+- Gemini: 768 dimensions
+- Sentence Transformers: 384 dimensions (may vary based on model)
+
+The system handles these differences automatically, but be aware that mixing embedding providers within the same collection is not recommended.
+
+---
