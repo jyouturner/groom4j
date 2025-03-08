@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import Optional, Dict, Any, Union
-from .embedding_service import OpenAiEmbeddingService
+from .embedding_service_openai import OpenAiEmbeddingService
 from .embedding_service_sentence_transformer import SentenceTransformerEmbeddingService
 from .embedding_service_gemini import GeminiEmbeddingService
 from .embedding_config import EmbeddingConfig
