@@ -1,6 +1,6 @@
-
 import logging
 import re
+from typing import List, Optional, Tuple
 from memory.memory_manager import MemoryManager
 import os
 from pathlib import Path
@@ -17,7 +17,8 @@ from conversation_state_machine import (
     ConversationState, 
     ConversationStateMachine,
     StateManager,
-    generate_prompt_for_state
+    generate_prompt_for_state,
+    Transition
 )
 
 # Set up logging
@@ -59,7 +60,7 @@ THOROUGHNESS_SCORE: [1-10, where 10 indicates extremely thorough]
 
 class ConversationReviewer:
 
-    def __init__(self, query_manager, target_thoroughness=6, max_history=10, max_rounds=8, use_memory=True):
+    def __init__(self, query_manager, target_thoroughness=6, max_history=10, max_rounds=8, use_memory=True, embedding_config=None, vector_store_config=None):
         """
         Initialize the ConversationReviewer with memory support
         Args:
@@ -77,6 +78,8 @@ class ConversationReviewer:
         self.current_round = 0
         self.consecutive_empty_rounds = 0
         self.max_empty_rounds = 3
+        self.embedding_config = embedding_config
+        self.vector_store_config = vector_store_config
         
         # Initialize the state machine
         self.state_manager = StateManager()
@@ -101,7 +104,12 @@ class ConversationReviewer:
                     project_root = os.getcwd()
                 
                 # Initialize memory manager
-                self.memory_manager = MemoryManager(project_root=project_root)
+                # user the project root to generate a project id
+                project_id = f"{os.path.basename(project_root)}_{hash(os.path.abspath(project_root)) % 10000:04d}"
+                self.memory_manager = MemoryManager(project_root=project_root,
+                                                    project_id = project_id,
+                                                    embedding_config=self.embedding_config,
+                                                    vector_store_config=self.vector_store_config)
                 logger.info(f"Initialized memory manager for project {self.memory_manager.project_id}")
             except Exception as e:
                 logger.error(f"Failed to initialize memory manager: {str(e)}")
@@ -190,10 +198,32 @@ class ConversationReviewer:
         """Get the current conversation state"""
         return self.state_manager.state_machine.current_state
     
-    def get_state_prompt_guidance(self) -> str:
-        """Get prompt guidance based on current state"""
-        result = self.state_manager.state_machine.process(self.conversation_context)
-        return result.get("prompt_guidance", "")
+    def get_state_prompt_guidance(self):
+        """Get prompt guidance based on the current state"""
+        if not hasattr(self, 'state_manager') or not self.state_manager:
+            return ""
+        
+        # Generate prompt for current state
+        result = generate_prompt_for_state(
+            self.state_manager.state_machine.current_state,
+            self.conversation_context
+        )
+        
+        # Check if result is a Transition object (which happens during state transitions)
+        if isinstance(result, Transition):
+            # Return the reason as guidance if it's a Transition
+            return result.reason
+        
+        # If result is a dictionary (normal case), get the prompt_guidance
+        if isinstance(result, dict):
+            return result.get("prompt_guidance", "")
+        
+        # If result is a string, return it directly
+        if isinstance(result, str):
+            return result
+        
+        # Default case - return empty string
+        return ""
     
     def update_conversation_context(self, **kwargs):
         """Update the conversation context used by the state machine"""
@@ -260,7 +290,20 @@ class ConversationReviewer:
             
             # Add state-specific guidance if we need to continue
             if recommendation == "CONTINUE" and final_answer_prompt is None:
-                state_guidance = state_result.get("prompt_guidance", "")
+                # Handle different return types from state_manager.process
+                if isinstance(state_result, Transition):
+                    # If it's a Transition object, use the reason as guidance
+                    state_guidance = state_result.reason
+                elif isinstance(state_result, dict):
+                    # If it's a dictionary, get the prompt_guidance
+                    state_guidance = state_result.get("prompt_guidance", "")
+                elif isinstance(state_result, str):
+                    # If it's a string, use it directly
+                    state_guidance = state_result
+                else:
+                    # Default case
+                    state_guidance = ""
+                    
                 if state_guidance:
                     logger.info(f"Adding state-specific guidance: {state_guidance}")
                     # We'll keep the recommendation but add state-specific guidance
@@ -580,11 +623,11 @@ Format your response with:
         return recommendation == "CONTINUE", final_answer_prompt
 
     def incorporate_next_steps(self, next_steps: List[str]):
-        # Implement logic to incorporate next_steps into the next prompt
+        print("Missing implementation: Implement logic to incorporate next_steps into the next prompt")
         pass
 
     def get_final_answer(self, final_answer_prompt: str):
-        # Implement logic to get the final answer using the provided prompt
+        print("Missing implementation: Implement logic to get the final answer using the provided prompt")
         return final_answer_prompt
 
     def restart_conversation(self):
