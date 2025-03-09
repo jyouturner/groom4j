@@ -219,6 +219,15 @@ poetry run python grooming_task.py path/to/the/Java/Project/Repo --jira=[issue k
 
 ---
 
+## One File for LLM
+
+run below command to combine all the files into one file, and then you can upload the one file with LLM and ask any question.
+```sh
+./one_file.sh
+```
+
+---
+
 # Embedding Providers for Memory
 
 The memory system now supports multiple embedding providers to generate vector representations of text:
@@ -265,7 +274,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-service-account-key.json"
 gcloud auth application-default login
 ```
 
-### For Sentence Transformers (fallback):
+### For Sentence Transformers (default):
 ```
 pip install sentence-transformers
 ```
