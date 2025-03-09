@@ -2,7 +2,7 @@ import os
 import sys
 
 import argparse
-from projectfiles import ProjectFiles
+from .projectfiles import ProjectFiles
 
 
 system_prompt = """
