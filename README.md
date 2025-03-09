@@ -10,6 +10,27 @@ Groom4J is designed to address a critical challenge in enterprise Java developme
 - **Focus On Development Process**: Tailored for the unique challenges of large-scale, complex Java projects common in enterprise development process where coding is just one step in the middle.
 - **Navigating internal complexity**: Making sense of company-specific architectures, patterns, and legacy code.
 
+## 🌟 Key Features
+
+- **Interactive Q&A**: Ask questions about your Java project in natural language and get detailed answers
+- **Code Exploration**: Automatically explores and analyzes project structure, packages, and files
+- **Memory System**: Stores past conversations and analyses for future reference
+- **Question Decomposition**: Breaks down complex questions into manageable components
+- **Efficient Resource Usage**: Tiered LLM approach for cost and performance optimization
+- **Conversation State Management**: Intelligent tracking of conversation flow for more coherent interactions
+
+## 🏗️ Architecture
+
+Groom4J is built with a modular architecture that consists of several key components:
+
+### Core Components
+
+- **LLM Integration**: Supports multiple LLM providers including Anthropic Claude, OpenAI, and Google Vertex AI
+- **Project Analysis**: Tools for scanning and summarizing Java project structures
+- **Memory Manager**: Stores and retrieves past conversations using vector embeddings
+- **Conversation State Machine**: Manages the flow of conversation for more natural interaction
+- **Researcher**: Intelligent exploration of codebases to answer questions
+
 ## Techniques:
 
 - **Gisting Files and Packages**: This provides a hierarchical understanding of the project structure.
