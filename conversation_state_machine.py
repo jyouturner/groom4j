@@ -45,123 +45,90 @@ class StateTransition:
     def can_transition(self, conversation_context):
         return self.condition_fn(conversation_context)
 
+class Transition:
+    def __init__(self, from_state: ConversationState, to_state: ConversationState, reason: str, weight_function=None):
+        self.from_state = from_state
+        self.to_state = to_state
+        self.reason = reason
+        self.weight_function = weight_function or (lambda context: 1.0)  # Default weight function
+    
+    def calculate_weight(self, context):
+        return self.weight_function(context)
+
 class ConversationStateMachine:
     def __init__(self):
         self.current_state = ConversationState.INITIAL
-        self.transitions = self._define_transitions()
+        
+        # Initialize transitions as a dictionary mapping states to lists of transitions
+        # NOT as a list
+        self.transitions = {
+            ConversationState.INITIAL: [
+                Transition(
+                    from_state=ConversationState.INITIAL,
+                    to_state=ConversationState.EXPLORING,
+                    reason="Starting exploration phase",
+                    weight_function=lambda context: 1.0
+                )
+            ],
+            ConversationState.EXPLORING: [
+                Transition(
+                    from_state=ConversationState.EXPLORING,
+                    to_state=ConversationState.FOCUSING,
+                    reason="Found key areas to focus on",
+                    weight_function=lambda context: 
+                        0.8 if context.get('found_key_findings', False) else 0.2
+                ),
+                Transition(
+                    from_state=ConversationState.EXPLORING,
+                    to_state=ConversationState.EXPLORING,
+                    reason="Continuing exploration",
+                    weight_function=lambda context: 
+                        0.2 if context.get('found_key_findings', False) else 0.8
+                )
+            ],
+            ConversationState.FOCUSING: [
+                Transition(
+                    from_state=ConversationState.FOCUSING,
+                    to_state=ConversationState.SYNTHESIZING,
+                    reason="Ready to synthesize findings",
+                    weight_function=lambda context: 
+                        0.7 if context.get('round', 0) > 3 else 0.3
+                ),
+                Transition(
+                    from_state=ConversationState.FOCUSING,
+                    to_state=ConversationState.FOCUSING,
+                    reason="Continuing to focus on key areas",
+                    weight_function=lambda context: 
+                        0.3 if context.get('round', 0) > 3 else 0.7
+                )
+            ],
+            ConversationState.SYNTHESIZING: [
+                Transition(
+                    from_state=ConversationState.SYNTHESIZING,
+                    to_state=ConversationState.CONCLUDING,
+                    reason="Ready to conclude",
+                    weight_function=lambda context: 
+                        0.8 if (context.get('round', 0) > 5 or 
+                               context.get('current_thoroughness', 0) >= 
+                               context.get('target_thoroughness', 10)) else 0.2
+                ),
+                Transition(
+                    from_state=ConversationState.SYNTHESIZING,
+                    to_state=ConversationState.SYNTHESIZING,
+                    reason="Continuing synthesis",
+                    weight_function=lambda context: 
+                        0.2 if (context.get('round', 0) > 5 or 
+                               context.get('current_thoroughness', 0) >= 
+                               context.get('target_thoroughness', 10)) else 0.8
+                )
+            ],
+            ConversationState.CONCLUDING: []  # No transitions from CONCLUDING state
+        }
         self.state_handlers = self._define_state_handlers()
         self.state_history = []
         self.transition_probabilities = self._initialize_transition_probabilities()
         self.parallel_tracks = {}  # For tracking multiple aspects of conversation
         
-    def _define_transitions(self):
-        # Define all valid state transitions with conditions
-        return [
-            # Regular flow transitions
-            StateTransition(
-                ConversationState.INITIAL,
-                ConversationState.EXPLORING,
-                lambda ctx: ctx.get("question_received", False)
-            ),
-            StateTransition(
-                ConversationState.EXPLORING,
-                ConversationState.FOCUSING,
-                lambda ctx: ctx.get("relevant_components_found", False)
-            ),
-            StateTransition(
-                ConversationState.EXPLORING,
-                ConversationState.CLARIFYING,
-                lambda ctx: ctx.get("ambiguities_detected", False)
-            ),
-            StateTransition(
-                ConversationState.FOCUSING,
-                ConversationState.ANALYZING,
-                lambda ctx: ctx.get("components_selected", False)
-            ),
-            StateTransition(
-                ConversationState.ANALYZING,
-                ConversationState.SYNTHESIZING,
-                lambda ctx: ctx.get("analysis_complete", False) or ctx.get("round", 0) > 3
-            ),
-            StateTransition(
-                ConversationState.CLARIFYING,
-                ConversationState.FOCUSING,
-                lambda ctx: ctx.get("clarification_complete", False)
-            ),
-            StateTransition(
-                ConversationState.SYNTHESIZING,
-                ConversationState.CONCLUDING,
-                lambda ctx: ctx.get("synthesis_complete", False) or 
-                            ctx.get("current_thoroughness", 0) >= ctx.get("thoroughness_target", 6)
-            ),
-            StateTransition(
-                ConversationState.CONCLUDING,
-                ConversationState.REFINING,
-                lambda ctx: ctx.get("refinement_requested", False)
-            ),
-            
-            # Expertise level transitions
-            StateTransition(
-                ConversationState.FOCUSING,
-                ConversationState.NOVICE_EXPLAINING,
-                lambda ctx: ctx.get("user_expertise", "medium") == "beginner"
-            ),
-            StateTransition(
-                ConversationState.FOCUSING,
-                ConversationState.EXPERT_DETAILING,
-                lambda ctx: ctx.get("user_expertise", "medium") == "expert"
-            ),
-            StateTransition(
-                ConversationState.NOVICE_EXPLAINING,
-                ConversationState.SYNTHESIZING,
-                lambda ctx: ctx.get("explanation_complete", False) or ctx.get("round", 0) > 4
-            ),
-            StateTransition(
-                ConversationState.EXPERT_DETAILING,
-                ConversationState.SYNTHESIZING,
-                lambda ctx: ctx.get("detailing_complete", False) or ctx.get("round", 0) > 5
-            ),
-            
-            # Error handling transitions
-            StateTransition(
-                ConversationState.ANY,
-                ConversationState.RECOVERY,
-                lambda ctx: ctx.get("error_detected", False)
-            ),
-            StateTransition(
-                ConversationState.ANY,
-                ConversationState.FALLBACK,
-                lambda ctx: ctx.get("confidence", 1.0) < 0.3
-            ),
-            StateTransition(
-                ConversationState.RECOVERY,
-                ConversationState.EXPLORING,
-                lambda ctx: ctx.get("error_handled", False)
-            ),
-            StateTransition(
-                ConversationState.FALLBACK,
-                ConversationState.EXPLORING,
-                lambda ctx: ctx.get("using_fallback", True) and ctx.get("round", 0) > ctx.get("fallback_round", 0) + 1
-            ),
-            
-            # Meta-transitions
-            StateTransition(
-                ConversationState.ANY,
-                ConversationState.META_REFLECTION,
-                lambda ctx: ctx.get("round", 0) % 3 == 0 and ctx.get("round", 0) > 0  # Every 3 rounds
-            ),
-            StateTransition(
-                ConversationState.META_REFLECTION,
-                ConversationState.STRATEGY_ADJUSTMENT,
-                lambda ctx: ctx.get("strategy_adjustment", None) is not None
-            ),
-            StateTransition(
-                ConversationState.STRATEGY_ADJUSTMENT,
-                ConversationState.EXPLORING,
-                lambda ctx: True  # Always return to exploring after strategy adjustment
-            ),
-        ]
-    
     def _define_state_handlers(self):
         # Map states to handler functions
         return {
@@ -240,9 +207,8 @@ class ConversationStateMachine:
         
         # Find transitions for this track's state
         valid_transitions = [
-            t for t in self.transitions 
-            if (t.from_state == old_state or t.from_state == ConversationState.ANY) 
-            and t.can_transition(context)
+            t for t in self.transitions[old_state] 
+            if t.can_transition(context)
         ]
         
         # Select next state using probabilities as weights
@@ -259,46 +225,42 @@ class ConversationStateMachine:
         
         return result
     
-    def process(self, conversation_context):
-        """Process the main conversation state machine"""
-        old_state = self.current_state
-        self.state_history.append(old_state)
+    def process(self, context):
+        # Get valid transitions from current state
+        valid_transitions = self.transitions.get(self.current_state, [])
         
-        # Find valid transitions from current state
-        valid_transitions = [
-            t for t in self.transitions 
-            if (t.from_state == self.current_state or t.from_state == ConversationState.ANY) 
-            and t.can_transition(conversation_context)
-        ]
+        # If no valid transitions, force to CONCLUDING state
+        if not valid_transitions:
+            old_state = self.current_state
+            self.current_state = ConversationState.CONCLUDING
+            logger.warning(f"Forced transition from {old_state} to CONCLUDING due to no valid transitions")
+            return Transition(
+                from_state=old_state,
+                to_state=ConversationState.CONCLUDING,
+                reason="Forced conclusion due to no valid transitions"
+            )
         
-        # Select next state using probabilities and fallback mechanism
-        next_state = None
-        if valid_transitions:
-            # Use transition probabilities to weight selection
-            weights = [self.transition_probabilities[old_state][t.to_state] for t in valid_transitions]
-            next_transition = random.choices(valid_transitions, weights=weights, k=1)[0]
-            next_state = next_transition.to_state
-        else:
-            # Fallback mechanism if no valid transitions
-            logger.warning(f"No valid transitions from {self.current_state}. Using fallback.")
-            next_state = ConversationState.FALLBACK
+        # Calculate weights for each transition
+        weights = [transition.calculate_weight(context) for transition in valid_transitions]
         
-        # Update state and record transition
-        if next_state:
-            self.current_state = next_state
-            logger.info(f"State transition: {old_state} -> {self.current_state}")
-            
-            # Update transition probabilities based on outcome
-            # Will be implemented after execution to determine success
+        # Check if all weights are zero or negative
+        if sum(weights) <= 0:
+            old_state = self.current_state
+            self.current_state = ConversationState.CONCLUDING
+            logger.warning(f"Forced transition from {old_state} to CONCLUDING due to all transition weights being zero or negative")
+            return Transition(
+                from_state=old_state,
+                to_state=ConversationState.CONCLUDING,
+                reason="Forced conclusion due to all transition weights being zero or negative"
+            )
         
-        # Execute handler for current state
-        result = self.state_handlers[self.current_state](conversation_context)
+        # Choose next transition based on weights
+        next_transition = random.choices(valid_transitions, weights=weights, k=1)[0]
         
-        # Update transition probabilities based on successful execution
-        success_factor = result.get("success_factor", 0.5)  # Default middling success
-        self.update_transition_probabilities(old_state, self.current_state, success_factor)
+        # Update current state
+        self.current_state = next_transition.to_state
         
-        return result
+        return next_transition
     
     def revert_to_previous_state(self, context):
         """Revert to previous state if current approach is not working"""
@@ -601,49 +563,87 @@ Reason for change: {change_reason}
     """
 }
 
-def generate_prompt_for_state(state, context):
-    """Generate appropriate prompt for the current conversation state"""
-    # Get the base template or fallback to EXPLORING if not found
-    template = STATE_PROMPTS.get(state, STATE_PROMPTS[ConversationState.EXPLORING])
+def generate_prompt_for_state(state, context=None):
+    """Generate a prompt based on the current state and context"""
+    context = context or {}
     
-    # Add standard elements to all prompts
-    standard_context = {
-        "conversation_round": context.get("round", 0),
-        "max_rounds": context.get("max_rounds", 8),
-        "state_history": context.get("state_history", []),
-        "user_expertise": context.get("user_expertise", "medium"),
+    # Define templates for each state
+    templates = {
+        ConversationState.INITIAL: "Let's begin exploring this question: {question}",
+        
+        ConversationState.EXPLORING: """
+You are in the EXPLORATION phase. Focus on:
+1. Broad understanding of the codebase structure
+2. Identifying key components related to the question
+3. Mapping relationships between components
+
+Project context: {project_context}
+        """,
+        
+        ConversationState.FOCUSING: """
+You are in the FOCUSING phase. Now that you've explored the codebase, concentrate on:
+1. Analyzing the most relevant components in depth: {explored_components}
+2. Understanding specific implementation details
+3. Tracing data and control flow through key parts of the system
+        """,
+        
+        ConversationState.SYNTHESIZING: """
+You are in the SYNTHESIS phase. Now:
+1. Connect all the information you've gathered
+2. Explain how different components work together
+3. Provide a comprehensive answer to the original question
+4. Highlight any remaining uncertainties or assumptions
+        """,
+        
+        ConversationState.CONCLUDING: """
+You are in the CONCLUSION phase. Provide a final, comprehensive answer that:
+1. Directly addresses the original question
+2. Summarizes key findings and insights
+3. Explains the overall architecture and implementation
+4. Mentions any limitations in your understanding
+        """
     }
     
-    # Merge standard context with provided context
-    merged_context = {**standard_context, **context}
+    # Get the template for the current state
+    template = templates.get(state, "")
     
-    # Generate the prompt with all context variables
+    # Create a merged context with default values for required template variables
+    merged_context = {
+        "question": context.get("question", "the question"),
+        "project_context": context.get("project_context", "No project context available"),
+        "explored_components": context.get("explored_components", "relevant components")
+    }
+    
+    # Add all other context variables
+    for key, value in context.items():
+        if key not in merged_context:
+            merged_context[key] = value
+    
     try:
+        # Try to format the template with the merged context
         formatted_prompt = template.format(**merged_context)
+        return {
+            "prompt_guidance": formatted_prompt,
+            "state": state.value
+        }
     except KeyError as e:
-        # Handle missing context variables gracefully
-        logger.warning(f"Missing context variable in prompt template: {e}")
-        # Add placeholder for missing variable
-        merged_context[str(e).strip("'")] = f"[Missing: {e}]"
-        formatted_prompt = template.format(**merged_context)
-    
-    # Add state persistence instructions for all prompts
-    formatted_prompt += """
----
-Conversation State Information:
-- Current state: {current_state}
-- Previous state: {previous_state}
-- Transition reason: {transition_reason}
-
-Remember to maintain state context across interactions by referencing 
-previous findings and building upon them progressively.
-""".format(
-        current_state=state.value,
-        previous_state=context.get("previous_state", "none"),
-        transition_reason=context.get("transition_reason", "initial")
-    )
-    
-    return formatted_prompt
+        # If a required key is still missing, log a warning and return a simpler prompt
+        missing_key = str(e).strip("'")
+        logger.warning(f"Missing context variable in prompt template: '{missing_key}'")
+        
+        # Return a simplified prompt that doesn't require the missing variable
+        simplified_prompt = f"You are in the {state.value} phase. Continue your analysis based on the information gathered so far."
+        return {
+            "prompt_guidance": simplified_prompt,
+            "state": state.value
+        }
+    except Exception as e:
+        # Handle any other formatting errors
+        logger.error(f"Error formatting prompt template: {str(e)}")
+        return {
+            "prompt_guidance": f"You are in the {state.value} phase.",
+            "state": state.value
+        }
 
 def generate_multi_track_prompt(main_state, parallel_tracks, context):
     """Generate a prompt that combines information from multiple conversation tracks"""
