@@ -70,7 +70,7 @@ If you have Python and Poetry installed:
 ```sh
 poetry run python gist_files.py path/to/the/Java/Project/Repo
 poetry run python gist_packages.py path/to/the/Java/Project/Repo
-poetry run python grooming_task.py path/to/the/Java/Project/Repo --task="Your task description"
+poetry run python tell_me_about.py path/to/the/Java/Project/Repo --question="Your question"
 ```
 
 ### Running with Docker (recommended for Java developers)
@@ -89,7 +89,7 @@ Use the provided run-read-agent.sh script to run the tool:
 ./run-read-agent.sh gist-packages /path/to/your/java/project
 
 # To groom a task
-./run-read-agent.sh groom-task --task="Your task description" /path/to/your/java/project
+./run-read-agent.sh tell-me-about /path/to/your/java/project --question="Your question"
 ```
 
 The script will automatically build the Docker image if needed and run the tool inside a container using Poetry. The Java project directory is mounted into the container, allowing the tool to access and analyze the project files.
@@ -122,20 +122,7 @@ For testing purpose, there is a sample Java project "travel-service-dev" include
 
 ## Try the Example Java Project
 
-The "gist" files are already created in the "data/travel-service-dev" project, under ".gist" folder. You can test the grooming with below command
-
-```sh
-poetry run python grooming_task.py ./data/travel-service-dev --task="add a new field 'mayor' to city, for the name of the mayor of the city"
-
-poetry run python grooming_task.py ./data/travel-service-dev --task="add a new feature to search city by name"
-
-poetry run python grooming_task.py ./data/travel-service-dev --task="refactor the Rest API to GraphQL"
-
-```
-
-## Interactive Project Analysis with tell_me_about.py
-
-For a more interactive experience with your Java project, use the `tell_me_about.py` tool which allows you to ask specific questions and have multi-turn conversations about your codebase:
+The "gist" files are already created in the "data/travel-service-dev" project, under ".gist" folder. You can test the grooming with below command:
 
 ```sh
 poetry run python tell_me_about.py ./data/travel-service-dev/ --question="how data flow from database to the API"
@@ -174,21 +161,6 @@ poetry run python tell_me_about.py ./data/travel-service-dev/ --question="Explai
 
 For example, the generated answer to the question "how data flow from database to the API" can be found [data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md](./data/travel-service-dev/.gist/tell_me_about/how_data_flow_from_database_to_the_api.md)
 
-If you want to summarize all the API endpoints:
-
-```sh
-poetry run python summarize_api.py ./data/travel-service-dev
-```
-
-The summaries can be found at [./data/travel-service-dev/.gist/tell_me_about/api_notes.md](./data/travel-service-dev/.gist/tell_me_about/api_notes.md)
-
-If you want to trace an API endpoint from end to end, run this command
-
-```
-poetry run python trace_api_request.py data/travel-service-dev --api-request=/api/v1/city/New%20York
-```
-
-The detail of the API endpoint will be saved to [./data/travel-service-dev/.gist/tell_me_about/endpoint_api_v1_city_new_20york.md](./data/travel-service-dev/.gist/tell_me_about/endpoint_api_v1_city_new_20york.md)
 
 ## Use on Your Project
 
@@ -208,17 +180,6 @@ poetry run python gist_packages.py path/to/the/Java/Project/Repo
 
 After the process is done, you will see a file "package_notes.txt" created in the ".gist" folder.
 
-### **Optional to Gist API**
-
-If your project is a API project, there is a dedicated script to create a markdown file to describe the endpoints of the API.
-
-```sh
-poetry run python gist_api.py path/to/the/Java/Project/Repo
-```
-
-After the process is done, you will see a mardown file "api_notes.md" created in the ".gist" folder.
-
-
 ## Q&A
 
 If you have a specific question to ask about the codebase, you can use below command to inspect the codebase
@@ -229,13 +190,6 @@ poetry run python tell_me_about.py path/to/the/Java/Project/Repo --question="...
 
 More info can be found in [tell_me_about](docs/tell_me_about.md)
 
-## Groom Coding Task
-
-Development tasks and stories are often bigger than one single Q/A, you can use below command for the "grooming" purpose.
-
-```sh
-poetry run python grooming_task.py path/to/the/Java/Project/Repo --task="..."
-```
 
 ## Groom A JIRA issue
 
@@ -262,73 +216,6 @@ poetry run python grooming_task.py path/to/the/Java/Project/Repo --jira=[issue k
 
 <img src="docs/ask_tracing.jpg" width="600" alt="tracing image of asking">
 
----
-
-## Common Questions
-
-### Is this similar to the "planning" phase in agentic coding assistants?
-
-Yes, this project essentially covers the "planning" phase found in AI coding assistants like Open-Devin. We use the term "grooming" to align with common development team workflows, potentially integrating with Sprint planning or JIRA. Our focus is on supporting entry-level or junior engineers often assigned maintenance tasks in enterprise environments, where challenges frequently relate to domain knowledge, edge cases, integration testing, and dependency management.
-
-### How does this compare to RAG or GraphRAG?
-
-While similar to Retrieval-Augmented Generation (RAG) in that it indexes documents first, our approach is specifically tailored for Java projects. It leverages the intrinsic structure of Java codebases, similar to GraphRAG's concept of connecting information nodes. We create a graph of Java programs, packages, and projects to provide context-aware assistance.
-
-### Doesn't this reinvent existing Java code indexing tools?
-
-While Java IDEs have long had powerful code indexing capabilities (e.g., Eclipse's JDT Core Index), our approach leverages the natural language understanding of LLMs. This allows for more flexible and intuitive interactions with the codebase, potentially reducing the need for complex integration with legacy indexers.
-
-### Why not use function calling for file and package requests?
-
-Function calling is on our roadmap for future improvements. The current approach using prompts and parsing works well across various LLMs (except for some limitations with Gemini). It provides a simple, consistent interface for requesting file and package information:
-
-```
-[I need access files: <file>file1 name</file>,<file>file2 name</file>]
-[I need info about packages: <package>package name</package>]
-[I need to search <keyword>keyword</keyword> in the project]
-```
-
-### Will this be necessary when LLMs can process entire repositories?
-
-While LLMs are evolving rapidly, handling private, enterprise-scale codebases with full context remains challenging. Until we can effectively fine-tune LLMs on internal repositories (considering security and privacy concerns), systems like this serve as crucial "assistants to LLMs." They provide structured, context-aware information to help LLMs navigate and understand complex project structures more effectively.
-
-### How does this tool benefit development teams?
-
-1. **Context-Aware Assistance**: By gisting files and packages, it provides LLMs with a hierarchical understanding of the project structure.
-2. **Efficient Onboarding**: Helps new team members quickly grasp project architecture and dependencies.
-3. **Consistent Approach**: Encourages a standardized method for task planning and code navigation across the team.
-4. **Integration Potential**: Designed to work alongside existing tools and processes, enhancing rather than replacing current workflows.
-
-## To Do
-
-### **Handle Code Changes**
-
-Instead of re-index (gist) the whole project, we need to find the diff betweeen the commits and only update the gist files of the changes since the last success indexing.
-
-### **Multi-Agent**
-
-
-### **Implement a "critical thinking" phase**
-
-Before proposing solutions, prompt the LLM to critically evaluate its own assumptions and initial ideas
-Ask it to consider alternative explanations for the observed behavior
-
-### **Implement a review and refinement stage**
-
-After the initial analysis, prompt the LLM to review its own work
-Ask it to identify potential oversights or areas that need more investigation
-
-### **Integration with Internal Knowledge Bases**
-
-Large organizations often have extensive internal documentation, wikis, and presentations that explain various aspects of their systems. For example, setup a RAG (Retrieval-Augmented Generation) based system, potentially using GraphRAG to index those documents and provide query interface. Then integrate this tool with such RAG system for Q/A.
-
-### **Leveraging Approved Pull Requests (PRs)**
-
-Pull requests are a gold mine of information on how to implement new features or fix issues. We can apply the similar strategy to index those PRs and code changes.
-
-### **Leverage Integration Testing**
-
-Integration tests are a valuable resource for understanding how a project interacts with its dependencies and how data flows between systems. In today's microservices-oriented world, these tests often encapsulate critical knowledge about system interactions.
 
 ---
 
