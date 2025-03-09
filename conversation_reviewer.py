@@ -371,7 +371,7 @@ class ConversationReviewer:
 
     def _evaluate_thoroughness(self, response: str) -> int:
         """
-        Evaluate the thoroughness of a response based on multiple factors and context.
+        Enhanced evaluation of response thoroughness based on multiple factors and context.
         Returns a score from 1-10.
         """
         score = 3  # Base score for a well-formed response
@@ -382,18 +382,23 @@ class ConversationReviewer:
             'IMPLEMENTATION_DETAIL': 0,
             'ARCHITECTURE': 0,
             'DATA_FLOW': 0,
-            'SPECIAL_CASE': 0
+            'SPECIAL_CASE': 0,
+            'COMPARISON': 0,
+            'CODE_VALUES': 0,
+            'EVOLUTION': 0,
+            'IDENTIFIER': 0
         }
         
         for tag in findings.keys():
             findings[tag] = len(re.findall(f'\\[{tag}\\]', response))
         
-        # Score based on findings - any findings are good
+        # Score based on findings
         if sum(findings.values()) > 0:
             score += 2  # Points for having any findings
-            # Bonus point for multiple types of findings
-            if sum(1 for count in findings.values() if count > 0) > 1:
-                score += 1
+            # Bonus points for multiple types of findings
+            unique_finding_types = sum(1 for count in findings.values() if count > 0)
+            if unique_finding_types > 1:
+                score += min(2, unique_finding_types - 1)  # Up to 2 bonus points
         
         # Check for code examples or file references
         code_matches = re.findall(r'```(?:java|xml|properties|markdown)(.*?)```', response, re.DOTALL)
@@ -405,30 +410,44 @@ class ConversationReviewer:
         
         # Check for structured explanation
         has_structure = False
-        if len(re.findall(r'^##? ', response, re.MULTILINE)) > 1:  # Has sections
-            score += 1
+        section_count = len(re.findall(r'^##? ', response, re.MULTILINE))
+        if section_count > 1:
+            score += min(2, section_count // 2)  # Up to 2 points for good structure
             has_structure = True
         
         # Check for technical depth
-        technical_terms = re.findall(r'\b(class|method|interface|implementation|configuration|property|parameter|value|option|setting)\b', 
+        technical_terms = re.findall(r'\b(class|method|interface|implementation|configuration|property|parameter|value|option|setting|filter|attribute|guid|constant|enum)\b', 
                                    response, re.IGNORECASE)
         if len(set(technical_terms)) >= 3:
+            score += min(2, len(set(technical_terms)) // 3)  # Up to 2 points
+        
+        # Check for analysis depth indicators
+        analysis_indicators = [
+            re.search(r'(cross-file|between files|across components)', response, re.IGNORECASE) is not None,
+            re.search(r'(data flow|process flow|workflow)', response, re.IGNORECASE) is not None,
+            re.search(r'(architecture|design pattern|system design)', response, re.IGNORECASE) is not None,
+            re.search(r'(evolution|migration|transition|legacy)', response, re.IGNORECASE) is not None,
+            re.search(r'(deprecated|replaced|retired|todo|fixme)', response, re.IGNORECASE) is not None,
+            re.search(r'(identifier|guid|constant|enum)', response, re.IGNORECASE) is not None
+        ]
+        score += sum(analysis_indicators)
+        
+        # Check for data lifecycle analysis
+        lifecycle_indicators = [
+            re.search(r'(initial|populated|defined)', response, re.IGNORECASE) is not None,
+            re.search(r'(propagate|transform|flow)', response, re.IGNORECASE) is not None,
+            re.search(r'(decision point|affect|impact)', response, re.IGNORECASE) is not None
+        ]
+        if sum(lifecycle_indicators) >= 2:  # Reward comprehensive lifecycle analysis
             score += 1
         
-        # Check for completeness indicators
-        completeness_indicators = [
-            re.search(r'(limitations?|restrictions?|constraints?)', response, re.IGNORECASE) is not None,
-            re.search(r'(example|for instance|such as)', response, re.IGNORECASE) is not None,
-            re.search(r'(note|important|key point)', response, re.IGNORECASE) is not None
-        ]
-        score += sum(completeness_indicators)
-        
-        logger.info(f"""Thoroughness evaluation:
+        logger.info(f"""Enhanced thoroughness evaluation:
             - Findings: {findings}
             - Code examples: {len(code_matches)}
             - Has structure: {has_structure}
             - Technical terms: {len(set(technical_terms))}
-            - Completeness indicators: {sum(completeness_indicators)}
+            - Analysis indicators: {sum(analysis_indicators)}
+            - Lifecycle indicators: {sum(lifecycle_indicators)}
             - Final score: {min(10, score)}
         """)
         
