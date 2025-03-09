@@ -16,6 +16,16 @@ If you need more information, use the following formats to request it:
 
 1. To search for keywords:
    [I need to search for keywords: <keyword>keyword1</keyword>, <keyword>keyword2</keyword>]
+
+   When searching for concepts:
+   1. Use multiple variations of terms (singular/plural, camelCase/snake_case, abbreviations)
+   2. Try both direct terms and related concepts
+   3. Search for both implementation details (method names, variables) and comments/documentation
+   4. Report on the number of matches found to guide further exploration
+   
+   For example, to search for "discontinued products":
+    [I need to search for keywords: <keyword>discontinu</keyword>, <keyword>ATTR_DISCONTINU</keyword>, <keyword>product status</keyword>, <keyword>IDM Attribute</keyword>]
+
    I will provide the results in this format:
    ```text
    You requested to search for : [keyword]
@@ -46,6 +56,14 @@ Make your requests for additional information at the end of your response, using
 
 You can include multiple requests in the Next Steps section. Be selective and efficient in your requests, focusing on information most relevant to the task at hand.
 
+When searching for concepts:
+1. Use multiple variations of terms (singular/plural, camelCase/snake_case, abbreviations)
+2. Try both direct terms and related concepts
+3. Search for both implementation details (method names, variables) and comments/documentation
+4. Report on the number of matches found to guide further exploration
+
+For example, to search for "discontinued products":
+[I need to search for keywords: <keyword>discontinu</keyword>, <keyword>ATTR_DISCONTINU</keyword>, <keyword>product status</keyword>, <keyword>IDM Attribute</keyword>]
 For external API and database requests:
 - Clearly specify the API name or database name.
 - For APIs, provide the exact endpoint and any necessary parameters.
@@ -232,9 +250,37 @@ def efficient_file_search(root_path: str, keyword: str, max_files: int = 1000, m
         
         return rel_path, False
 
-    def is_valid_file(file_path: str) -> bool:
-        if file_extensions:
-            return any(file_path.lower().endswith(ext.lower()) for ext in file_extensions)
+    def is_valid_file(file_path):
+        """Check if a file is valid for searching and reading"""
+        # Skip all hidden files and directories (starting with .)
+        if any(part.startswith('.') for part in file_path.split('/')):
+            return False
+        
+        # Skip common binary and non-text files
+        excluded_extensions = {
+            '.class', '.jar', '.war', '.ear', '.zip', '.tar', '.gz', '.rar',
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.svg',
+            '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx',
+            '.bin', '.exe', '.dll', '.so', '.dylib',
+            '.ttf', '.otf', '.woff', '.woff2',
+            '.mp3', '.mp4', '.avi', '.mov', '.flv', '.wmv',
+            '.db', '.sqlite', '.sqlite3'
+        }
+        
+        # Skip by extension
+        if any(file_path.endswith(ext) for ext in excluded_extensions):
+            return False
+        
+        # Skip by directory name
+        excluded_dirs = {
+            'node_modules/', 'target/', 'build/', 'dist/', 'out/',
+            'bin/', 'obj/', '.git/', '.svn/', '.idea/', '.vscode/',
+            '__pycache__/', '.gradle/', 'vendor/'
+        }
+        
+        if any(excluded_dir in file_path for excluded_dir in excluded_dirs):
+            return False
+        
         return True
 
     with ThreadPoolExecutor(max_workers=min(32, os.cpu_count() or 1)) as executor:
