@@ -14,10 +14,13 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Now import your modules
+from embedding.embedding_service_sentence_transformer import SentenceTransformerEmbeddingService
 from memory_manager import MemoryManager, SQLiteStorage, MemoryEntry
 from vector_store.vector_store_client import QdrantVectorStore
-from embedding import EmbeddingFactory, SentenceTransformerEmbedding
-from embedding.embedding_service import EmbeddingService
+from embedding.embedding_factory import create_embedding_service
+from embedding.embedding_config import EmbeddingConfig
+from embedding.embedding_service_openai import OpenAiEmbeddingService
+from embedding.embedding_service_gemini import GeminiEmbeddingService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -89,20 +92,43 @@ def test_data():
         "files_accessed": ["src/main/java/com/example/auth/JwtAuthenticator.java"]
     }
 
-@pytest.mark.integration
-def test_memory_manager_basic_initialization(temp_project_dir):
-    """Test basic MemoryManager initialization with fallback to SentenceTransformer"""
+@pytest.fixture
+def memory_manager(temp_project_dir):
+    """Create a memory manager for testing"""
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="auto"
+        project_id="test-project",
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
+        vector_store_config={
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None  # Use in-memory for testing
+            }
+        }
     )
-    assert manager.embedding_provider == "auto"
+    return manager
+
+@pytest.mark.integration
+def test_memory_manager_basic_initialization(temp_project_dir):
+    """Test basic MemoryManager initialization"""
+    manager = MemoryManager(
+        project_root=temp_project_dir,
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
+        vector_store_config={
+            'qdrant': {
+                'collection': 'test_collection',
+                # user local qdrant instance
+                #'url': "http://localhost:6333",
+                #'api_key': "any_api_key"
+            }
+        }  
+    )
     
     # Get the active embedding service
     service = manager.get_embedding_service()
     assert service is not None, "No embedding service available"
-    # Should fall back to SentenceTransformer when no other services available
-    assert isinstance(service, SentenceTransformerEmbedding), "Did not fall back to SentenceTransformer"
+    assert isinstance(service, SentenceTransformerEmbeddingService), "Expected SentenceTransformerEmbeddingService"
+    assert manager.vector_store is not None, "No vector store available"
 
 @pytest.mark.integration
 @requires_openai
@@ -110,10 +136,17 @@ def test_memory_manager_openai_initialization(temp_project_dir):
     """Test MemoryManager initialization with OpenAI"""
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="openai"
+        embedding_config=EmbeddingConfig(provider="openai", model_name="text-embedding-3-small", api_key=OPENAI_API_KEY),
+        vector_store_config={
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
-    assert manager.embedding_provider == "openai"
-    assert manager.openai_embedding_service is not None
+    assert manager.embedding_service is not None
+    assert isinstance(manager.embedding_service, OpenAiEmbeddingService)
 
 @pytest.mark.integration
 @requires_gemini
@@ -121,25 +154,47 @@ def test_memory_manager_gemini_initialization(temp_project_dir):
     """Test MemoryManager initialization with Gemini"""
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="gemini"
+        embedding_config=EmbeddingConfig(
+            provider="gemini", 
+            model_name="text-embedding-005",
+            project_id=GCP_PROJECT_ID
+        ),
+        vector_store_config={
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
-    assert manager.embedding_provider == "gemini"
-    assert manager.gemini_embedding_service is not None
+    assert manager.embedding_service is not None
+    assert isinstance(manager.embedding_service, GeminiEmbeddingService)
 
 @pytest.mark.integration
 @requires_qdrant
 def test_memory_storage_with_embeddings(temp_project_dir):
     """Test storing and retrieving memories with embeddings using SentenceTransformer"""
+    # Create vector store config
+    vector_store_config = {
+        'embedding': {
+            'model_name': 'all-MiniLM-L6-v2'
+        },
+        'qdrant': {
+            'collection': 'test_collection',
+            'url': QDRANT_URL if QDRANT_URL else None
+        }
+    }
+    
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="sentence_transformer",  # Use consistent embedding service
-        use_backup_embeddings=True
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
+        vector_store_config=vector_store_config
     )
     
     # Verify we have an embedding service
     embedding_service = manager.get_embedding_service()
     assert embedding_service is not None, "No embedding service available"
-    assert isinstance(embedding_service, SentenceTransformerEmbedding)
+    assert isinstance(embedding_service, SentenceTransformerEmbeddingService)
     
     # Verify vector store dimensions match SentenceTransformer
     assert manager.vector_store.vector_size == 384, "Vector store dimensions don't match SentenceTransformer"
@@ -167,17 +222,23 @@ def test_memory_storage_with_embeddings(temp_project_dir):
     assert similar_memories[0]["entry"]["question"] == test_question
     assert similar_memories[0]["similarity_score"] > 0.5
 
-
 @pytest.mark.integration
 def test_explicit_sentence_transformer(temp_project_dir):
     """Test explicitly requesting SentenceTransformer"""
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="sentence_transformer"
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
+        vector_store_config={
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
     
     service = manager.get_embedding_service()
-    assert isinstance(service, SentenceTransformerEmbedding), "Failed to use SentenceTransformer when explicitly requested"
+    assert isinstance(service, SentenceTransformerEmbeddingService), "Failed to use SentenceTransformer when explicitly requested"
     
     # Test saving and retrieving with SentenceTransformer
     entry_id = manager.save_memory(
@@ -202,8 +263,7 @@ def test_memory_context_retrieval(temp_project_dir):
     # Initialize manager with explicit configuration
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="sentence_transformer",
-        use_backup_embeddings=True,
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
         vector_store_config=vector_store_config
     )
     
@@ -241,9 +301,15 @@ def test_memory_cleanup(temp_project_dir):
     """Test memory cleanup operations"""
     manager = MemoryManager(
         project_root=temp_project_dir,
-        embedding_provider="auto"
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
+        vector_store_config={
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
-    
     # Save a test memory
     entry_id = manager.save_memory(
         question="Test question",
@@ -330,8 +396,8 @@ def test_memory_manager_comprehensive(temp_project_dir, test_data):
             'model_name': 'all-MiniLM-L6-v2'
         },
         'qdrant': {
-            'collection': 'test_collection'
-            # No URL means use in-memory instance
+            'collection': 'test_collection',
+            'url': QDRANT_URL if QDRANT_URL else None
         }
     }
     
@@ -339,8 +405,7 @@ def test_memory_manager_comprehensive(temp_project_dir, test_data):
     manager = MemoryManager(
         project_root=temp_project_dir,
         project_id="test-project",
-        embedding_provider="sentence_transformer",
-        use_backup_embeddings=True,
+        embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
         vector_store_config=vector_store_config
     )
     
@@ -384,6 +449,95 @@ def test_memory_manager_comprehensive(temp_project_dir, test_data):
     summary = manager.generate_memory_summary()
     assert "test-project" in summary
     assert "entries" in summary.lower()
+
+def test_delete_memory(memory_manager):
+    """Test deleting a specific memory entry"""
+    # Save a test memory
+    entry_id = memory_manager.save_memory(
+        question="Test question for deletion",
+        answer="Test answer for deletion",
+        key_findings=["Finding 1", "Finding 2"]
+    )
+    
+    # Verify the memory was saved
+    entry = memory_manager.get_memory_by_id(entry_id)
+    assert entry is not None, "Memory was not saved properly"
+    
+    # Delete the memory
+    result = memory_manager.delete_memory(entry_id)
+    assert result is True, "Memory deletion failed"
+    
+    # Verify the memory was deleted
+    entry = memory_manager.get_memory_by_id(entry_id)
+    assert entry is None, "Memory was not deleted properly"
+
+def test_clear_project_memories(memory_manager):
+    """Test clearing all memories for a project"""
+    # Save multiple memories of different types
+    memory_manager.save_memory(
+        question="Conversation question 1",
+        answer="Conversation answer 1",
+        entry_type="conversation"
+    )
+    
+    memory_manager.save_memory(
+        question="File summary question",
+        answer="File summary answer",
+        entry_type="file_summary"
+    )
+    
+    memory_manager.save_memory(
+        question="Conversation question 2",
+        answer="Conversation answer 2",
+        entry_type="conversation"
+    )
+    
+    # Verify memories were saved
+    all_memories = memory_manager.get_recent_memories(limit=10)
+    assert len(all_memories) == 3, "Not all memories were saved"
+    
+    # Clear only conversation memories
+    result = memory_manager.clear_project_memories(entry_type="conversation")
+    assert result is True, "Failed to clear conversation memories"
+    
+    # Verify only conversation memories were cleared
+    remaining_memories = memory_manager.get_recent_memories(limit=10)
+    assert len(remaining_memories) == 1, "Incorrect number of memories after partial clear"
+    assert remaining_memories[0]["entry_type"] == "file_summary", "Wrong memory type remained"
+    
+    # Clear all remaining memories
+    result = memory_manager.clear_project_memories()
+    assert result is True, "Failed to clear all memories"
+    
+    # Verify all memories were cleared
+    final_memories = memory_manager.get_recent_memories(limit=10)
+    assert len(final_memories) == 0, "Not all memories were cleared"
+
+def test_get_recent_memories(memory_manager):
+    """Test retrieving recent memories"""
+    # Save memories with timestamps in the past
+    for i in range(5):
+        memory_manager.save_memory(
+            question=f"Question {i}",
+            answer=f"Answer {i}",
+            entry_type="conversation" if i % 2 == 0 else "file_summary"
+        )
+        # Add a small delay to ensure different timestamps
+        time.sleep(0.1)
+    
+    # Test retrieving all recent memories
+    all_recent = memory_manager.get_recent_memories(limit=10)
+    assert len(all_recent) == 5, "Failed to retrieve all recent memories"
+    
+    # Test retrieving limited number of memories
+    limited_recent = memory_manager.get_recent_memories(limit=3)
+    assert len(limited_recent) == 3, "Failed to limit recent memories"
+    
+    # Test retrieving memories by type
+    conversation_memories = memory_manager.get_recent_memories(entry_type="conversation")
+    assert len(conversation_memories) == 3, "Failed to filter memories by type"
+    for memory in conversation_memories:
+        assert memory["entry_type"] == "conversation", "Wrong memory type retrieved"
 
 if __name__ == "__main__":
     pytest.main([__file__]) 
