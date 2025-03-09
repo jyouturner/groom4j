@@ -1,6 +1,9 @@
-from typing import Tuple, List, Optional, Dict, Any
+
 import logging
 import re
+from memory.memory_manager import MemoryManager
+import os
+from pathlib import Path
 
 # the order of the following imports is important
 # since the initialization of langfuse depends on the os environment variables
@@ -56,14 +59,15 @@ THOROUGHNESS_SCORE: [1-10, where 10 indicates extremely thorough]
 
 class ConversationReviewer:
 
-    def __init__(self, query_manager, target_thoroughness=6, max_history=10, max_rounds=8):
+    def __init__(self, query_manager, target_thoroughness=6, max_history=10, max_rounds=8, use_memory=True):
         """
-        Initialize the ConversationReviewer
+        Initialize the ConversationReviewer with memory support
         Args:
             query_manager: The LLM query manager to use for reviews
             target_thoroughness (int): Target thoroughness level (1-10)
             max_history (int): Maximum conversation history to maintain
             max_rounds (int): Maximum number of conversation rounds before forcing conclusion
+            use_memory (bool): Whether to use persistent memory
         """
         self.query_manager = query_manager
         self.conversation_list = []
@@ -77,16 +81,59 @@ class ConversationReviewer:
         # Initialize the state machine
         self.state_manager = StateManager()
         self.conversation_context = {}
+        
+        # Initialize memory manager if enabled
+        self.use_memory = use_memory
+        self.memory_manager = None
+        self.current_question = None
+        self.current_answer = None
+        self.current_key_findings = []
+        self.files_accessed = []
+
+    def initialize_memory(self, project_root):
+        """Initialize memory manager with project information"""
+        if self.use_memory:
+            try:
+                # Ensure project_root is absolute
+                if project_root:
+                    project_root = os.path.abspath(project_root)
+                else:
+                    project_root = os.getcwd()
+                
+                # Initialize memory manager
+                self.memory_manager = MemoryManager(project_root=project_root)
+                logger.info(f"Initialized memory manager for project {self.memory_manager.project_id}")
+            except Exception as e:
+                logger.error(f"Failed to initialize memory manager: {str(e)}")
+                self.use_memory = False
 
     def is_history_empty(self):
         return len(self.conversation_list) == 0
 
     def add_conversation(self, human: str, ai: str):
+        """
+        Add a conversation turn to the history
+        Args:
+            human: Human message
+            ai: AI response
+        """
         conversation = {
             "human": human,
             "ai": ai
         }
         self.conversation_list.append(conversation)
+        
+        # Set current question/answer for memory storage
+        if not self.current_question and human:
+            self.current_question = human
+        self.current_answer = ai
+        
+        # Track accessed files for memory context
+        self._track_accessed_files(human)
+        self._track_accessed_files(ai)
+        
+        # Extract and track key findings
+        self._extract_key_findings(ai)
         
         # Limit the conversation history to max_history entries
         if len(self.conversation_list) > self.max_history:
@@ -101,6 +148,43 @@ class ConversationReviewer:
         logger.debug(f"Human: {human[:50]}...")
         logger.debug(f"AI: {ai[:50]}...")
         logger.debug(f"Conversation history length: {len(self.conversation_list)}")
+    
+    def _track_accessed_files(self, text):
+        """Extract accessed file names from text"""
+        if not text:
+            return
+            
+        # Extract file paths from content access requests
+        file_request_pattern = r"\[I need content of files:(.*?)\]"
+        file_requests = re.findall(file_request_pattern, text, re.DOTALL)
+        
+        for request in file_requests:
+            # Extract file names (might be comma-separated)
+            files = re.findall(r"<file>(.*?)</file>", request)
+            if not files:
+                # Try extracting comma-separated file names
+                files = [f.strip() for f in request.split(",")]
+            
+            self.files_accessed.extend(files)
+    
+    def _extract_key_findings(self, text):
+        """Extract key findings from AI response"""
+        if not text:
+            return
+            
+        # Look for key findings section
+        key_findings_pattern = r"KEY_FINDINGS:(.+?)(?:\n\n|\Z)"
+        findings_match = re.search(key_findings_pattern, text, re.DOTALL | re.IGNORECASE)
+        
+        if findings_match:
+            findings_text = findings_match.group(1)
+            # Extract individual findings (lines starting with - or *)
+            findings = re.findall(r"[-*]\s*\[(.*?)\](.*?)(?:\n|$)", findings_text)
+            
+            for finding_type, finding_text in findings:
+                finding = f"[{finding_type}]{finding_text.strip()}"
+                if finding not in self.current_key_findings:
+                    self.current_key_findings.append(finding)
 
     def get_current_state(self) -> ConversationState:
         """Get the current conversation state"""
@@ -122,6 +206,17 @@ class ConversationReviewer:
     @observe(name="review_conversation", capture_input=True, capture_output=True)
     def review_conversation(self) -> Tuple[str, Optional[str]]:
         """Review the conversation and provide guidance."""
+        # Call the original method to get the recommendation
+        recommendation, final_answer_prompt = self._original_review_conversation()
+        
+        # If we're concluding the conversation, save to memory
+        if recommendation == "CONCLUDE" and self.use_memory and self.memory_manager:
+            self._save_conversation_to_memory()
+        
+        return recommendation, final_answer_prompt
+    
+    def _original_review_conversation(self) -> Tuple[str, Optional[str]]:
+        """Original review_conversation method (rename the existing method to this)"""
         # Don't try to review empty conversations
         if not self.conversation_list:
             logger.info("No conversation to review yet")
@@ -182,6 +277,54 @@ class ConversationReviewer:
         except Exception as e:
             logger.error(f"Error querying LLM for review: {str(e)}", exc_info=True)
             return "CONTINUE", None
+    
+    def _save_conversation_to_memory(self):
+        """Save the current conversation to memory"""
+        if not self.current_question or not self.current_answer:
+            logger.warning("No conversation to save to memory")
+            return
+            
+        try:
+            if self.memory_manager:
+                # Save memory entry
+                entry_id = self.memory_manager.save_memory(
+                    question=self.current_question,
+                    answer=self.current_answer,
+                    key_findings=self.current_key_findings,
+                    files_accessed=list(set(self.files_accessed)),  # Deduplicate
+                    entry_type="conversation",
+                    metadata={
+                        "thoroughness": self.conversation_context.get("current_thoroughness", 0),
+                        "state_path": [s.value for s in self.state_manager.state_machine.state_history]
+                    }
+                )
+                
+                if entry_id:
+                    logger.info(f"Saved conversation to memory with ID: {entry_id}")
+                else:
+                    logger.warning("Failed to save conversation to memory")
+        except Exception as e:
+            logger.error(f"Error saving conversation to memory: {str(e)}")
+    
+    def get_relevant_memories(self, question: str) -> str:
+        """Get relevant memories for the provided question"""
+        if not self.use_memory or not self.memory_manager:
+            return ""
+            
+        try:
+            context = self.memory_manager.get_relevant_context(
+                query=question,
+                limit=3,
+                score_threshold=0.75
+            )
+            
+            if context:
+                logger.info(f"Found relevant memories: {len(context.split('---'))}")
+                return context
+        except Exception as e:
+            logger.error(f"Error getting relevant memories: {str(e)}")
+            
+        return ""
 
     def _evaluate_thoroughness(self, response: str) -> int:
         """
@@ -339,14 +482,22 @@ Format your response with:
 """
 
     def _generate_concluding_prompt(self) -> str:
-        """Generate a concluding prompt for the CONCLUDING state"""
-        return generate_prompt_for_state(ConversationState.CONCLUDING, {
+        """Enhanced concluding prompt generation with memory"""
+        base_prompt = generate_prompt_for_state(ConversationState.CONCLUDING, {
             "question": self._get_original_question(),
             "current_thoroughness": self.conversation_context.get("current_thoroughness", 5),
             "rounds_remaining": 0,
             "key_findings": self._extract_key_findings_from_history(),
             "conclusions": self._extract_conclusions_from_history()
         })
+        
+        # Add memory context if available
+        if self.use_memory and self.conversation_context.get("memories_context"):
+            memory_context = self.conversation_context.get("memories_context")
+            memory_addition = f"\n\nConsider these relevant memories from previous conversations:\n{memory_context}\n\n"
+            base_prompt = memory_addition + base_prompt
+        
+        return base_prompt
     
     def _get_original_question(self) -> str:
         """Get the original question from the conversation history"""
@@ -384,6 +535,10 @@ Format your response with:
         return conclusions
 
     def should_continue_conversation(self) -> Tuple[bool, Optional[str]]:
+        """
+        Enhanced should_continue_conversation method that considers memory
+        Returns: (should_continue, final_answer_prompt)
+        """
         # Check if we've exceeded max rounds
         self.current_round += 1
         self.update_conversation_context(round=self.current_round)
@@ -391,16 +546,30 @@ Format your response with:
         if self.current_round >= self.max_rounds:
             logger.info(f"Reached maximum rounds ({self.max_rounds}), forcing conclusion")
             self.state_manager.state_machine.current_state = ConversationState.CONCLUDING
-            return False, self._generate_concluding_prompt()
+            final_answer_prompt = self._generate_concluding_prompt()
+            return False, final_answer_prompt
             
-        # Continue with existing review logic enhanced with state machine
+        # Check if the current question has relevant memories
+        if (self.use_memory and self.memory_manager and self.current_question 
+                and self.current_round == 1):  # Only on first round
+            memories_context = self.get_relevant_memories(self.current_question)
+            if memories_context:
+                # Update conversation context with memory information
+                self.update_conversation_context(
+                    relevant_memories_found=True,
+                    memories_context=memories_context
+                )
+        
+        # Continue with existing review logic enhanced with memory
         recommendation, final_answer_prompt = self.review_conversation()
         
-        # Log the decision process
-        logger.info(f"Round {self.current_round}/{self.max_rounds}")
-        logger.info(f"Recommendation: {recommendation}")
-        logger.info(f"Current state: {self.state_manager.state_machine.current_state.value}")
-        logger.info(f"Target thoroughness: {self.target_thoroughness}")
+        # If concluding and we have memory, enhance the final prompt
+        if recommendation != "CONTINUE" and self.use_memory and final_answer_prompt:
+            # Add memory context to final answer prompt if available
+            memories_context = self.conversation_context.get("memories_context", "")
+            if memories_context:
+                memory_addition = f"\n\nConsider these relevant memories from previous conversations:\n{memories_context}\n\n"
+                final_answer_prompt = memory_addition + final_answer_prompt
         
         # Generate state-specific final prompt if concluding
         if recommendation != "CONTINUE" and self.state_manager.state_machine.current_state != ConversationState.CONCLUDING:
