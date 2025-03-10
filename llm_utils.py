@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from projectfiles import ProjectFiles
+from gist.projectfiles import ProjectFiles
 # Remove this import to avoid circular dependency
 # from functions import get_static_notes
 from llm_client import LLMQueryManager
