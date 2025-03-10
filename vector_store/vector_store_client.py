@@ -11,19 +11,36 @@ logger = logging.getLogger(__name__)
 class QdrantVectorStore:
     """Client for Qdrant vector database operations"""
     
+<<<<<<< Updated upstream
     def __init__(self, collection_name: str = "java_assistant", vector_size: int = 384, url: Optional[str] = None, skip_payload_indexes: bool = False):
+=======
+    def __init__(
+        self, 
+        collection_name: str = "java_assistant", 
+        vector_size: int = 384, 
+        url: Optional[str] = None, 
+        api_key: Optional[str] = None,
+        skip_payload_indexes: bool = False
+    ):
+>>>>>>> Stashed changes
         """Initialize Qdrant vector store client
         
         Args:
             collection_name: Name of the Qdrant collection
             vector_size: Dimension of vectors to store
+<<<<<<< Updated upstream
             url: Optional URL for Qdrant server
+=======
+            url: URL for Qdrant server (None for local in-memory instance)
+            api_key: API key for Qdrant server authentication
+>>>>>>> Stashed changes
             skip_payload_indexes: Whether to skip creating payload indexes (useful for local testing)
         """
         self.collection_name = collection_name
         self.vector_size = vector_size
         self.skip_payload_indexes = skip_payload_indexes
         
+<<<<<<< Updated upstream
         # Use provided URL or check environment
         self.cloud_url = url or os.environ.get("QDRANT_URL")
         self.cloud_api_key = os.environ.get("QDRANT_API_KEY")
@@ -37,6 +54,18 @@ class QdrantVectorStore:
             # Fall back to local Qdrant instance
             self.client = QdrantClient(":memory:")  # In-memory for testing
             logger.info("Initialized local in-memory Qdrant client")
+=======
+        if url:
+            # Connect to remote Qdrant instance
+            logger.info(f"Initializing Qdrant client at {url}")
+            self.client = QdrantClient(url=url, api_key=api_key)
+            self.is_remote = True
+        else:
+            # Use local in-memory instance
+            logger.info("Initializing local in-memory Qdrant client")
+            self.client = QdrantClient(":memory:")
+            self.is_remote = False
+>>>>>>> Stashed changes
     
     def initialize_collection(self, vector_size: Optional[int] = None):
         """Initialize or validate collection with specified vector size"""
@@ -138,7 +167,11 @@ class QdrantVectorStore:
         project_id: Optional[str] = None,
         entry_type: Optional[str] = None,
         limit: int = 5, 
+<<<<<<< Updated upstream
         score_threshold: float = 0.75
+=======
+        score_threshold: float = 0.6  # Lower threshold for testing
+>>>>>>> Stashed changes
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors with optional filtering"""
         try:
@@ -160,6 +193,7 @@ class QdrantVectorStore:
                 )
             
             # Prepare the search filter
+<<<<<<< Updated upstream
             search_filter = None
             if filter_conditions:
                 search_filter = models.Filter(
@@ -193,6 +227,50 @@ class QdrantVectorStore:
             return results
         except Exception as e:
             logger.error(f"Error searching similar vectors: {str(e)}")
+=======
+            query_filter = None
+            if filter_conditions:
+                query_filter = models.Filter(
+                    must=filter_conditions
+                )
+            
+            # Use the correct parameter names according to the API
+            try:
+                logger.info("Searching for similar vectors using query_points")
+                search_results = self.client.query_points(
+                    collection_name=self.collection_name,
+                    query=query_vector,  # Use query, not query_vector
+                    query_filter=query_filter,  # Use query_filter, not filter
+                    limit=limit,
+                    score_threshold=score_threshold
+                )
+            except Exception as e:
+                logger.warning(f"Error using query_points: {str(e)}")
+                # Fall back to deprecated search method as last resort
+                logger.warning("Falling back to deprecated search method")
+                search_results = self.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=query_vector,
+                    query_filter=query_filter,
+                    limit=limit,
+                    score_threshold=score_threshold
+                )
+            
+            # Format results
+            results = []
+            for point in search_results.points:
+                formatted_result = {
+                    "id": point.id,
+                    "text": point.payload.get("text", ""),
+                    "score": point.score,
+                    **{k: v for k, v in point.payload.items() if k != "text"}
+                }
+                results.append(formatted_result)
+            
+            return results
+        except Exception as e:
+            logger.error(f"Error searching similar vectors: {str(e)}", exc_info=True)
+>>>>>>> Stashed changes
             return []
     
     def get_by_id(self, entry_id: str) -> Dict[str, Any]:
