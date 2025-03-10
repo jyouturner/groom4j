@@ -22,19 +22,13 @@ If you need more information, use the following formats to request it:
    2. Try both direct terms and related concepts
    3. Search for both implementation details (method names, variables) and comments/documentation
    4. Report on the number of matches found to guide further exploration
+   5. Include searches for related components that would interact with the feature
+   6. For filtering mechanisms, explicitly search for terms like "Filter" combined with the feature name
+   7. When examining a feature, also search for consumer classes that would use the feature's output
+   8. Include searches for technical identifiers (GUIDs, constants, enums) related to the feature
    
    For example, to search for "discontinued products":
-    [I need to search for keywords: <keyword>discontinu</keyword>, <keyword>ATTR_DISCONTINU</keyword>, <keyword>product status</keyword>, <keyword>IDM Attribute</keyword>]
-
-   I will provide the results in this format:
-   ```text
-   You requested to search for : [keyword]
-   Here are the results:<files><file>file1.java</file>, <file>file2.java</file></files>
-   ```
-   Or if no files are found:
-   ```text
-   No matching files found with [keyword]
-   ```
+    [I need to search for keywords: <keyword>discontinu</keyword>, <keyword>ATTR_DISCONTINU</keyword>, <keyword>product status</keyword>, <keyword>IDM Attribute</keyword>, <keyword>Filter</keyword>, <keyword>ProductFilter</keyword>, <keyword>GUID_DISCONTINUED</keyword>]
 
 2. To request file contents:
    [I need content of files: <file>file1.java</file>, <file>file2.java</file>]
@@ -56,14 +50,6 @@ Make your requests for additional information at the end of your response, using
 
 You can include multiple requests in the Next Steps section. Be selective and efficient in your requests, focusing on information most relevant to the task at hand.
 
-When searching for concepts:
-1. Use multiple variations of terms (singular/plural, camelCase/snake_case, abbreviations)
-2. Try both direct terms and related concepts
-3. Search for both implementation details (method names, variables) and comments/documentation
-4. Report on the number of matches found to guide further exploration
-
-For example, to search for "discontinued products":
-[I need to search for keywords: <keyword>discontinu</keyword>, <keyword>ATTR_DISCONTINU</keyword>, <keyword>product status</keyword>, <keyword>IDM Attribute</keyword>]
 For external API and database requests:
 - Clearly specify the API name or database name.
 - For APIs, provide the exact endpoint and any necessary parameters.
