@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class QdrantVectorStore:
     """Client for Qdrant vector database operations"""
     
-    def __init__(self, collection_name: str = "java_assistant", vector_size: int = 384, url: Optional[str] = None, skip_payload_indexes: bool = False):
+    def __init__(self, collection_name: str = "java_assistant", vector_size: int = 384, url: Optional[str] = None, skip_payload_indexes: bool = False, api_key: Optional[str] = None):
         """Initialize Qdrant vector store client
         
         Args:
@@ -30,7 +30,7 @@ class QdrantVectorStore:
         
         if self.cloud_url:
             # debug
-            print(f"Initializing Qdrant cloud client at {self.cloud_url} with API key {self.cloud_api_key[-6:]}")
+            print(f"Initializing Qdrant cloud client")
             self.client = QdrantClient(url=self.cloud_url, api_key=self.cloud_api_key)
             logger.info(f"Initialized Qdrant cloud client at {self.cloud_url}")
         else:
