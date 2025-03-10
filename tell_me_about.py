@@ -6,7 +6,7 @@ import argparse
 import yaml
 import time
 from gist.projectfiles import ProjectFiles
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict, Any
 from functions import get_file, get_package, get_static_notes
 from functions import efficient_file_search, read_files, read_packages, read_all_packages, read_from_human
 from functions import process_file_request
@@ -28,6 +28,7 @@ from conversation_reviewer import ConversationReviewer
 from llm_utils import initiate_llm_query_manager
 from llm_interaction import query_llm
 from conversation_state_machine import generate_state_transition_diagram, save_conversation_with_states
+from memory.memory_manager import MemoryManager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -173,10 +174,34 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
     i = 0
     new_information = ""
     key_findings = []
+    
     # initiate the LLM query manager
     query_manager = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier1")
     query_manager_tier2 = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier2")
-    reviewer = ConversationReviewer(query_manager=query_manager_tier2, target_thoroughness=thoroughness, max_rounds=max_rounds)
+    
+    # Initialize memory configuration
+    memory_config =  initialize_memory_config()
+    
+    # Initialize the conversation reviewer with memory support
+    reviewer = ConversationReviewer(
+        query_manager=query_manager_tier2, 
+        target_thoroughness=thoroughness, 
+        max_rounds=max_rounds,
+        use_memory=True,
+        memory_config=memory_config
+    )
+    
+    # Initialize memory if project root is available
+    if pf and hasattr(pf, 'root_path'):
+        reviewer.initialize_memory(pf.root_path)
+    
+    # Get memory context for the question if available
+    memory_context = ""
+    if hasattr(reviewer, 'get_relevant_memories'):
+        memory_context = reviewer.get_relevant_memories(question)
+        if memory_context:
+            # Add memory context to the initial prompt
+            new_information = f"Relevant information from previous conversations:\n{memory_context}\n\n"
     
     # Initialize conversation context with question metadata
     if hasattr(reviewer, 'update_conversation_context'):
@@ -184,8 +209,11 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
             question=question,
             question_received=True,
             user_expertise="medium",  # Default expertise level
-            max_rounds=max_rounds
+            max_rounds=max_rounds,
+            memories_context=memory_context,
+            relevant_memories_found=(memory_context != "")
         )
+        reviewer.current_question = question  # Set current question for memory storage
     
     final_answer_prompt = None
     while i < max_rounds:
@@ -280,6 +308,15 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
                     except Exception as e:
                         logger.error(f"Failed to save conversation state: {str(e)}")
                         
+                # Save final conversation to memory
+                if reviewer and not is_test:
+                    save_conversation_to_memory(
+                        reviewer=reviewer,
+                        question=question,
+                        response=last_response,
+                        key_findings=key_findings
+                    )
+                
                 break
             
         except Exception as e:
@@ -427,10 +464,6 @@ def process_conversation_file(conversation_file: str, project_root: str, thoroug
     # Read the last unanswered question
     question, conversation_history = read_last_question_from_markdown(conversation_file)
 
-    # debug to print conversation history
-    # logger.info(f"Conversation history: {conversation_history}")
-    # todo: use the conversation history in the prompt
-
     if not question:
         logger.error("No valid question found in conversation file")
         return
@@ -446,11 +479,12 @@ def process_conversation_file(conversation_file: str, project_root: str, thoroug
     pf = ProjectFiles(repo_root_path=root_path)
     pf.from_gist_files()
     
+    
     # Generate answer
     reviewer = None  # Initialize reviewer variable
     try:
         if "--breakdown" in sys.argv:
-            res = break_down_and_answer(question, pf, root_path, max_rounds=max_rounds, thoroughness=thoroughness)
+            res, reviewer = break_down_and_answer(question, pf, root_path, max_rounds=max_rounds, thoroughness=thoroughness)
         else:
             res, reviewer = answer_question(pf, question, thoroughness=thoroughness, max_rounds=max_rounds)
             
@@ -458,6 +492,14 @@ def process_conversation_file(conversation_file: str, project_root: str, thoroug
         result_file = save_response_to_markdown(question, res, path=root_path+"/.gist/tell_me_about/")
         update_markdown_with_answer(conversation_file, result_file)
         logger.info(f"Response saved to {result_file} and conversation updated")
+        
+        # Save to memory if reviewer supports it
+        if reviewer and hasattr(reviewer, '_save_conversation_to_memory'):
+            try:
+                reviewer._save_conversation_to_memory()
+                logger.info("Conversation saved to memory")
+            except Exception as e:
+                logger.error(f"Error saving conversation to memory: {str(e)}")
         
         # Generate state transition diagram if state tracking was used
         if reviewer and hasattr(reviewer, 'state_manager') and hasattr(reviewer.state_manager, 'conversation_history'):
@@ -527,7 +569,58 @@ def query_llm_with_retry(query_manager, question, user_prompt_template, instruct
     # If we've exhausted retries, return the last results
     return new_info, response, should_conclude, updated_key_findings, final_answer_prompt
 
-if __name__ == "__main__":
+def initialize_memory_config() -> EmbeddingConfig:
+    """Initialize memory configuration from environment variables"""
+    embedding_provider = os.environ.get("VECTOR_STORE_EMBEDDING_PROVIDER", "SENTENCE_TRANSFORMER")
+    embedding_model_name = os.environ.get(f"VECTOR_STORE_EMBEDDING_{embedding_provider}_MODEL_NAME", "all-MiniLM-L6-v2")
+    embedding_dimensionality = int(os.environ.get(f"VECTOR_STORE_EMBEDDING_{embedding_provider}_DIMENSIONALITY", 384))
+    
+    # Create EmbeddingConfig instance
+    config = EmbeddingConfig(
+        model_name=embedding_model_name,
+        provider=embedding_provider,
+        dimensionality=embedding_dimensionality,
+        # Optional Qdrant-specific config can be handled separately
+    )
+    
+    return config
+
+def save_conversation_to_memory(reviewer, question: str, response: str, key_findings: List[str]):
+    """Save conversation results to memory"""
+    if hasattr(reviewer, 'memory_manager'):
+        try:
+            entry_id = reviewer.memory_manager.save_memory(
+                question=question,
+                answer=response,
+                key_findings=key_findings,
+                entry_type="conversation",
+                metadata={
+                    "timestamp": int(time.time()),
+                    "thoroughness": reviewer.target_thoroughness
+                }
+            )
+            logger.info(f"Saved conversation to memory with ID: {entry_id}")
+            return entry_id
+        except Exception as e:
+            logger.error(f"Failed to save conversation to memory: {str(e)}")
+    return None
+
+def cleanup_old_memories(reviewer, max_age_days: int = 30):
+    """Clean up old conversation memories"""
+    if hasattr(reviewer, 'memory_manager'):
+        try:
+            current_time = int(time.time())
+            cutoff_time = current_time - (max_age_days * 24 * 60 * 60)
+            
+            reviewer.memory_manager.vector_store.delete_by_filter(
+                entry_type="conversation",
+                older_than_timestamp=cutoff_time
+            )
+            logger.info(f"Cleaned up memories older than {max_age_days} days")
+        except Exception as e:
+            logger.error(f"Failed to clean up old memories: {str(e)}")
+
+def main():
     parser = argparse.ArgumentParser(description="Tell me about")
     parser.add_argument("project_root", type=str, help="Path to the project root")
     parser.add_argument("--conversation-file", type=str, help="Path to conversation markdown file")
@@ -538,7 +631,30 @@ if __name__ == "__main__":
                        help="Maximum rounds of conversation with LLM before forcing conclusion")
     parser.add_argument("--breakdown", action="store_true", 
                        help="Flag to break down the question into smaller questions")
+    # Add memory-related options
+    parser.add_argument("--no-memory", action="store_true",
+                       help="Disable memory features for this execution")
+    parser.add_argument(
+        "--memory-config",
+        type=str,
+        help="Path to custom memory configuration file"
+    )
+    parser.add_argument(
+        "--memory-cleanup-days",
+        type=int,
+        default=30,
+        help="Number of days to keep memories before cleanup"
+    )
+    parser.add_argument(
+        "--memory-similarity-threshold",
+        type=float,
+        default=0.6,
+        help="Similarity threshold for memory retrieval (0.0-1.0)"
+    )
     args = parser.parse_args()
+
+    # Load the vector store configuration
+    load_vector_store_config()
 
     if args.conversation_file:
         # Process conversation file
@@ -560,12 +676,20 @@ if __name__ == "__main__":
 
         reviewer = None  # Initialize reviewer variable
         if args.breakdown:
-            res = break_down_and_answer(args.question, pf, root_path, max_rounds=args.max_rounds, thoroughness=args.thoroughness)
+            res, reviewer = break_down_and_answer(args.question, pf, root_path, max_rounds=args.max_rounds, thoroughness=args.thoroughness)
         else:
             res, reviewer = answer_question(pf, args.question, thoroughness=args.thoroughness, max_rounds=args.max_rounds)
             
         result_file = save_response_to_markdown(args.question, res, path=root_path+"/.gist/tell_me_about/")
         logger.info(f"Response saved to {result_file}")
+        
+        # Save to memory if reviewer supports it and memory is not disabled
+        if reviewer and hasattr(reviewer, '_save_conversation_to_memory') and not args.no_memory:
+            try:
+                reviewer._save_conversation_to_memory()
+                logger.info("Conversation saved to memory")
+            except Exception as e:
+                logger.error(f"Error saving conversation to memory: {str(e)}")
         
         # Generate state transition diagram if state tracking was used
         if reviewer and hasattr(reviewer, 'state_manager') and hasattr(reviewer.state_manager, 'conversation_history'):
@@ -593,6 +717,13 @@ if __name__ == "__main__":
                 logger.info(f"Saved conversation with state tracking at {conversation_file}")
             except Exception as e:
                 logger.error(f"Failed to generate state transition diagram: {str(e)}")
+        
+        # Clean up old memories if not in test mode
+        if not args.no_memory and not 'pytest' in sys.modules:
+            cleanup_old_memories(reviewer)
     else:
         logger.error("Please provide either --conversation-file or --question")
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
