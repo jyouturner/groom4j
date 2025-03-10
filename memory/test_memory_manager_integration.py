@@ -174,21 +174,17 @@ def test_memory_manager_gemini_initialization(temp_project_dir):
 @requires_qdrant
 def test_memory_storage_with_embeddings(temp_project_dir):
     """Test storing and retrieving memories with embeddings using SentenceTransformer"""
-    # Create vector store config
-    vector_store_config = {
-        'embedding': {
-            'model_name': 'all-MiniLM-L6-v2'
-        },
-        'qdrant': {
-            'collection': 'test_collection',
-            'url': QDRANT_URL if QDRANT_URL else None
-        }
-    }
-    
+
     manager = MemoryManager(
         project_root=temp_project_dir,
         embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
-        vector_store_config=vector_store_config
+        vector_store_config = {
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
     
     # Verify we have an embedding service
@@ -249,22 +245,19 @@ def test_explicit_sentence_transformer(temp_project_dir):
 
 def test_memory_context_retrieval(temp_project_dir):
     """Test retrieving relevant context for conversations"""
-    # Create a direct configuration instead of relying on the file
-    vector_store_config = {
-        'embedding': {
-            'model_name': 'all-MiniLM-L6-v2'
-        },
-        'qdrant': {
-            'collection': 'test_collection'
-            # No URL means use in-memory instance
-        }
-    }
+
     
     # Initialize manager with explicit configuration
     manager = MemoryManager(
         project_root=temp_project_dir,
         embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
-        vector_store_config=vector_store_config
+        vector_store_config= {
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
     
     # Save multiple related memories
@@ -390,23 +383,20 @@ def test_sqlite_storage_basic(temp_project_dir, test_data):
 @pytest.mark.integration
 def test_memory_manager_comprehensive(temp_project_dir, test_data):
     """Comprehensive test of memory manager functionality"""
-    # Create direct configuration
-    vector_store_config = {
-        'embedding': {
-            'model_name': 'all-MiniLM-L6-v2'
-        },
-        'qdrant': {
-            'collection': 'test_collection',
-            'url': QDRANT_URL if QDRANT_URL else None
-        }
-    }
+
     
     # Now initialize the manager with explicit configuration
     manager = MemoryManager(
         project_root=temp_project_dir,
         project_id="test-project",
         embedding_config=EmbeddingConfig(provider="sentence_transformer", model_name="all-MiniLM-L6-v2"),
-        vector_store_config=vector_store_config
+        vector_store_config = {
+            'qdrant': {
+                'collection': 'test_collection',
+                'url': None,
+                'api_key': None
+            }
+        }
     )
     
     # Test saving memory with full metadata
