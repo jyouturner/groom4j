@@ -1,16 +1,25 @@
 # Vector Store Package
 
+<<<<<<< Updated upstream
 This package provides a vector database integration layer, primarily focused on Qdrant vector database operations for storing and retrieving embeddings with associated metadata.
 
 ## Components
 
 ### 1. Vector Store Client (`vector_store_client.py`)
+=======
+This package provides a vector database integration layer, primarily focused on Qdrant vector database operations.
+
+## Components
+
+### Vector Store Client (`vector_store_client.py`)
+>>>>>>> Stashed changes
 The main implementation of vector database operations using Qdrant:
 - Supports both cloud and local in-memory Qdrant instances
 - Handles vector storage, retrieval, and similarity search
 - Manages metadata indexing and filtering
 - Provides CRUD operations for embeddings and their associated data
 
+<<<<<<< Updated upstream
 Key features:
 - Vector similarity search with configurable thresholds
 - Metadata filtering by project ID and entry type
@@ -57,6 +66,18 @@ config = load_vector_store_config()
 vector_store = QdrantVectorStore(
     collection_name="your_collection",
     vector_size=384  # Adjust based on your embedding size
+=======
+## Usage
+
+### Direct Configuration
+```python
+# Initialize vector store with explicit configuration
+vector_store = QdrantVectorStore(
+    collection_name="your_collection",
+    vector_size=384,
+    url="your_qdrant_url",  # Optional - omit for local instance
+    api_key="your_api_key"  # Optional
+>>>>>>> Stashed changes
 )
 
 # Store an embedding
@@ -69,6 +90,7 @@ entry_id = vector_store.store_embedding(
         "timestamp": 1234567890
     }
 )
+<<<<<<< Updated upstream
 
 # Search similar vectors
 results = vector_store.search_similar(
@@ -85,6 +107,30 @@ results = vector_store.search_similar(
 - `VECTOR_STORE_USE`: Vector store provider (defaults to 'qdrant')
 - `EMBEDDING_PROVIDER`: Embedding provider to use
 - `QDRANT_COLLECTION`: Default collection name
+=======
+```
+
+### Using with MemoryManager
+```python
+# Create configuration
+vector_store_config = {
+    'embedding': {
+        'model_name': 'all-MiniLM-L6-v2'
+    },
+    'qdrant': {
+        'collection': 'your_collection',
+        'url': 'your_qdrant_url',  # Optional
+        'api_key': 'your_api_key'  # Optional
+    }
+}
+
+# Initialize memory manager with configuration
+manager = MemoryManager(
+    project_root="path/to/project",
+    vector_store_config=vector_store_config
+)
+```
+>>>>>>> Stashed changes
 
 ## Testing
 Run tests using pytest:
@@ -110,6 +156,10 @@ pytest vector_store/test_vector_store_client.py
 - Default vector size is 384 dimensions
 - Cosine similarity is used for vector comparisons
 - Automatic payload indexing for efficient filtering
+<<<<<<< Updated upstream
 - Configuration can be loaded from custom paths using `load_vector_store_config(config_path)`
 - Default values are provided if configuration is missing
+=======
+- Configuration is handled through direct parameter passing
+>>>>>>> Stashed changes
 
