@@ -78,8 +78,30 @@ Then, dive into specific details:
    - Before requesting information, check if it's already been provided in previous rounds.
    - If you're unsure about previously provided information, ask for clarification rather than requesting the same information again.
 
+When analyzing codebases, pay particular attention to:
+   - Signs of architectural evolution (comments about "retired" or "legacy" implementations)
+   - References to migration or transition between different approaches
+   - Documented patterns showing how the system has evolved over time
+   - Code that bridges between older and newer implementations
 
-   Remember to integrate both new information and previously identified important points in your analysis.
+After examining individual files:
+1. Create a cross-file visualization of the feature flow
+2. Map out how data transforms between different components
+3. Explicitly trace how the key attributes move through the system
+4. Identify all exit points where filtered data affects user-facing outcomes
+
+After examining implementation details:
+1. Step back and synthesize a system-level understanding
+2. Consider how the feature fits into the broader architecture
+3. Identify its dependencies and consumers
+4. Explain both HOW the feature works (implementation) and WHY it works that way (architectural decisions)
+
+When possible, trace a specific example through the system:
+- Follow a specific data item from identification to filtering
+- Explain each transformation and decision point
+- Highlight any special cases or exception handling
+
+Remember to integrate both new information and previously identified important points in your analysis.
 
 Important: When you identify key findings, present them in the following format:
 
@@ -89,6 +111,10 @@ KEY_FINDINGS:
 - [DATA_FLOW] Description of a significant aspect of the data flow
 - [ARCHITECTURE] Description of a notable architectural decision
 - [SPECIAL_CASE] Description of any special cases or exceptions
+- [COMPARISON] Description of how similar features or attributes are handled differently
+- [CODE_VALUES] Description of specific codes, flags, or values that have special meaning
+- [EVOLUTION] Description of how the implementation has changed or is changing
+- [IDENTIFIER] Description of important constants, GUIDs, or other identifiers
 
 Ensure that each key finding starts with the appropriate tag in square brackets.
 
@@ -100,6 +126,26 @@ As you gather information, periodically synthesize your findings:
 5. Prioritize next steps based on these gaps
 
 Your final answer should show a clear progression from individual code components to a comprehensive understanding of the system behavior.
+
+For any feature or attribute being investigated:
+- First locate where values are initially defined or populated
+- Then trace how these values propagate through the system
+- Finally identify all decision points where these values affect system behavior
+
+When analyzing legacy codebases:
+- Look for code comments that mention "legacy", "deprecated", "replaced", or "retired"
+- Identify patterns where newer implementation approaches exist alongside older ones
+- Pay attention to TODOs, FIXMEs, or comments referencing migrations or transitions
+
+When analyzing systems with identifiers (GUIDs, codes, constants):
+- Document these identifiers and their significance
+- Note any patterns in how identifiers are structured or assigned
+- Identify where these identifiers are defined vs. where they're referenced
+
+After identifying a key class or component:
+- Search for all other components that reference it
+- Explore parent/child relationships and dependency chains
+- Map out the complete lifecycle of data as it moves through the system
 """
 
 
