@@ -1,12 +1,17 @@
+"""Java project analysis and documentation tool."""
+
+__version__ = "0.1.0"
+__author__ = "Your Name"
+
 from .projectfiles import ProjectFiles, CodeFile, FilePersistence, DefaultFilePersistence
-from .gist_files import code_gisting
-from .gist_packages import real_package_gisting
+from . import gist_files
+from . import gist_packages
 
 __all__ = [
     'ProjectFiles',
     'CodeFile',
     'FilePersistence',
     'DefaultFilePersistence',
-    'code_gisting',
-    'real_package_gisting'
+    'gist_files',
+    'gist_packages'
 ]
