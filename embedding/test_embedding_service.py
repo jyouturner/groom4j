@@ -3,7 +3,8 @@ import numpy as np
 import os
 
 from embedding.embedding_factory import create_embedding_service
-from .embedding_service import BaseEmbeddingService, OpenAiEmbeddingService
+from .embedding_service import BaseEmbeddingService
+from .embedding_service_openai import OpenAiEmbeddingService
 from .embedding_service_sentence_transformer import SentenceTransformerEmbeddingService
 from .embedding_config import EmbeddingConfig
 
