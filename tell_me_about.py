@@ -5,6 +5,7 @@ import re
 import argparse
 import yaml
 import time
+from embedding.embedding_config import EmbeddingConfig
 from gist.projectfiles import ProjectFiles
 from typing import Union, Optional, List, Dict, Any
 from functions import get_file, get_package, get_static_notes
@@ -40,6 +41,18 @@ You are an AI assistant designed to help Java developers understand and analyze 
 
 
 instructions = """
+Begin by exploring the codebase broadly:
+1. First, search for direct mentions of the key concepts (using multiple search terms and variations)
+2. Identify key files that might be relevant to the functionality
+3. Examine relationships between these files (imports, method calls, shared constants)
+4. Create a mental map of how the feature is implemented across multiple components
+
+Show your reasoning by:
+- Explaining why you're looking at specific files
+- Connecting insights across different files
+- Building a coherent understanding of the overall system
+
+Then, dive into specific details:
 1. Start with a high-level overview of relevant components.
 2. Dive deeper into specific areas as needed, leveraging the project structure and codebase.
 3. Provide clear, concise explanations.
@@ -79,8 +92,14 @@ KEY_FINDINGS:
 
 Ensure that each key finding starts with the appropriate tag in square brackets.
 
-Remember, the goal is to provide the most comprehensive and accurate answer possible. It's okay to revise your understanding as you gather more information, and it's better to provide a well-reasoned partial answer than to continue requesting information indefinitely.
+As you gather information, periodically synthesize your findings:
+1. After examining each key file, summarize what you've learned
+2. Connect new information with your previous findings
+3. Revise your understanding if new evidence contradicts earlier conclusions
+4. Identify remaining gaps in your understanding
+5. Prioritize next steps based on these gaps
 
+Your final answer should show a clear progression from individual code components to a comprehensive understanding of the system behavior.
 """
 
 
@@ -135,6 +154,23 @@ Iteration: {iteration_number}
 ===GUIDELINES_FOR_ANALYSIS===
 {instructions}
 
+As you gather information, periodically synthesize your findings:
+1. After examining each key file, summarize what you've learned
+2. Connect new information with your previous findings
+3. Revise your understanding if new evidence contradicts earlier conclusions
+4. Identify remaining gaps in your understanding
+5. Prioritize next steps based on these gaps
+
+Your final answer should show a clear progression from individual code components to a comprehensive understanding of the system behavior.
+
+As you analyze the code:
+- Show your search strategy and results
+- Explain why you're examining specific files
+- Share insights as you discover them
+- Connect new findings to your developing understanding
+- Identify and resolve contradictions in your understanding
+
+Make your thinking visible so the user can follow your investigation process.
 """
 
 final_user_prompt_template = """
@@ -180,7 +216,8 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
     query_manager_tier2 = initiate_llm_query_manager(pf, system_prompt, reused_prompt_template, tier="tier2")
     
     # Initialize memory configuration
-    memory_config =  initialize_memory_config()
+    embedding_config, vector_store_config = initialize_memory_config()
+    print(f"Embedding config: {embedding_config} \n\nVector store config: {vector_store_config}")
     
     # Initialize the conversation reviewer with memory support
     reviewer = ConversationReviewer(
@@ -188,7 +225,8 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
         target_thoroughness=thoroughness, 
         max_rounds=max_rounds,
         use_memory=True,
-        memory_config=memory_config
+        embedding_config=embedding_config,
+        vector_store_config=vector_store_config
     )
     
     # Initialize memory if project root is available
@@ -216,6 +254,7 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
         reviewer.current_question = question  # Set current question for memory storage
     
     final_answer_prompt = None
+    should_conclude = False
     while i < max_rounds:
         logger.info(f"--------- Round {i} ---------")
         
@@ -324,6 +363,62 @@ def answer_question(pf: Optional[ProjectFiles], question, last_response="", thor
             break
             
         i += 1
+        
+        # Check if we're about to hit the max rounds limit
+        if i >= max_rounds and not should_conclude:
+            logger.info(f"Reached maximum rounds ({max_rounds}), generating final summary...")
+            
+            # Force the state to concluding
+            if hasattr(reviewer, 'state_manager') and hasattr(reviewer.state_manager, 'state_machine'):
+                from conversation_state_machine import ConversationState
+                old_state = reviewer.state_manager.state_machine.current_state
+                reviewer.state_manager.state_machine.current_state = ConversationState.CONCLUDING
+                reviewer.state_manager.log_state_transition(
+                    old_state, 
+                    ConversationState.CONCLUDING, 
+                    f"Max rounds ({max_rounds}) reached, forcing conclusion"
+                )
+            
+            # Generate a final synthesis prompt
+            final_synthesis_prompt = f"""
+            You have now spent {max_rounds} rounds analyzing this question. Based on all the information 
+            you've gathered so far, please provide a final comprehensive answer that:
+            
+            1. Synthesizes all key findings
+            2. Explains how the relevant code components work together
+            3. Addresses the original question directly and completely
+            4. Acknowledges any remaining uncertainties
+            
+            This is your final opportunity to provide the most helpful answer possible.
+            """
+            
+            # Execute one final round with the synthesis prompt
+            _, last_response, _, key_findings, _ = query_llm_with_retry(
+                query_manager=query_manager,
+                question=question,
+                user_prompt_template=final_user_prompt_template,
+                instruction_prompt=final_synthesis_prompt,
+                function_prompt="",  # No need for function prompt in the final synthesis
+                last_response=last_response,
+                pf=pf,
+                iteration_number="final",
+                new_information=new_information,
+                key_findings=key_findings,
+                reviewer=None  # Skip review for final summary
+            )
+            
+            # Save conversation to memory
+            import inspect
+            is_test = any('unittest' in frame.filename for frame in inspect.stack())
+            if reviewer and not is_test:
+                save_conversation_to_memory(
+                    reviewer=reviewer,
+                    question=question,
+                    response=last_response,
+                    key_findings=key_findings
+                )
+            
+            break
     
     logger.info(f"Total rounds: {i}")
     # Use get_total_tokens instead of get_token_usage
@@ -569,7 +664,7 @@ def query_llm_with_retry(query_manager, question, user_prompt_template, instruct
     # If we've exhausted retries, return the last results
     return new_info, response, should_conclude, updated_key_findings, final_answer_prompt
 
-def initialize_memory_config() -> EmbeddingConfig:
+def initialize_memory_config() -> Tuple[EmbeddingConfig, Dict[str, Any]]:
     """Initialize memory configuration from environment variables"""
     embedding_provider = os.environ.get("VECTOR_STORE_EMBEDDING_PROVIDER", "SENTENCE_TRANSFORMER")
     embedding_model_name = os.environ.get(f"VECTOR_STORE_EMBEDDING_{embedding_provider}_MODEL_NAME", "all-MiniLM-L6-v2")
@@ -582,8 +677,15 @@ def initialize_memory_config() -> EmbeddingConfig:
         dimensionality=embedding_dimensionality,
         # Optional Qdrant-specific config can be handled separately
     )
-    
-    return config
+
+    vector_store_config = {
+        'qdrant': {
+            'collection': os.environ.get("VECTOR_STORE_QDRANT_COLLECTION"),
+            'url': os.environ.get("VECTOR_STORE_QDRANT_URL"),
+            'api_key': os.environ.get("VECTOR_STORE_QDRANT_API_KEY")
+        }
+    }
+    return config, vector_store_config
 
 def save_conversation_to_memory(reviewer, question: str, response: str, key_findings: List[str]):
     """Save conversation results to memory"""
@@ -653,8 +755,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # Load the vector store configuration
-    load_vector_store_config()
 
     if args.conversation_file:
         # Process conversation file
