@@ -4,267 +4,110 @@ import argparse
 from .projectfiles import ProjectFiles
 import re
 import time
+import json
 
+# Read the Java analysis prompt template
+def load_java_analysis_prompt():
+    prompt_path = os.path.join(os.path.dirname(__file__), 'java-semantic-analysis-phase1-prompt.md')
+    if not os.path.exists(prompt_path):
+        raise FileNotFoundError(f"Java analysis prompt template not found at {prompt_path}")
+    with open(prompt_path, 'r') as f:
+        return f.read()
 
 system_prompt = """
-You are a world-class developer, and you have been tasked with analyzing a Java project. Your goal is to understand the project structure, key functionalities, and important methods to help your team maintain and improve the codebase.
-"""
-
-instructions_java = """
-When analyzing the given file, provide a detailed summary focusing on the following aspects:
-
-- The overall purpose of the file/class
-- Key functionalities and their implementations
-- Important methods: their signatures, parameters, return types, and detailed description of what they do
-- Interactions with other parts of the system (e.g., database calls, API interactions)
-- Any complex algorithms or business logic including how data is processed
-- Use of important libraries or frameworks
-
-Only use below format to provide the summary:
-<File Name="{filename}" Package="{package}">
-
-<Dependencies>
-    <Dependency>...</Dependency>
-    <Dependency>...</Dependency>
-    ...
-</Dependencies>
-
-<Purpose>
-...
-</Purpose>
-
-<Functionalities>
-    <Function name="...">
-        ...
-    </Function>
-</Functionalities>
-</File>
-
-Now, please analyze the given Java file based on the guidelines provided above.
-
-<File Name="{filename}" Package="{package}">
-
-"""
-
-instructions_test = """
-For test files:
-- The class or functionality being tested
-- Key test scenarios covered
-- Any notable testing frameworks or techniques used
-- Mock objects or test data setup
-
-Only use below format to provide the summary:
-
-<File Name="{filename}"  Path="{path}">
-<TestScenarios>
-    <Scenario>...</Scenario>
-    <Scenario>...</Scenario>
-    ...
-</TestScenarios>
-</File>
-
-Now, please analyze the given test file based on the guidelines provided above.
-
-<File Name="{filename}"  Path="{path}">
-"""
-
-instructions_config = """
-For configuration files (properties, YAML, XML):
-- The overall purpose of the configuration file
-- Key configurations and their significance
-- Any environment-specific settings
-- Hierarchical structures and their importance
-- References to other configuration files or properties
-- Any sensitive information (noting its presence, not the actual values)
-
-Only use below format to provide the summary:
-<File Name="{filename}" Path="{path}">
-
-<Purpose>
-...
-</Purpose>
-
-<Configurations>
-    <Configuration name="..." significance="...">
-    <Configuration name="..." significance="...">
-    ...
-</Configurations>
-</File>
-
-Now, please analyze the given configuration file based on the guidelines provided above.
-
-<File Name="{filename}" Path="{path}">
-"""
-
-instructions = """
-
-When analyzing the given file, provide a detailed summary focusing on the following aspects:
-
-For Java files:
-- The overall purpose of the file/class
-- Key functionalities and their implementations
-- Important methods: their signatures, parameters, return types, and a brief description of what they do
-- Any notable design patterns or architectural choices
-- Interactions with other parts of the system (e.g., database calls, API interactions)
-- Exception handling and error management strategies
-- Any complex algorithms or business logic
-- Use of important libraries or frameworks
-
-Only use below format to provide the summary:
-<File Name="{filename}" Package="{package}">
-
-<Dependencies>
-    <Dependency>...</Dependency>
-    <Dependency>...</Dependency>
-    ...
-</Dependencies>
-
-<Purpose>
-...
-</Purpose>
-
-<Functionalities>
-    <Function name="...">
-        ...
-    </Function>
-</Functionalities>
-</File>
-
-For configuration files (properties, YAML, XML):
-- The overall purpose of the configuration file
-- Key configurations and their significance
-- Any environment-specific settings
-- Hierarchical structures and their importance
-- References to other configuration files or properties
-- Any sensitive information (noting its presence, not the actual values)
-
-Only use below format to provide the summary:
-<File Name="{filename}" Path="{path}">
-
-<Purpose>
-...
-</Purpose>
-
-<Configurations>
-    <Configuration name="..." significance="...">
-    <Configuration name="..." significance="...">
-    ...
-</Configurations>
-</File>
-
-For test files:
-- The class or functionality being tested
-- Key test scenarios covered
-- Any notable testing frameworks or techniques used
-- Mock objects or test data setup
-
-Only use below format to provide the summary:
-
-<File Name="{filename}"  Path="{path}">
-<TestScenarios>
-    <Scenario>...</Scenario>
-    <Scenario>...</Scenario>
-    ...
-</TestScenarios>
-</File>
-
-"""
-
-user_prompt_template = """
-
-Given below full file content:
-
-{content}
-
-Please analyze this file based on the guidelines provided next, focusing on key functionalities, important methods, design patterns, and other crucial details.
-
-{instructions}
-
+You are a world-class developer, and you have been tasked to research a code file.
 """
 
 def get_file_type(filename):
     _, ext = os.path.splitext(filename)
     return ext.lower()
 
-def code_gisting(query_manager, project_root, code_file, verbose=True) -> str:
+def code_gisting(pf, query_manager, project_root, code_file, gist_file_path, verbose=True) -> str:
+    if pf is None:
+        raise ValueError("No ProjectFiles instance provided. Skipping persistence.")
+    
     full_path = os.path.join(project_root, code_file.path)
     if not os.path.exists(full_path):
         print(f"Error: {full_path} does not exist")
         return ""
+        
     with open(full_path, 'r') as file:
         content = file.read()
     
     file_type = get_file_type(code_file.filename)
     
-    # Extract additional context
-    #imports = extract_imports(content)
-    #functions = extract_functions(content, file_type)
-    #todo_comments = extract_todo_comments(content)
     if file_type == '.java':
-        if code_file.path.startswith("src/main/java"):
-            instructions = instructions_java
-        elif code_file.path.startswith("src/test/java"):
-            instructions = instructions_test
-        else:
-            instructions = instructions
-    elif file_type in ['.properties', '.yaml', '.yml', '.xml']:
-            instructions = instructions_config
+        # Use the Java analysis prompt template
+        prompt_template = load_java_analysis_prompt()
+        # Replace the placeholder with actual file content
+        prompt = prompt_template.replace("{file_content}", content)
     else:
-        instructions = instructions
+        # Skip non-Java files for now
+        print(f"Skipping non-Java file: {code_file.filename}")
+        return ""
 
-    prompt = user_prompt_template.format(
-        filename=code_file.filename,
-        filetype=file_type,
-        package=code_file.package,
-        path=code_file.path,
-        content=content,
-        instructions=instructions,
-        #imports=imports,
-        #functions=functions,
-        #todo_comments=todo_comments
-    )
+    # Get JSON response from LLM
+    json_summary = query_manager.query(prompt)
     
-    summary = query_manager.query(prompt)
+    try:
+        # Parse the JSON response
+        summary_obj = json.loads(json_summary)
+        
+        # Convert JSON to a formatted string summary for persistence
+        summary = (
+            f"Type: {summary_obj.get('file_type', 'UNKNOWN')}\n"
+            f"Primary Responsibility: {summary_obj.get('primary_responsibility', '')}\n"
+            f"Implements: {', '.join(summary_obj.get('implements', []))}\n"
+            f"Extends: {summary_obj.get('extends', '')}\n"
+            f"Annotations: {', '.join(summary_obj.get('annotations', []))}\n\n"
+            f"Specific Details:\n"
+        )
+        
+        # Add specific details based on file type
+        if 'specific_details' in summary_obj:
+            for key, value in summary_obj['specific_details'].items():
+                if isinstance(value, list):
+                    summary += f"{key}:\n"
+                    for item in value:
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                summary += f"  - {k}: {v}\n"
+                        else:
+                            summary += f"  - {item}\n"
+                else:
+                    summary += f"{key}: {value}\n"
+        
+        # Add architectural patterns
+        if 'architectural_patterns' in summary_obj:
+            summary += "\nArchitectural Patterns:\n"
+            for key, value in summary_obj['architectural_patterns'].items():
+                if isinstance(value, list):
+                    summary += f"{key}: {', '.join(value)}\n"
+                else:
+                    summary += f"{key}: {value}\n"
+
+    except json.JSONDecodeError as e:
+        print(f"Warning: Failed to parse JSON response for {code_file.filename}. Using raw response.")
+        summary = json_summary
+    
     if verbose:
         print(f"Summary of the file {code_file.filename}: {summary}")
 
-    # Extract the content between <File> tags, if present
-    match = re.search(r'<File Name=".*?" Package=".*?">(.*?)</File>', summary, re.DOTALL)
-    if match:
-        summary = match.group(1)  # Extract the content inside the <File> tags
-    else:
-        # If no <File> tags are found, return the whole summary
-        summary = summary.split('</File>', 1)[0]  # Return content up to the first </File> tag if present
+    # Set the summary and persist immediately
+    code_file.set_summary(summary)
+    
+    pf.persistence.append_code_file(code_file, gist_file_path)
+    
     if verbose:
-        print(f"Extracted summary: {summary}")
+        print(f"Extracted and persisted summary for {code_file.filename}")
     return summary
 
-#def extract_imports(content):
-    # Simple regex to extract import statements
-#    import_pattern = r'^import .*?;'
-#    imports = re.findall(import_pattern, content, re.MULTILINE)
-#    return "\n".join(imports)
-
-#def extract_functions(content, file_type):
-#    if file_type == '.java':
-        # Simple regex to extract method signatures (this can be improved)
-#        function_pattern = r'(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])'
-#        functions = re.findall(function_pattern, content)
-#        return "\n".join([" ".join(func).strip() for func in functions])
-    # Add extractors for other file types as needed
-#    return ""
-
-#def extract_todo_comments(content):
-#    # Simple regex to extract TODO comments
-#    todo_pattern = r'//\s*TODO:?.*'
-#    todos = re.findall(todo_pattern, content)
-#    return "\n".join(todos)
-
-if __name__ == "__main__":
+def main(project_root=None):
     parser = argparse.ArgumentParser(description="Gisting the code files using LLM")
-    parser.add_argument("project_root", type=str, help="Path to the project root")
-    
-    args = parser.parse_args()
+    if project_root is None:
+        parser.add_argument("project_root", type=str, help="Path to the project root")
+        args = parser.parse_args()
+        project_root = args.project_root
 
     # the order of the following imports is important
     # since the initialization of langfuse depends on the os environment variables
@@ -272,57 +115,80 @@ if __name__ == "__main__":
     from config_utils import load_config_to_env
     load_config_to_env()
     from llm_client import LLMQueryManager
-    from llm_interaction import initiate_llm_query_manager
+    from llm_utils import initiate_llm_query_manager
 
-    root_path = os.path.abspath(args.project_root)
+    root_path = os.path.abspath(project_root)
     if not os.path.exists(root_path):
         print(f"Error: {root_path} does not exist")
         sys.exit(1)
 
     pf = ProjectFiles(
         repo_root_path=root_path,
-        prefix_list=["src/main/java", "src/main/resources"],
+        prefix_list=["src/main/java"],  # Only process Java files
         suffix_list=[".java"],
-        resource_suffix_list=['.properties', '.yaml', '.yml', '.xml']
+        resource_suffix_list=[]  # No resource files for now
     )
 
     print("Initializing ProjectFiles...")
     pf.from_project()
 
     print(f"\nJava files to process: {len(pf.files)}")
-    print(f"Resource files to process: {len(pf.resource_files)}")
-
-    all_files = pf.files + pf.resource_files
-    total_files = len(all_files)
+    total_files = len(pf.files)
 
     print(f"\nTotal files to process: {total_files}")
 
+    # Check for existing gist file and handle resumption
     if pf.gist_file_path and os.path.exists(pf.gist_file_path):
-        print(f"Gist files already exist at {pf.gist_file_path}")
-        print("Do you want to update existing gists or create new ones?")
-        choice = input("Enter 'update' to update existing gists, or 'new' to create new ones: ").lower()
-        if choice == 'update':
-            all_files = [f for f in all_files if not f.summary]
-            print(f"Updating {len(all_files)} files without existing summaries.")
-        elif choice != 'new':
-            print("Invalid choice. Exiting.")
-            sys.exit(1)
+        file_size = os.path.getsize(pf.gist_file_path)
+        if file_size > 0:
+            print(f"Found existing gist file at {pf.gist_file_path}")
+            # Load existing gists to avoid reprocessing
+            existing_files = pf.load_code_files(pf.gist_file_path)
+            processed_paths = {f.path for f in existing_files if f.summary}
+            skipped_files = [f for f in pf.files if f.path in processed_paths]
+            pf.files = [f for f in pf.files if f.path not in processed_paths]
+            
+            if len(skipped_files) > 0:
+                print(f"Resuming process - found {len(skipped_files)} already processed files")
+                print(f"Remaining files to process: {len(pf.files)}")
+        else:
+            print("Found empty gist file, starting fresh")
+    else:
+        # Create new empty gist file
+        os.makedirs(os.path.dirname(pf.gist_file_path), exist_ok=True)
+        open(pf.gist_file_path, 'w').close()
+        print("Created new gist file")
 
-    input(f"Press Enter to start gisting {len(all_files)} files...")
+    if len(pf.files) == 0:
+        print("No files left to process. Exiting.")
+        sys.exit(0)
+
+    input(f"Press Enter to start gisting {len(pf.files)} files...")
     query_manager = initiate_llm_query_manager(pf=pf, system_prompt=system_prompt, reused_prompt_template=None, tier="tier2")
-    for index, file in enumerate(all_files, start=1):
+    
+    for index, file in enumerate(pf.files, start=1):
         print(f"Processing file {index}/{total_files}: {file.filename} ({file.package})")
-        notes = code_gisting(query_manager=query_manager, project_root=root_path, code_file=file)
-        file.set_summary(notes)
-        # sleep for a short duration to avoid rate limiting
-        time.sleep(3)
+        try:
+            notes = code_gisting(
+                pf=pf,
+                query_manager=query_manager, 
+                project_root=root_path, 
+                code_file=file,
+                gist_file_path=pf.gist_file_path
+            )
+            # sleep for a short duration to avoid rate limiting
+            time.sleep(1)
+        except Exception as e:
+            print(f"Error processing file {file.filename}: {str(e)}")
+            continue
 
-    gist_file_path = pf.persist_code_files(all_files)
-    print(f"Gist file is persisted to {gist_file_path}")
+    print("\nGisting process completed.")
+    print(f"Gist file is available at {pf.gist_file_path}")
 
     # Optionally, you can print out the first few lines of the gist file to verify its contents
     print("\nFirst few lines of the gist file:")
-    with open(gist_file_path, 'r') as f:
+    with open(pf.gist_file_path, 'r') as f:
         print(f.read(500))  # Print first 500 characters
 
-    print("\nGisting process completed.")
+if __name__ == "__main__":
+    main()
