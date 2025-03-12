@@ -75,6 +75,13 @@ class DefaultFilePersistence(FilePersistence):
                 f.write(f"Package: {package}\nNotes: {notes}\n\n")
         return file_path
 
+    def append_package_note(self, package: str, notes: str, file_path: str) -> str:
+        """Append a single package note to the package notes file."""
+        with open(file_path, "a") as f:
+            f.write(self.separator)
+            f.write(f"Package: {package}\nNotes: {notes}\n\n")
+        return file_path
+
     def load_package_notes(self, file_path) -> dict[str, str]:
         package_notes = defaultdict(str)
         with open(file_path, "r") as f:
@@ -96,15 +103,24 @@ class DefaultFilePersistence(FilePersistence):
                         package_notes[current_package] = "\n".join(notes)
         return package_notes
 
+    def append_code_file(self, code_file: CodeFile, gist_file_path: str) -> None:
+        """Append a single code file's summary to the gist file."""
+        with open(gist_file_path, "a") as f:
+            f.write(self.separator + "\n")
+            f.write(f"Filename: {code_file.filename}\n")
+            f.write(f"Path: {code_file.path}\n")
+            f.write(f"Package: {code_file.package}\n")
+            f.write(f"Summary: {code_file.summary}\n\n")
+
     def persist_code_files(self, files: list[CodeFile], gist_file_path: str) -> str:
+        """Persist all code files to the gist file."""
         with open(gist_file_path, "w") as f:
             for file in files:
-                f.write(self.separator)
+                f.write(self.separator + "\n")
                 f.write(f"Filename: {file.filename}\n")
                 f.write(f"Path: {file.path}\n")
                 f.write(f"Package: {file.package}\n")
-                f.write(f"Summary: {file.summary}\n")
-                f.write("\n")
+                f.write(f"Summary: {file.summary}\n\n")
         return gist_file_path
 
     def load_code_files(self, gist_file_path: str) -> list[CodeFile]:
@@ -301,6 +317,8 @@ class ProjectFiles:
         
         notes = self.package_gisting_func(package, subpackage_notes, filenotes)
         self.add_package_notes(package, notes)
+        # Persist the package note immediately after generation
+        self.append_package_note(package, notes)
 
     def package_structure_traverse(self, packages=None, action_file_func=check_code_file_exists, action_package_func=gist_package, is_bottom_up=False):
         if packages is None:
@@ -412,6 +430,17 @@ class ProjectFiles:
     def to_tree(self):
         return print_tree(self.packages)
 
+    def append_package_note(self, package: str, notes: str, file_path: str = None) -> str:
+        """Append a single package note to the package notes file without rewriting the entire file."""
+        if file_path is None:
+            file_path = os.path.join(self.root_path, self.default_gist_foler, self.default_package_notes_file)
+        gist_folder_path = os.path.dirname(file_path)
+        if not os.path.exists(gist_folder_path):
+            os.makedirs(gist_folder_path)
+        # Update the in-memory package notes
+        self.package_notes[package] = notes
+        return self.persistence.append_package_note(package, notes, file_path)
+
 def print_tree(packages, prefix='', is_last=True):
     result = ""
     for i, (package, contents) in enumerate(packages.items()):
@@ -438,10 +467,20 @@ def print_tree(packages, prefix='', is_last=True):
 
     return result
 
-
+def get_package_notes(pf):
+    """Get package notes from ProjectFiles object"""
+    if hasattr(pf, 'package_notes'):
+        # Format the package notes as needed
+        package_notes_str = ""
+        for package, notes in pf.package_notes.items():
+            package_notes_str += f"<package name=\"{package}\"><notes>{notes}</notes></package>\n"
+        return package_notes_str
+    return ""
 
 if __name__ == "__main__":
-    pf = ProjectFiles(repo_root_path="data/travel-service-dev")
+    pf = ProjectFiles(repo_root_path="/Users/jyou/Documents/GitHub/rex-api")
     pf.from_project()
     tree = print(pf.to_tree())
     print(tree)
+    package_notes = get_package_notes(pf)
+    print(package_notes)
